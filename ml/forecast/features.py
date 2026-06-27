@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import pandas as pd
 
+from .seasonal import add_calendar_features
+
 POLLUTANTS = ["pm25", "pm10", "no2", "so2", "co", "o3"]
 MET = ["temp", "rh", "precip", "wind_u", "wind_v", "blh"]
 LAGS = (1, 24)
@@ -41,6 +43,7 @@ def build_feature_table(long_df: pd.DataFrame) -> pd.DataFrame:
 
     wide["hour"] = wide["ts"].dt.hour
     wide["dow"] = wide["ts"].dt.dayofweek
+    wide = add_calendar_features(wide)   # stubble / Diwali / winter-inversion flags
     for lag in LAGS:
         wide[f"pm25_lag{lag}"] = wide.groupby("h3_cell")["pm25"].shift(lag)
     return wide
