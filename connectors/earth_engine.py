@@ -29,6 +29,8 @@ GEE_PROJECT = os.getenv("GEE_PROJECT", "")
 
 S5P_NO2 = "COPERNICUS/S5P/OFFL/L3_NO2"
 NO2_BAND = "tropospheric_NO2_column_number_density"
+FIRMS = "FIRMS"            # MODIS/VIIRS active-fire detections
+FIRE_BAND = "T21"
 
 
 def init() -> None:
@@ -69,18 +71,42 @@ def sample_no2_at_cells(city_id: str, cells: list[str], start: str, end: str) ->
     return rows
 
 
+def _cell_points(cells: list[str]) -> list:
+    return [ee.Feature(ee.Geometry.Point([lng, lat]), {"cell": cell})
+            for cell in cells for lat, lng in [cell_to_latlng(cell)]]
+
+
+def sample_fire_at_cells(city_id: str, cells: list[str], start: str, end: str) -> list[dict]:
+    """Active-fire detection count over [start, end) per H3 cell (biomass-burning signal)."""
+    img = ee.ImageCollection(FIRMS).select(FIRE_BAND).filterDate(start, end).count().unmask(0)
+    sampled = img.reduceRegions(
+        collection=ee.FeatureCollection(_cell_points(cells)), reducer=ee.Reducer.mean(), scale=1000
+    ).getInfo()
+    ts = end + "T00:00:00+00:00"
+    return [{
+        "city_id": city_id, "h3_cell": f["properties"]["cell"], "station_id": None,
+        "ts": ts, "variable": "fire", "value": float(f["properties"].get("mean") or 0.0),
+        "unit": "count", "source": "modis", "confidence": 1.0,
+    } for f in sampled["features"]]
+
+
 def run(city_id: str, days: int = 30, push: bool = False) -> None:
     init()
     cells = city_cells(city_id)
     now = datetime.now(timezone.utc)
     start = (now - timedelta(days=days)).strftime("%Y-%m-%d")
     end = now.strftime("%Y-%m-%d")
-    rows = sample_no2_at_cells(city_id, cells, start, end)
-    print(f"{city_id}: sampled S5P NO2 at {len(cells)} cells -> {len(rows)} rows ({start}..{end})")
-    if push and rows:
-        client().table("measurements").delete().eq("city_id", city_id).eq("source", "s5p").execute()
-        client().table("measurements").insert(rows).execute()
-        print(f"pushed {len(rows)} satellite measurements to Supabase")
+    no2 = sample_no2_at_cells(city_id, cells, start, end)
+    fire = sample_fire_at_cells(city_id, cells, start, end)
+    print(f"{city_id}: {len(cells)} cells -> {len(no2)} NO2 + {len(fire)} fire rows ({start}..{end})")
+    if push:
+        c = client()
+        c.table("measurements").delete().eq("city_id", city_id).in_("source", ["s5p", "modis"]).execute()
+        if no2:
+            c.table("measurements").insert(no2).execute()
+        if fire:
+            c.table("measurements").insert(fire).execute()
+        print(f"pushed {len(no2) + len(fire)} satellite measurements to Supabase")
 
 
 def main() -> None:
