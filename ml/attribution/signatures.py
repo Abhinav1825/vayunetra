@@ -47,7 +47,7 @@ def signature_shares(values: dict, refs: dict | None = None) -> tuple[dict, floa
 
     `refs` overrides the marker reference scales (use calibrate_references()).
     """
-    _REF_USE = refs or _REF
+    _REF_USE = {**_REF, **refs} if refs else _REF   # custom refs override; all keys always present
     no2 = values.get("no2") or 0.0
     co = values.get("co") or 0.0
     so2 = values.get("so2") or 0.0
