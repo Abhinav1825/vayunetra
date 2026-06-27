@@ -41,6 +41,32 @@ def k_ring(cell: str, k: int = 1) -> list[str]:
     return list(h3.grid_disk(cell, k))
 
 
-# TODO Omkar: ward_geojson -> covering H3 set; ward<->h3 mapping table loader.
 def cells_for_iterable_points(points: Iterable[tuple[float, float]], res: int = DEFAULT_RES) -> set[str]:
     return {latlng_to_cell(lat, lng, res) for lat, lng in points}
+
+
+# --- ward <-> H3 mapping (present results at ward level; compute on H3) -------
+def cells_for_geojson(geometry: dict, res: int = DEFAULT_RES) -> list[str]:
+    """All H3 cells covering a GeoJSON Polygon/MultiPolygon geometry."""
+    shape = h3.geo_to_h3shape(geometry)
+    return list(h3.h3shape_to_cells(shape, res))
+
+
+def ward_to_cells(wards_geojson: dict, res: int = DEFAULT_RES) -> dict[str, list[str]]:
+    """Ward GeoJSON FeatureCollection -> {ward_id: [covering H3 cells]}.
+
+    Ward id is taken from properties.ward_id / properties.name / feature.id.
+    """
+    mapping: dict[str, list[str]] = {}
+    for feat in wards_geojson.get("features", []):
+        props = feat.get("properties") or {}
+        ward_id = props.get("ward_id") or props.get("name") or feat.get("id")
+        if ward_id is None or "geometry" not in feat:
+            continue
+        mapping[str(ward_id)] = cells_for_geojson(feat["geometry"], res)
+    return mapping
+
+
+def cell_to_ward(ward_cells: dict[str, list[str]]) -> dict[str, str]:
+    """Invert ward_to_cells() -> {h3_cell: ward_id} for cell-level ward lookup."""
+    return {cell: ward for ward, cells in ward_cells.items() for cell in cells}

@@ -1,0 +1,4 @@
+# Supabase CLI config (minimal). `project_id` is a local label.
+# The remote project is set by `npx supabase link --project-ref dwqjqpohgkxekqilhotr`.
+# Regenerate full defaults any time with `npx supabase init --force`.
+project_id = "vayunetra"

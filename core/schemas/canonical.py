@@ -1,7 +1,7 @@
 """Canonical data contracts shared across connectors, agents, ML, and the API.
 
 These Pydantic models mirror the SQL tables in
-``infra/supabase/migrations/0001_init.sql`` and the API envelope in
+``supabase/migrations/20260627000001_init.sql`` and the API envelope in
 ``docs/API_CONTRACT.md``. Keep the three in sync — they are the project's seams.
 """
 from __future__ import annotations
@@ -10,7 +10,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Generic, Optional, TypeVar
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 T = TypeVar("T")
 
@@ -24,10 +24,14 @@ class Variable(str, Enum):
     co = "co"
     o3 = "o3"
     aod = "aod"
+    no2_sat = "no2_sat"      # satellite NO2 column (Sentinel-5P), mol/m^2
     fire = "fire"
     wind_u = "wind_u"
     wind_v = "wind_v"
     blh = "blh"
+    temp = "temp"
+    rh = "rh"
+    precip = "precip"
     traffic = "traffic"
 
 

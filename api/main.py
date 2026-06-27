@@ -39,6 +39,16 @@ def fixture(name: str, default: Any = None) -> Any:
     return default if default is not None else []
 
 
+def _db():
+    """Supabase client for live reads (DEMO_MODE=false). Service-role, server-side only.
+
+    TODO Abhinav: replace service-role with JWT + RLS-scoped reads for prod auth.
+    """
+    from core.supa import client
+
+    return client()
+
+
 @app.get("/health")
 def health() -> dict:
     return ok({"status": "ok", "demo_mode": DEMO_MODE})
@@ -51,18 +61,54 @@ def cities() -> dict:
 
 @app.get("/aqi/current")
 def aqi_current(city: str, bbox: str | None = None) -> dict:
-    # TODO Abhinav: read latest measurements per H3 cell from Supabase
-    return ok(fixture("aqi_current"), )
+    if DEMO_MODE:
+        return ok(fixture("aqi_current"))
+    rows = (
+        _db().table("measurements")
+        .select("h3_cell,ts,value").eq("city_id", city).eq("variable", "pm25")
+        .order("ts", desc=True).limit(5000).execute().data
+    )
+    latest: dict[str, dict] = {}
+    for r in rows:                       # rows are newest-first -> first per cell is latest
+        latest.setdefault(r["h3_cell"], {"h3_cell": r["h3_cell"], "pm25": r["value"], "ts": r["ts"]})
+    return ok(list(latest.values()))
 
 
 @app.get("/attribution")
 def attribution(city: str, cell: str | None = None, ward: str | None = None, ts: str | None = None) -> dict:
-    return ok(fixture("attribution"))
+    if DEMO_MODE:
+        return ok(fixture("attribution"))
+    q = (
+        _db().table("attribution")
+        .select("h3_cell,source_category,share,confidence,evidence,ts_window")
+        .eq("city_id", city)
+    )
+    if cell:
+        q = q.eq("h3_cell", cell)
+    cells: dict[str, dict] = {}
+    for r in q.execute().data:           # long rows -> per-cell shares vector (blame map shape)
+        c = cells.setdefault(r["h3_cell"], {
+            "h3_cell": r["h3_cell"], "ts_window": r.get("ts_window"),
+            "shares": {}, "confidence": r.get("confidence"), "evidence": r.get("evidence"),
+        })
+        c["shares"][r["source_category"]] = r["share"]
+    return ok(list(cells.values()))
 
 
 @app.get("/forecast")
 def forecast(city: str, cell: str | None = None, horizon: int = 24) -> dict:
-    return ok(fixture("forecast"))
+    if DEMO_MODE:
+        return ok(fixture("forecast"))
+    q = (
+        _db().table("forecasts")
+        .select("h3_cell,issued_at,horizon_h,target_var,value,pi_low,pi_high,persistence_value,model_version")
+        .eq("city_id", city)
+    )
+    if cell:
+        q = q.eq("h3_cell", cell)
+    if horizon:
+        q = q.eq("horizon_h", int(horizon))
+    return ok(q.execute().data)
 
 
 @app.get("/enforcement")
