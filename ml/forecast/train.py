@@ -76,7 +76,11 @@ def write_forecasts(wide: pd.DataFrame, horizon_h: int) -> int:
             "value": mid, "pi_low": lo, "pi_high": hi,
             "persistence_value": float(r["pm25"]), "model_version": MODEL_VERSION,
         })
-    client().table("forecasts").insert(rows).execute()
+    # idempotent: replace this city+horizon's forecasts instead of accumulating
+    city_id = str(latest["city_id"].iloc[0])
+    c = client()
+    c.table("forecasts").delete().eq("city_id", city_id).eq("horizon_h", horizon_h).execute()
+    c.table("forecasts").insert(rows).execute()
     return len(rows)
 
 
