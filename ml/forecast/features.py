@@ -16,7 +16,9 @@ LAGS = (1, 24)
 def build_feature_table(long_df: pd.DataFrame) -> pd.DataFrame:
     """Long measurements -> wide per (city_id, h3_cell, ts) + met broadcast + calendar + lags."""
     df = long_df.copy()
-    df["ts"] = pd.to_datetime(df["ts"], utc=True)
+    # floor to the hour so sources on different sub-hour offsets align
+    # (OpenAQ hourly lands at :30, Open-Meteo at :00) — otherwise the met join misses entirely.
+    df["ts"] = pd.to_datetime(df["ts"], utc=True).dt.floor("h")
 
     poll = df[df["variable"].isin(POLLUTANTS)]
     poll_wide = poll.pivot_table(
