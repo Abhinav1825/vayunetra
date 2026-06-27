@@ -7,6 +7,25 @@ import { colorFor, dominantSource, type Shares } from "./sources";
 
 type AttrCell = { h3_cell: string; shares: Shares; confidence: number; evidence?: unknown };
 
+// Clean light raster basemap (CARTO, free, no API key) — colored hexagons pop on it.
+const BASEMAP = {
+  version: 8,
+  sources: {
+    carto: {
+      type: "raster",
+      tiles: [
+        "https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
+        "https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
+      ],
+      tileSize: 256,
+      attribution: "© OpenStreetMap © CARTO",
+    },
+  },
+  layers: [{ id: "carto", type: "raster", source: "carto" }],
+} as unknown as maplibregl.StyleSpecification;
+
+const ZOOM = 10.5;
+
 // Blame Map (Omkar's panel): Deck.gl H3 hexagons coloured by dominant attributed source,
 // over a MapLibre basemap. Reads GET /attribution. SHAP-style tooltip on hover.
 export default function BlameMap({ city, center }: { city: string; center: [number, number] }) {
@@ -19,9 +38,9 @@ export default function BlameMap({ city, center }: { city: string; center: [numb
     if (!containerRef.current || mapRef.current) return;
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: "https://demotiles.maplibre.org/style.json",
+      style: BASEMAP,
       center,
-      zoom: 9,
+      zoom: ZOOM,
     });
     const overlay = new MapboxOverlay({ interleaved: false, layers: [] });
     map.addControl(overlay);
@@ -30,7 +49,7 @@ export default function BlameMap({ city, center }: { city: string; center: [numb
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    mapRef.current?.flyTo({ center, zoom: 9 });
+    mapRef.current?.flyTo({ center, zoom: ZOOM });
   }, [center]);
 
   useEffect(() => {
