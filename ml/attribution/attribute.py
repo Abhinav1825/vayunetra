@@ -17,7 +17,7 @@ from core.supa import client, load_measurements
 
 from .signatures import calibrate_references, signature_shares
 
-POLLUTANTS = ["pm25", "pm10", "no2", "so2", "co", "o3", "fire"]
+POLLUTANTS = ["pm25", "pm10", "no2", "so2", "co", "o3", "fire", "no2_sat"]
 METHOD = "signature-v1"
 
 

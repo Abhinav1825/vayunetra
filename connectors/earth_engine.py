@@ -1,95 +1,110 @@
-"""Earth Engine connector (satellite features).  Owner: Omkar.
+"""Earth Engine connector (satellite features).  Owner: Omkar.  ARCHITECTURE.md §7.1, §9.
 
-Auth via the registered service account, then pull satellite variables and reduce them
-onto the H3 grid -> canonical `measurements`. Spec: ARCHITECTURE.md §7.1, §9; PRD §11.
+Samples Sentinel-5P tropospheric NO2 (a recent-window mean) at the city's H3 cells and
+writes canonical `measurements` (variable='no2_sat', unit mol/m^2, source='s5p') — the
+satellite half of the satellite-ground fusion. Stored as a distinct variable so it never
+clashes with ground NO2 (different units/meaning).
 
-Smoke test (after EE registration is APPROVED + the EE API is enabled):
-    python -m connectors.earth_engine
+Auth needs the registered service account with Earth Engine + Service Usage Consumer roles.
+
+  python -m connectors.earth_engine --check               # confirm auth + data availability
+  python -m connectors.earth_engine --city delhi          # sample + summary
+  python -m connectors.earth_engine --city delhi --push    # also insert into Supabase
 """
 from __future__ import annotations
 
+import argparse
 import os
+from datetime import datetime, timedelta, timezone
 
 import ee
 
 import core.env  # noqa: F401  (loads .env)
-from core.spatial.h3_utils import latlng_to_cell
+from core.spatial.h3_utils import cell_to_latlng
+from core.supa import client, load_measurements
 
 GEE_SERVICE_ACCOUNT = os.getenv("GEE_SERVICE_ACCOUNT", "")
 GEE_KEY_JSON = os.getenv("GEE_KEY_JSON", "./gee-key.json")
 GEE_PROJECT = os.getenv("GEE_PROJECT", "")
 
-# Earth Engine product ids used by VayuNetra
-S5P_NO2 = "COPERNICUS/S5P/OFFL/L3_NO2"   # also _SO2, _CO, _AER_AI variants
-MODIS_AOD = "MODIS/061/MCD19A2_GRANULES"  # AOD; VIIRS active-fire is a separate product
+S5P_NO2 = "COPERNICUS/S5P/OFFL/L3_NO2"
+NO2_BAND = "tropospheric_NO2_column_number_density"
 
 
 def init() -> None:
-    """Authenticate the service account and initialise Earth Engine."""
     if not (GEE_SERVICE_ACCOUNT and GEE_PROJECT):
         raise RuntimeError("Set GEE_SERVICE_ACCOUNT and GEE_PROJECT in .env")
     creds = ee.ServiceAccountCredentials(GEE_SERVICE_ACCOUNT, GEE_KEY_JSON)
     ee.Initialize(creds, project=GEE_PROJECT)
 
 
-def fetch_s5p_no2(city_id: str, bbox: list[float], start: str, end: str, h3_res: int = 8) -> list[dict]:
-    """Mean tropospheric NO2 over `bbox` for [start, end), sampled at H3 cell centres.
+def city_cells(city_id: str) -> list[str]:
+    """Distinct H3 cells we already hold ground data for in this city."""
+    rows = load_measurements(city_id)
+    return sorted({r["h3_cell"] for r in rows if r.get("h3_cell")})
 
-    Returns canonical measurement dicts ready for the `measurements` table.
-    bbox = [min_lng, min_lat, max_lng, max_lat]; dates = 'YYYY-MM-DD'.
-    """
-    region = ee.Geometry.Rectangle(bbox)
-    img = (
-        ee.ImageCollection(S5P_NO2)
-        .select("tropospheric_NO2_column_number_density")
-        .filterDate(start, end)
-        .filterBounds(region)
-        .mean()
-    )
 
-    # H3 cell centres covering the bbox -> sample the image at each point.
-    # TODO Omkar: replace this coarse grid with core.spatial.cells_in_bbox centres.
-    step = 0.05
-    points, cells = [], []
-    lng = bbox[0]
-    while lng <= bbox[2]:
-        lat = bbox[1]
-        while lat <= bbox[3]:
-            points.append(ee.Feature(ee.Geometry.Point([lng, lat])))
-            cells.append((lat, lng))
-            lat += step
-        lng += step
+def sample_no2_at_cells(city_id: str, cells: list[str], start: str, end: str) -> list[dict]:
+    """Mean S5P NO2 over [start, end) sampled at each H3 cell centre -> canonical rows."""
+    img = ee.ImageCollection(S5P_NO2).select(NO2_BAND).filterDate(start, end).mean()
+    feats = []
+    for cell in cells:
+        lat, lng = cell_to_latlng(cell)
+        feats.append(ee.Feature(ee.Geometry.Point([lng, lat]), {"cell": cell}))
+    sampled = img.reduceRegions(
+        collection=ee.FeatureCollection(feats), reducer=ee.Reducer.mean(), scale=1113
+    ).getInfo()
 
-    fc = ee.FeatureCollection(points)
-    sampled = img.reduceRegions(collection=fc, reducer=ee.Reducer.first(), scale=1000).getInfo()
-
+    ts = end + "T00:00:00+00:00"
     rows: list[dict] = []
-    for feat, (lat, lng) in zip(sampled["features"], cells):
-        val = feat["properties"].get("tropospheric_NO2_column_number_density")
+    for f in sampled["features"]:
+        val = f["properties"].get("mean")
         if val is None:
             continue
         rows.append({
-            "city_id": city_id,
-            "h3_cell": latlng_to_cell(lat, lng, h3_res),
-            "ts": end,
-            "variable": "no2",
-            "value": float(val),
-            "unit": "mol/m^2",
-            "source": "s5p",
-            "confidence": 1.0,
+            "city_id": city_id, "h3_cell": f["properties"]["cell"], "station_id": None,
+            "ts": ts, "variable": "no2_sat", "value": float(val), "unit": "mol/m2",
+            "source": "s5p", "confidence": 1.0,
         })
     return rows
 
 
-if __name__ == "__main__":
-    # Minimal end-to-end check: auth + one real EE call over Delhi.
+def run(city_id: str, days: int = 30, push: bool = False) -> None:
     init()
-    delhi_bbox = [76.84, 28.40, 77.35, 28.88]
-    n = (
-        ee.ImageCollection(S5P_NO2)
-        .filterDate("2026-06-20", "2026-06-27")
-        .filterBounds(ee.Geometry.Rectangle(delhi_bbox))
-        .size()
-        .getInfo()
-    )
-    print(f"EE OK ✓ — {n} Sentinel-5P NO2 images over Delhi this week")
+    cells = city_cells(city_id)
+    now = datetime.now(timezone.utc)
+    start = (now - timedelta(days=days)).strftime("%Y-%m-%d")
+    end = now.strftime("%Y-%m-%d")
+    rows = sample_no2_at_cells(city_id, cells, start, end)
+    print(f"{city_id}: sampled S5P NO2 at {len(cells)} cells -> {len(rows)} rows ({start}..{end})")
+    if push and rows:
+        client().table("measurements").delete().eq("city_id", city_id).eq("source", "s5p").execute()
+        client().table("measurements").insert(rows).execute()
+        print(f"pushed {len(rows)} satellite measurements to Supabase")
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--city", default="delhi")
+    ap.add_argument("--days", type=int, default=30)
+    ap.add_argument("--push", action="store_true")
+    ap.add_argument("--check", action="store_true", help="just confirm auth + image count")
+    args = ap.parse_args()
+
+    if args.check:
+        init()
+        delhi = ee.Geometry.Rectangle([76.84, 28.40, 77.35, 28.88])
+        end = datetime.now(timezone.utc)
+        start = (end - timedelta(days=30)).strftime("%Y-%m-%d")
+        n = (
+            ee.ImageCollection(S5P_NO2)
+            .filterDate(start, end.strftime("%Y-%m-%d")).filterBounds(delhi).size().getInfo()
+        )
+        print(f"EE OK ✓ — {n} Sentinel-5P NO2 images over Delhi in last 30d")
+        return
+
+    run(args.city, args.days, args.push)
+
+
+if __name__ == "__main__":
+    main()

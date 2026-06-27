@@ -42,6 +42,13 @@ def test_calibrate_references_p90_and_fallback():
     assert calibrate_references({"no2": [1, 2, 3]})["no2"] == 80.0
 
 
+def test_satellite_no2_corroborates_traffic():
+    # adding the satellite NO2 column raises the traffic share (fusion signal)
+    base = signature_shares({"no2": 10, "co": 0.1, "pm25": 50, "pm10": 60})[0]["traffic"]
+    with_sat = signature_shares({"no2": 10, "co": 0.1, "pm25": 50, "pm10": 60, "no2_sat": 2e-4})[0]["traffic"]
+    assert with_sat > base
+
+
 def test_calibrated_refs_amplify_local_marker():
     # a modest NO2 reading becomes a strong traffic marker once refs reflect current conditions
     vals = {"no2": 20, "co": 0.1, "so2": 1, "pm25": 40, "pm10": 50}

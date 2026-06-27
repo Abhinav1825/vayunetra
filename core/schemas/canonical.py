@@ -24,6 +24,7 @@ class Variable(str, Enum):
     co = "co"
     o3 = "o3"
     aod = "aod"
+    no2_sat = "no2_sat"      # satellite NO2 column (Sentinel-5P), mol/m^2
     fire = "fire"
     wind_u = "wind_u"
     wind_v = "wind_v"

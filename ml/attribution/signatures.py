@@ -15,8 +15,9 @@ CATEGORIES = (
 
 # fallback reference concentrations (~urban winter high) used when data-driven
 # calibration isn't available. Prefer calibrate_references() so blame tracks the
-# *current* distribution rather than a fixed season.
-_REF = {"no2": 80.0, "co": 2.0, "so2": 30.0, "pm25": 150.0, "pm10": 300.0, "fire": 50.0}
+# *current* distribution rather than a fixed season. no2_sat = satellite NO2 column (mol/m^2).
+_REF = {"no2": 80.0, "co": 2.0, "so2": 30.0, "pm25": 150.0, "pm10": 300.0,
+        "fire": 50.0, "no2_sat": 1.5e-4}
 
 
 def _norm(value: float, ref: float) -> float:
@@ -53,10 +54,16 @@ def signature_shares(values: dict, refs: dict | None = None) -> tuple[dict, floa
     pm25 = values.get("pm25") or 0.0
     pm10 = values.get("pm10") or 0.0
     fire = values.get("fire") or 0.0
+    no2_sat = values.get("no2_sat") or 0.0   # satellite NO2 column (Sentinel-5P)
     ratio = (pm10 / pm25) if pm25 > 0 else 0.0   # coarse-dust dominance
 
     scores = {
-        "traffic": 0.6 * _norm(no2, _REF_USE["no2"]) + 0.4 * _norm(co, _REF_USE["co"]),
+        # traffic = ground NO2 + CO, corroborated by the satellite NO2 column (fusion)
+        "traffic": (
+            0.5 * _norm(no2, _REF_USE["no2"])
+            + 0.3 * _norm(co, _REF_USE["co"])
+            + 0.2 * _norm(no2_sat, _REF_USE["no2_sat"])
+        ),
         "industrial": _norm(so2, _REF_USE["so2"]),
         "construction_dust": max(0.0, ratio - 1.8) * 0.6,
         "biomass_burning": _norm(fire, _REF_USE["fire"]),
@@ -67,7 +74,8 @@ def signature_shares(values: dict, refs: dict | None = None) -> tuple[dict, floa
     shares = {k: round(v / total, 4) for k, v in scores.items()}
     confidence = round(min(0.95, max(0.30, max(shares.values()))), 3)
     evidence = {
-        "no2": no2, "co": co, "so2": so2, "pm10_pm25_ratio": round(ratio, 2), "fire": fire,
+        "no2": no2, "co": co, "so2": so2, "pm10_pm25_ratio": round(ratio, 2),
+        "fire": fire, "no2_sat": no2_sat,
         "top_signals": sorted(shares, key=shares.get, reverse=True)[:2],
     }
     return shares, confidence, evidence
