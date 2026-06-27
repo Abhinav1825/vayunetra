@@ -10,6 +10,7 @@ connector lands and the target is real PM2.5.
 from __future__ import annotations
 
 import argparse
+import statistics
 from datetime import datetime, timezone
 
 import pandas as pd
@@ -34,32 +35,50 @@ def _fit_predict(X_train, y_train, X_pred, alpha: float):
     return model, model.predict(X_pred)
 
 
-def backtest(wide: pd.DataFrame, horizon_h: int, test_frac: float = 0.3) -> dict:
-    """Temporal-split backtest of the median model vs persistence."""
+def backtest(wide: pd.DataFrame, horizon_h: int, n_folds: int = 3) -> dict:
+    """Walk-forward (expanding-window) backtest: median model vs persistence AND climatology.
+
+    More robust than a single split — skill is averaged over `n_folds` time folds.
+    """
     X, y, meta, _ = make_supervised(wide, horizon_h)
     n = len(X)
-    if n < 20:
-        return {"horizon_h": horizon_h, "n": n, "skill": None, "note": "insufficient data"}
-    idx = meta.sort_values("ts").index
-    X, y = X.loc[idx], y.loc[idx]
-    split = int(n * (1 - test_frac))
-    _, pred = _fit_predict(X.iloc[:split], y.iloc[:split], X.iloc[split:], 0.5)
-    y_test = y.iloc[split:]
-    rmse_model = rmse(y_test, pred)
-    rmse_pers = rmse(y_test, X.iloc[split:]["pm25"].values)   # persistence: yhat(t+h)=pm25(t)
+    if n < 60:
+        return {"horizon_h": horizon_h, "n": n, "skill_vs_persistence": None, "note": "insufficient data"}
+    order = meta.sort_values("ts").index
+    X, y = X.loc[order].reset_index(drop=True), y.loc[order].reset_index(drop=True)
+
+    chunk = n // (n_folds + 1)
+    skills_p, skills_c, rmses = [], [], []
+    for i in range(n_folds):
+        te0 = chunk * (i + 1)
+        te1 = chunk * (i + 2) if i < n_folds - 1 else n
+        Xtr, ytr, Xte, yte = X.iloc[:te0], y.iloc[:te0], X.iloc[te0:te1], y.iloc[te0:te1]
+        if len(Xte) == 0:
+            continue
+        _, pred = _fit_predict(Xtr, ytr, Xte, 0.5)
+        rm = rmse(yte, pred)
+        rp = rmse(yte, Xte["pm25"].to_numpy())                    # persistence: yhat(t+h)=pm25(t)
+        clim = ytr.groupby(Xtr["hour"]).mean()                    # climatology by hour-of-day
+        cpred = Xte["hour"].map(clim).fillna(ytr.mean()).to_numpy()
+        rc = rmse(yte, cpred)
+        rmses.append(rm)
+        skills_p.append(skill_score(rm, rp))
+        skills_c.append(skill_score(rm, rc))
+
     return {
-        "horizon_h": horizon_h, "n": n,
-        "rmse_model": round(rmse_model, 2),
-        "rmse_persistence": round(rmse_pers, 2),
-        "skill": round(skill_score(rmse_model, rmse_pers), 3),
+        "horizon_h": horizon_h, "n": n, "folds": len(skills_p),
+        "rmse_model": round(statistics.mean(rmses), 2),
+        "skill_vs_persistence": round(statistics.mean(skills_p), 3),
+        "skill_vs_climatology": round(statistics.mean(skills_c), 3),
     }
 
 
 def write_forecasts(wide: pd.DataFrame, horizon_h: int) -> int:
     """Train on all samples, predict the latest row per cell, write to `forecasts`."""
     X, y, _, feature_cols = make_supervised(wide, horizon_h)
-    if len(X) < 20:
+    if len(X) < 60:
         return 0
+    clim = y.groupby(X["hour"]).mean()   # climatology by hour-of-day (for side-by-side storage)
     latest = wide.sort_values("ts").groupby("h3_cell").tail(1)
     X_pred = latest[feature_cols]
     preds = {name: _fit_predict(X, y, X_pred, a)[1] for name, a in QUANTILES.items()}
@@ -74,13 +93,20 @@ def write_forecasts(wide: pd.DataFrame, horizon_h: int) -> int:
             "city_id": r["city_id"], "h3_cell": r["h3_cell"], "issued_at": issued_at,
             "horizon_h": horizon_h, "target_var": "pm25",
             "value": mid, "pi_low": lo, "pi_high": hi,
-            "persistence_value": float(r["pm25"]), "model_version": MODEL_VERSION,
+            "persistence_value": float(r["pm25"]),
+            "climatology_value": float(clim.get(int(r["hour"]), y.mean())),
+            "model_version": MODEL_VERSION,
         })
     # idempotent: replace this city+horizon's forecasts instead of accumulating
     city_id = str(latest["city_id"].iloc[0])
     c = client()
     c.table("forecasts").delete().eq("city_id", city_id).eq("horizon_h", horizon_h).execute()
-    c.table("forecasts").insert(rows).execute()
+    try:
+        c.table("forecasts").insert(rows).execute()
+    except Exception:  # noqa: BLE001 — climatology_value column not migrated yet -> store without it
+        for row in rows:
+            row.pop("climatology_value", None)
+        c.table("forecasts").insert(rows).execute()
     return len(rows)
 
 
@@ -89,11 +115,13 @@ def run(city_id: str, horizons=(24, 48, 72), write: bool = False) -> None:
     print(f"loaded {len(long_df)} measurements for {city_id}")
     wide = build_feature_table(long_df)
     for h in horizons:
-        result = backtest(wide, h)
-        print(f"  h={h:>2}h  {result}")
+        r = backtest(wide, h)
+        print(
+            f"  h={h:>2}h  n={r.get('n')} folds={r.get('folds')}  "
+            f"skill vs persistence={r.get('skill_vs_persistence')}  vs climatology={r.get('skill_vs_climatology')}"
+        )
         if write:
-            n = write_forecasts(wide, h)
-            print(f"        wrote {n} forecasts")
+            print(f"        wrote {write_forecasts(wide, h)} forecasts")
 
 
 def main() -> None:
