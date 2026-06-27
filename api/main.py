@@ -16,6 +16,7 @@ from typing import Any
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+import core.env  # noqa: F401  (loads .env)
 from core.schemas import err, ok
 
 DEMO_MODE = os.getenv("DEMO_MODE", "true").lower() == "true"

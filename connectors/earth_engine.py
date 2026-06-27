@@ -12,6 +12,7 @@ import os
 
 import ee
 
+import core.env  # noqa: F401  (loads .env)
 from core.spatial.h3_utils import latlng_to_cell
 
 GEE_SERVICE_ACCOUNT = os.getenv("GEE_SERVICE_ACCOUNT", "")

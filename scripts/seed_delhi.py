@@ -16,6 +16,13 @@ import random
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+try:  # load .env so --push picks up SUPABASE_* without manual export
+    from dotenv import load_dotenv
+
+    load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+except ImportError:
+    pass
+
 # Sample H3 res-8 cells across Delhi (placeholders; regenerate from delhi.yml bbox + h3 later)
 DELHI_CELLS = ["883da1a3a1fffff", "883da1a3a3fffff", "883da1a3a5fffff", "883da1a3a7fffff"]
 
