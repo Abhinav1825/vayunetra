@@ -10,45 +10,17 @@ connector lands and the target is real PM2.5.
 from __future__ import annotations
 
 import argparse
-import os
 from datetime import datetime, timezone
 
 import pandas as pd
 
-import core.env  # noqa: F401  (loads .env)
+from core.supa import client, load_measurements
 
 from .baselines import rmse, skill_score
 from .features import build_feature_table, make_supervised
 
 QUANTILES = {"pi_low": 0.1, "value": 0.5, "pi_high": 0.9}
 MODEL_VERSION = "lgbm-q-v1"
-
-
-def _client():
-    from supabase import create_client
-
-    return create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
-
-
-def load_measurements(city_id: str) -> pd.DataFrame:
-    """Page through all measurements for a city (PostgREST caps at 1000/page)."""
-    client = _client()
-    rows: list[dict] = []
-    start, page = 0, 1000
-    while True:
-        batch = (
-            client.table("measurements")
-            .select("city_id,h3_cell,ts,variable,value")
-            .eq("city_id", city_id)
-            .range(start, start + page - 1)
-            .execute()
-            .data
-        )
-        rows.extend(batch)
-        if len(batch) < page:
-            break
-        start += page
-    return pd.DataFrame(rows)
 
 
 def _fit_predict(X_train, y_train, X_pred, alpha: float):
@@ -104,12 +76,12 @@ def write_forecasts(wide: pd.DataFrame, horizon_h: int) -> int:
             "value": mid, "pi_low": lo, "pi_high": hi,
             "persistence_value": float(r["pm25"]), "model_version": MODEL_VERSION,
         })
-    _client().table("forecasts").insert(rows).execute()
+    client().table("forecasts").insert(rows).execute()
     return len(rows)
 
 
 def run(city_id: str, horizons=(24, 48, 72), write: bool = False) -> None:
-    long_df = load_measurements(city_id)
+    long_df = pd.DataFrame(load_measurements(city_id))
     print(f"loaded {len(long_df)} measurements for {city_id}")
     wide = build_feature_table(long_df)
     for h in horizons:
