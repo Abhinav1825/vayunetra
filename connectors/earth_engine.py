@@ -90,12 +90,13 @@ def sample_fire_at_cells(city_id: str, cells: list[str], start: str, end: str) -
     } for f in sampled["features"]]
 
 
-def run(city_id: str, days: int = 30, push: bool = False) -> None:
+def run(city_id: str, days: int = 30, push: bool = False,
+        start: str | None = None, end: str | None = None) -> None:
     init()
     cells = city_cells(city_id)
     now = datetime.now(timezone.utc)
-    start = (now - timedelta(days=days)).strftime("%Y-%m-%d")
-    end = now.strftime("%Y-%m-%d")
+    start = start or (now - timedelta(days=days)).strftime("%Y-%m-%d")
+    end = end or now.strftime("%Y-%m-%d")
     no2 = sample_no2_at_cells(city_id, cells, start, end)
     fire = sample_fire_at_cells(city_id, cells, start, end)
     print(f"{city_id}: {len(cells)} cells -> {len(no2)} NO2 + {len(fire)} fire rows ({start}..{end})")
@@ -113,6 +114,8 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--city", default="delhi")
     ap.add_argument("--days", type=int, default=30)
+    ap.add_argument("--start", help="window start ISO date (e.g. 2025-10-01)")
+    ap.add_argument("--end", help="window end ISO date (e.g. 2026-01-31)")
     ap.add_argument("--push", action="store_true")
     ap.add_argument("--check", action="store_true", help="just confirm auth + image count")
     args = ap.parse_args()
@@ -129,7 +132,7 @@ def main() -> None:
         print(f"EE OK ✓ — {n} Sentinel-5P NO2 images over Delhi in last 30d")
         return
 
-    run(args.city, args.days, args.push)
+    run(args.city, args.days, args.push, args.start, args.end)
 
 
 if __name__ == "__main__":

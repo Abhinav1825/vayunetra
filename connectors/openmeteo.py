@@ -65,6 +65,21 @@ def fetch_hourly(lat: float, lng: float, past_days: int = 3, forecast_days: int 
     return resp.json()["hourly"]
 
 
+def fetch_hourly_archive(lat: float, lng: float, start_date: str, end_date: str) -> dict:
+    """Historical hourly weather (ERA5 archive) — for windows older/longer than the 92-day forecast API."""
+    resp = requests.get(
+        "https://archive-api.open-meteo.com/v1/archive",
+        params={
+            "latitude": lat, "longitude": lng, "hourly": ",".join(HOURLY),
+            "wind_speed_unit": "ms", "timezone": "GMT",
+            "start_date": start_date, "end_date": end_date,
+        },
+        timeout=90,
+    )
+    resp.raise_for_status()
+    return resp.json()["hourly"]
+
+
 def build_measurements(city_id: str, h3_cell: str, hourly: dict) -> list[dict]:
     """Open-Meteo hourly payload -> canonical measurement rows."""
     rows: list[dict] = []
@@ -97,11 +112,17 @@ def _row(city_id: str, h3_cell: str, ts: str, variable: str, value: float, unit:
     }
 
 
-def fetch_city(city_id: str, past_days: int = 3, forecast_days: int = 2) -> list[dict]:
+def fetch_city(
+    city_id: str, past_days: int = 3, forecast_days: int = 2,
+    start: str | None = None, end: str | None = None,
+) -> list[dict]:
     cfg = load_city(city_id)
     lng, lat = cfg["center"]  # YAML stores [lng, lat]
     cell = latlng_to_cell(lat, lng, cfg.get("h3_res", 8))
-    hourly = fetch_hourly(lat, lng, past_days, forecast_days)
+    if start and end:
+        hourly = fetch_hourly_archive(lat, lng, start, end)
+    else:
+        hourly = fetch_hourly(lat, lng, past_days, forecast_days)
     return build_measurements(city_id, cell, hourly)
 
 
@@ -121,10 +142,12 @@ def main() -> None:
     ap.add_argument("--city", default="delhi")
     ap.add_argument("--past-days", type=int, default=3)
     ap.add_argument("--forecast-days", type=int, default=2)
+    ap.add_argument("--start", help="archive start ISO date, e.g. 2025-10-01")
+    ap.add_argument("--end", help="archive end ISO date, e.g. 2026-01-31")
     ap.add_argument("--push", action="store_true", help="insert into Supabase")
     args = ap.parse_args()
 
-    rows = fetch_city(args.city, args.past_days, args.forecast_days)
+    rows = fetch_city(args.city, args.past_days, args.forecast_days, args.start, args.end)
     variables = sorted({r["variable"] for r in rows})
     print(f"{args.city}: {len(rows)} rows across {len(variables)} variables {variables}")
     if args.push:

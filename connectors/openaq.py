@@ -112,14 +112,16 @@ def find_sensors(lat: float, lng: float, radius_m: int = 25000) -> list[dict]:
     return sensors
 
 
-def fetch_sensor_hourly(sensor: dict, datetime_from: str, max_pages: int = 5) -> list[dict]:
-    """Hourly history for one sensor since `datetime_from` (ISO) -> normalised records."""
+def fetch_sensor_hourly(
+    sensor: dict, datetime_from: str, datetime_to: str | None = None, max_pages: int = 12
+) -> list[dict]:
+    """Hourly history for one sensor over [datetime_from, datetime_to) -> normalised records."""
     records: list[dict] = []
     for page in range(1, max_pages + 1):
-        data = _get(
-            f"/sensors/{sensor['sensor_id']}/measurements/hourly",
-            {"datetime_from": datetime_from, "limit": 1000, "page": page},
-        )
+        params = {"datetime_from": datetime_from, "limit": 1000, "page": page}
+        if datetime_to:
+            params["datetime_to"] = datetime_to
+        data = _get(f"/sensors/{sensor['sensor_id']}/measurements/hourly", params)
         results = data.get("results", [])
         for m in results:
             period = (m.get("period") or {}).get("datetimeFrom") or {}
@@ -136,12 +138,15 @@ def fetch_sensor_hourly(sensor: dict, datetime_from: str, max_pages: int = 5) ->
     return records
 
 
-def fetch_city(city_id: str, days: int = 14, max_sensors: int = 40) -> list[dict]:
+def fetch_city(
+    city_id: str, days: int = 14, max_sensors: int = 40,
+    date_from: str | None = None, date_to: str | None = None,
+) -> list[dict]:
     from datetime import datetime, timedelta, timezone
 
     cfg = load_city(city_id)
     lng, lat = cfg["center"]
-    since = (datetime.now(timezone.utc) - timedelta(days=days)).replace(microsecond=0).isoformat()
+    since = date_from or (datetime.now(timezone.utc) - timedelta(days=days)).replace(microsecond=0).isoformat()
 
     sensors = find_sensors(lat, lng)
     # most-recently-active stations first -> active stations bring their full pollutant set
@@ -149,11 +154,12 @@ def fetch_city(city_id: str, days: int = 14, max_sensors: int = 40) -> list[dict
     if len(sensors) > max_sensors:
         print(f"  found {len(sensors)} sensors; capping to {max_sensors} (raise with --max-sensors)")
         sensors = sensors[:max_sensors]
-    print(f"  fetching {len(sensors)} sensors x ~{days}d hourly (throttled ~{MIN_INTERVAL_S}s/req)...")
+    window = f"{since[:10]}..{(date_to[:10] if date_to else 'now')}"
+    print(f"  fetching {len(sensors)} sensors hourly {window} (throttled ~{MIN_INTERVAL_S}s/req)...")
 
     records: list[dict] = []
     for i, sensor in enumerate(sensors, 1):
-        recs = fetch_sensor_hourly(sensor, since)
+        recs = fetch_sensor_hourly(sensor, since, date_to)
         records.extend(recs)
         print(f"    [{i}/{len(sensors)}] {sensor['variable']:5s} sensor {sensor['sensor_id']}: {len(recs)} pts")
     return rows_from_records(city_id, records, cfg.get("h3_res", 8))
@@ -173,10 +179,12 @@ def main() -> None:
     ap.add_argument("--city", default="delhi")
     ap.add_argument("--days", type=int, default=14)
     ap.add_argument("--max-sensors", type=int, default=40)
+    ap.add_argument("--from", dest="date_from", help="ISO start, e.g. 2025-10-01")
+    ap.add_argument("--to", dest="date_to", help="ISO end, e.g. 2026-01-31")
     ap.add_argument("--push", action="store_true")
     args = ap.parse_args()
 
-    rows = fetch_city(args.city, args.days, args.max_sensors)
+    rows = fetch_city(args.city, args.days, args.max_sensors, args.date_from, args.date_to)
     cells = {r["h3_cell"] for r in rows}
     variables = sorted({r["variable"] for r in rows})
     print(f"{args.city}: {len(rows)} rows · {len(cells)} cells · vars {variables}")
