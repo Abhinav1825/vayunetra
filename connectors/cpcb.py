@@ -136,7 +136,11 @@ def main() -> None:
     ap.add_argument("--push", action="store_true")
     args = ap.parse_args()
 
-    rows = fetch_city(args.city)
+    try:
+        rows = fetch_city(args.city)
+    except RuntimeError as e:
+        print(f"⚠ {e}")
+        return
     cells = {r["h3_cell"] for r in rows}
     variables = sorted({r["variable"] for r in rows})
     print(f"{args.city}: {len(rows)} rows · {len(cells)} stations · vars {variables}")
