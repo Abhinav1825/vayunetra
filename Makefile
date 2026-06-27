@@ -8,7 +8,10 @@ install-ml:     ## heavy ML stack — CPU PyTorch + transformers (only if you ne
 	pip install torch --index-url https://download.pytorch.org/whl/cpu
 	pip install -r requirements-ml.txt
 
-api:            ## run the FastAPI backend (serves demo fixtures in DEMO_MODE)
+dev:            ## run the WHOLE app (API + web) in ONE terminal — Ctrl+C stops both
+	./scripts/dev.sh
+
+api:            ## run only the FastAPI backend
 	uvicorn api.main:app --reload
 
 web:            ## run the Vite frontend
