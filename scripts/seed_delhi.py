@@ -40,7 +40,7 @@ VARS = {
 def load_city_rows() -> list[dict]:
     """Read core/config/cities/*.yml -> minimal `cities` rows (no geometry).
 
-    Geometry (bbox/center) is nullable and added later via infra/supabase/seed.sql.
+    Geometry (bbox/center) is nullable; full geometry comes from the seed_cities migration.
     """
     import yaml
 

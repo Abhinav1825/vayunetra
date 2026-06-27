@@ -1,8 +1,6 @@
 -- =====================================================================
 -- VayuNetra — city seed (the 3 showcase cities, WITH PostGIS geometry).
--- Run AFTER 0001_init.sql + 0002_roles_rls.sql.
---   psql "$SUPABASE_DB_URL" -f infra/supabase/seed.sql
---   (or paste into the Supabase SQL Editor)
+-- Applied automatically by `npx supabase db push` (runs after the init + RLS migrations).
 -- Idempotent: ON CONFLICT DO NOTHING — safe to re-run, won't clobber.
 -- =====================================================================
 

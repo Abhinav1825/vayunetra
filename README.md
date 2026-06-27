@@ -26,9 +26,11 @@ enforcement intelligence → citizen advisory → multi-city comparison.**
 # 0. Secrets
 cp .env.example .env          # fill keys; keep DEMO_MODE=true to run offline first
 
-# 1. Database (the data contract) — apply once to your Supabase project
-psql "$SUPABASE_DB_URL" -f infra/supabase/migrations/0001_init.sql
-psql "$SUPABASE_DB_URL" -f infra/supabase/migrations/0002_roles_rls.sql
+# 1. Database (the data contract) — push migrations via the Supabase CLI
+npx supabase login                                   # one-time (browser)
+npx supabase link --project-ref dwqjqpohgkxekqilhotr # one-time (enter DB password)
+npx supabase db push                                 # applies schema + RLS + city seed
+python scripts/seed_delhi.py --push                  # synthetic Delhi measurements
 
 # 2. API (serves demo fixtures in DEMO_MODE — works with zero live deps)
 python -m venv .venv && source .venv/bin/activate
@@ -45,12 +47,12 @@ cd web && npm install && npm run dev    # -> http://localhost:5173
 ```
 connectors/  core/{spatial,schemas,config/cities}  ml/{attribution,forecast,dispersion,
 vision,coverage,simulator,impact,anomaly}  agents/  rag/  api/  web/  channels/  eval/
-demo/  infra/{supabase,workflows}  .github/workflows/  tests/  docs/
+demo/  supabase/migrations/  infra/workflows/  .github/workflows/  tests/  docs/
 ```
 *Adding a city = drop a `core/config/cities/<city>.yml`. That's the scalability story in one folder.*
 
 ## 🔑 The two seams (so nobody blocks anybody)
-1. **Supabase schema** ([0001_init.sql](infra/supabase/migrations/0001_init.sql)) — models/agents **write** rows, UIs **read** them.
+1. **Supabase schema** ([20260627000001_init.sql](supabase/migrations/20260627000001_init.sql)) — models/agents **write** rows, UIs **read** them.
 2. **API contract** ([API_CONTRACT.md](docs/API_CONTRACT.md)) — `{success, data, error, meta}` envelope.
 
 Work against seed data + `demo/fixtures/*` until the stage-end **Integration Window**. ₹0 infra throughout.

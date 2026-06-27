@@ -17,9 +17,14 @@ web:            ## run the Vite frontend
 seed:           ## generate the Delhi seed fixture
 	python scripts/seed_delhi.py
 
-migrate:        ## apply Supabase migrations (needs SUPABASE_DB_URL)
-	psql "$$SUPABASE_DB_URL" -f infra/supabase/migrations/0001_init.sql
-	psql "$$SUPABASE_DB_URL" -f infra/supabase/migrations/0002_roles_rls.sql
+link:           ## link the local repo to the remote Supabase project (one-time)
+	npx supabase link --project-ref dwqjqpohgkxekqilhotr
+
+migrate:        ## push migrations (schema + RLS + city seed) to the linked project
+	npx supabase db push
+
+db-status:      ## show which migrations are applied vs pending
+	npx supabase migration list
 
 test:           ## run tests with coverage
 	pytest -q --cov=. --cov-report=term-missing

@@ -1,7 +1,7 @@
 """Canonical data contracts shared across connectors, agents, ML, and the API.
 
 These Pydantic models mirror the SQL tables in
-``infra/supabase/migrations/0001_init.sql`` and the API envelope in
+``supabase/migrations/20260627000001_init.sql`` and the API envelope in
 ``docs/API_CONTRACT.md``. Keep the three in sync — they are the project's seams.
 """
 from __future__ import annotations
