@@ -96,6 +96,7 @@ def find_sensors(lat: float, lng: float, radius_m: int = 25000) -> list[dict]:
     sensors: list[dict] = []
     for loc in data.get("results", []):
         coords = loc.get("coordinates") or {}
+        last = (loc.get("datetimeLast") or {}).get("utc")   # station recency
         for s in loc.get("sensors", []):
             pname = (s.get("parameter") or {}).get("name")
             if pname in PARAM_MAP:
@@ -106,6 +107,7 @@ def find_sensors(lat: float, lng: float, radius_m: int = 25000) -> list[dict]:
                     "lat": coords.get("latitude"),
                     "lng": coords.get("longitude"),
                     "station_id": str(loc.get("id")),
+                    "last": last,
                 })
     return sensors
 
@@ -142,7 +144,8 @@ def fetch_city(city_id: str, days: int = 14, max_sensors: int = 40) -> list[dict
     since = (datetime.now(timezone.utc) - timedelta(days=days)).replace(microsecond=0).isoformat()
 
     sensors = find_sensors(lat, lng)
-    sensors.sort(key=lambda s: 0 if s["variable"] == "pm25" else 1)   # prioritise the target
+    # most-recently-active stations first -> active stations bring their full pollutant set
+    sensors.sort(key=lambda s: s.get("last") or "", reverse=True)
     if len(sensors) > max_sensors:
         print(f"  found {len(sensors)} sensors; capping to {max_sensors} (raise with --max-sensors)")
         sensors = sensors[:max_sensors]
