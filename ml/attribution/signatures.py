@@ -13,7 +13,9 @@ CATEGORIES = (
     "biomass_burning", "transported", "other",
 )
 
-# reference concentrations (~urban high) used to normalise each marker to ~0..1
+# fallback reference concentrations (~urban winter high) used when data-driven
+# calibration isn't available. Prefer calibrate_references() so blame tracks the
+# *current* distribution rather than a fixed season.
 _REF = {"no2": 80.0, "co": 2.0, "so2": 30.0, "pm25": 150.0, "pm10": 300.0, "fire": 50.0}
 
 
@@ -21,8 +23,30 @@ def _norm(value: float, ref: float) -> float:
     return max(0.0, min(value / ref, 1.5))
 
 
-def signature_shares(values: dict) -> tuple[dict, float, dict]:
-    """Pollutant values for a cell -> (shares summing to 1, confidence, evidence)."""
+def calibrate_references(values_by_pollutant: dict[str, list]) -> dict:
+    """Data-driven reference scales = the 90th percentile of each pollutant.
+
+    A cell near the city's p90 normalises to ~1.0 (strong marker); below-median
+    cells stay small. Falls back to the fixed _REF where data is sparse.
+    """
+    import numpy as np
+
+    refs = dict(_REF)
+    for pollutant, values in values_by_pollutant.items():
+        clean = [v for v in values if v is not None]
+        if pollutant in refs and len(clean) >= 10:
+            p90 = float(np.percentile(clean, 90))
+            if p90 > 0:
+                refs[pollutant] = p90
+    return refs
+
+
+def signature_shares(values: dict, refs: dict | None = None) -> tuple[dict, float, dict]:
+    """Pollutant values for a cell -> (shares summing to 1, confidence, evidence).
+
+    `refs` overrides the marker reference scales (use calibrate_references()).
+    """
+    _REF_USE = refs or _REF
     no2 = values.get("no2") or 0.0
     co = values.get("co") or 0.0
     so2 = values.get("so2") or 0.0
@@ -32,10 +56,10 @@ def signature_shares(values: dict) -> tuple[dict, float, dict]:
     ratio = (pm10 / pm25) if pm25 > 0 else 0.0   # coarse-dust dominance
 
     scores = {
-        "traffic": 0.6 * _norm(no2, _REF["no2"]) + 0.4 * _norm(co, _REF["co"]),
-        "industrial": _norm(so2, _REF["so2"]),
+        "traffic": 0.6 * _norm(no2, _REF_USE["no2"]) + 0.4 * _norm(co, _REF_USE["co"]),
+        "industrial": _norm(so2, _REF_USE["so2"]),
         "construction_dust": max(0.0, ratio - 1.8) * 0.6,
-        "biomass_burning": _norm(fire, _REF["fire"]),
+        "biomass_burning": _norm(fire, _REF_USE["fire"]),
         "transported": 0.15,   # regional background baseline (refined by advection later)
         "other": 0.10,
     }

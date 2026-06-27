@@ -15,7 +15,7 @@ import pandas as pd
 
 from core.supa import client, load_measurements
 
-from .signatures import signature_shares
+from .signatures import calibrate_references, signature_shares
 
 POLLUTANTS = ["pm25", "pm10", "no2", "so2", "co", "o3", "fire"]
 METHOD = "signature-v1"
@@ -33,12 +33,14 @@ def latest_pollutants(long_df: pd.DataFrame) -> tuple[dict[str, dict], pd.Timest
     return per_cell, df["ts"].max()
 
 
-def build_rows(city_id: str, per_cell: dict[str, dict], window_end: pd.Timestamp) -> list[dict]:
+def build_rows(
+    city_id: str, per_cell: dict[str, dict], window_end: pd.Timestamp, refs: dict | None = None
+) -> list[dict]:
     lo = (window_end - timedelta(hours=1)).isoformat()
     ts_window = f"[{lo},{window_end.isoformat()})"   # PostgREST tstzrange literal
     rows: list[dict] = []
     for cell, vals in per_cell.items():
-        shares, confidence, evidence = signature_shares(vals)
+        shares, confidence, evidence = signature_shares(vals, refs)
         for category, share in shares.items():
             rows.append({
                 "city_id": city_id, "h3_cell": cell, "ts_window": ts_window,
@@ -50,11 +52,14 @@ def build_rows(city_id: str, per_cell: dict[str, dict], window_end: pd.Timestamp
 
 def run(city_id: str, write: bool = False) -> None:
     long_df = pd.DataFrame(load_measurements(city_id))
+    # data-driven marker scales (p90) so blame tracks current conditions, not a fixed season
+    pdf = long_df[long_df["variable"].isin(POLLUTANTS)]
+    refs = calibrate_references({var: g["value"].tolist() for var, g in pdf.groupby("variable")})
     per_cell, window_end = latest_pollutants(long_df)
-    rows = build_rows(city_id, per_cell, window_end)
-    print(f"{city_id}: {len(per_cell)} cells -> {len(rows)} attribution rows")
-    for cell, vals in list(per_cell.items())[:2]:
-        shares, conf, _ = signature_shares(vals)
+    rows = build_rows(city_id, per_cell, window_end, refs)
+    print(f"{city_id}: {len(per_cell)} cells -> {len(rows)} attribution rows (calibrated refs)")
+    for cell, vals in list(per_cell.items())[:3]:
+        shares, conf, _ = signature_shares(vals, refs)
         dominant = max(shares, key=shares.get)
         print(f"  {cell}: dominant={dominant} ({shares[dominant]:.0%}) conf={conf}")
     if write:

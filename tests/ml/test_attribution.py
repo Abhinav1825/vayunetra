@@ -1,5 +1,5 @@
 """Unit tests for the chemical-signature attributor."""
-from ml.attribution.signatures import CATEGORIES, signature_shares
+from ml.attribution.signatures import CATEGORIES, calibrate_references, signature_shares
 
 
 def _dominant(values):
@@ -33,3 +33,19 @@ def test_empty_input_is_safe():
     assert abs(sum(shares.values()) - 1.0) < 1e-6
     # with no markers, the baselines (transported/other) carry the share
     assert shares["transported"] >= shares["traffic"]
+
+
+def test_calibrate_references_p90_and_fallback():
+    refs = calibrate_references({"no2": list(range(100))})   # p90 of 0..99 ≈ 89
+    assert 85 <= refs["no2"] <= 92
+    # sparse data (<10 points) falls back to the fixed default
+    assert calibrate_references({"no2": [1, 2, 3]})["no2"] == 80.0
+
+
+def test_calibrated_refs_amplify_local_marker():
+    # a modest NO2 reading becomes a strong traffic marker once refs reflect current conditions
+    vals = {"no2": 20, "co": 0.1, "so2": 1, "pm25": 40, "pm10": 50}
+    low_ref = {"no2": 20, "co": 2, "so2": 30, "pm25": 150, "pm10": 300, "fire": 50}
+    shares, _, _ = signature_shares(vals, low_ref)
+    assert max(shares, key=shares.get) == "traffic"
+    assert shares["traffic"] > shares["transported"]
