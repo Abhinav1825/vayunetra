@@ -1,11 +1,12 @@
 """Delhi seed generator (F6 helper).  Owner: Omkar.
 
-Generates synthetic-but-plausible Delhi measurements so the WHOLE team has queryable
-data on day 1 — even before the real CAAQMS connector lands. Writes a fixture by default;
-``--push`` inserts into Supabase. Replace with real CPCB pulls once connectors exist.
+Seeds the `cities` table (from core/config/cities/*.yml) and synthetic-but-plausible
+Delhi `measurements` so the WHOLE team has queryable data on day 1 — before the real
+CAAQMS connector lands. Writes a fixture by default; ``--push`` inserts into Supabase.
+Replace the synthetic generator with real CPCB pulls once connectors exist.
 
   python scripts/seed_delhi.py            # -> demo/fixtures/measurements.json
-  python scripts/seed_delhi.py --push     # also insert into Supabase (needs SUPABASE_* env)
+  python scripts/seed_delhi.py --push     # also upsert cities + insert measurements (needs SUPABASE_* env)
 """
 from __future__ import annotations
 
@@ -23,6 +24,9 @@ try:  # load .env so --push picks up SUPABASE_* without manual export
 except ImportError:
     pass
 
+REPO_ROOT = Path(__file__).resolve().parent.parent
+CITIES_DIR = REPO_ROOT / "core" / "config" / "cities"
+
 # Sample H3 res-8 cells across Delhi (placeholders; regenerate from delhi.yml bbox + h3 later)
 DELHI_CELLS = ["883da1a3a1fffff", "883da1a3a3fffff", "883da1a3a5fffff", "883da1a3a7fffff"]
 
@@ -31,6 +35,26 @@ VARS = {
     "pm25": (40, 220), "pm10": (80, 400), "no2": (10, 90),
     "so2": (3, 30), "co": (0.4, 2.5), "o3": (10, 80),
 }
+
+
+def load_city_rows() -> list[dict]:
+    """Read core/config/cities/*.yml -> minimal `cities` rows (no geometry).
+
+    Geometry (bbox/center) is nullable and added later via infra/supabase/seed.sql.
+    """
+    import yaml
+
+    rows: list[dict] = []
+    for path in sorted(CITIES_DIR.glob("*.yml")):
+        cfg = yaml.safe_load(path.read_text())
+        rows.append({
+            "city_id": cfg["city_id"],
+            "name": cfg["name"],
+            "state": cfg.get("state"),
+            "languages": cfg.get("languages", []),
+            "active": cfg.get("active", True),
+        })
+    return rows
 
 
 def generate(days: int = 3) -> list[dict]:
@@ -57,25 +81,34 @@ def generate(days: int = 3) -> list[dict]:
     return rows
 
 
-def push_to_supabase(rows: list[dict]) -> None:
+def push_to_supabase(measurements: list[dict]) -> None:
     import os
 
     from supabase import create_client
 
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
-    for i in range(0, len(rows), 500):
-        client.table("measurements").insert(rows[i : i + 500]).execute()
-    print(f"pushed {len(rows)} rows to Supabase")
+    url = os.environ["SUPABASE_URL"]
+    key = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+    client = create_client(url, key)
+
+    # 1) cities first (FK target) — insert-if-absent so existing geometry isn't clobbered
+    cities = load_city_rows()
+    client.table("cities").upsert(cities, on_conflict="city_id", ignore_duplicates=True).execute()
+    print(f"upserted {len(cities)} cities: {[c['city_id'] for c in cities]}")
+
+    # 2) measurements (batched)
+    for i in range(0, len(measurements), 500):
+        client.table("measurements").insert(measurements[i : i + 500]).execute()
+    print(f"pushed {len(measurements)} measurements to Supabase")
 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--days", type=int, default=3)
-    ap.add_argument("--push", action="store_true", help="insert into Supabase too")
+    ap.add_argument("--push", action="store_true", help="upsert cities + insert measurements into Supabase")
     args = ap.parse_args()
 
     rows = generate(args.days)
-    out = Path(__file__).resolve().parent.parent / "demo" / "fixtures" / "measurements.json"
+    out = REPO_ROOT / "demo" / "fixtures" / "measurements.json"
     out.write_text(json.dumps(rows, indent=2))
     print(f"wrote {len(rows)} rows -> {out}")
     if args.push:
