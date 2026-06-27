@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import BlameMap from "./BlameMap";
+import BlameMap, { type MapMode } from "./BlameMap";
 import ForecastPanel from "./ForecastPanel";
 import { SOURCE_COLORS } from "./sources";
 import { api } from "./api";
@@ -9,6 +9,7 @@ type City = { city_id: string; name: string; center: [number, number] };
 export default function App() {
   const [cities, setCities] = useState<City[]>([]);
   const [active, setActive] = useState("delhi");
+  const [mode, setMode] = useState<MapMode>("blame");
 
   useEffect(() => {
     api<City[]>("/cities").then(setCities).catch(() => setCities([]));
@@ -19,7 +20,7 @@ export default function App() {
 
   return (
     <div className="relative h-full w-full">
-      <BlameMap city={active} center={center} />
+      <BlameMap city={active} center={center} mode={mode} />
 
       <div className="absolute left-4 top-4 w-64 space-y-3">
         <div className="rounded-lg bg-white/95 p-3 shadow">
@@ -36,17 +37,36 @@ export default function App() {
               </option>
             ))}
           </select>
-          <div className="mt-3 space-y-1 text-xs">
-            {Object.entries(SOURCE_COLORS).map(([k, [r, g, b]]) => (
-              <div key={k} className="flex items-center gap-2">
-                <span
-                  className="inline-block h-3 w-3 rounded"
-                  style={{ background: `rgb(${r},${g},${b})` }}
-                />
-                <span>{k.replace("_", " ")}</span>
-              </div>
+
+          {/* layer toggle */}
+          <div className="mt-2 flex gap-1">
+            {(["blame", "satellite"] as MapMode[]).map((m) => (
+              <button
+                key={m}
+                onClick={() => setMode(m)}
+                className={`flex-1 rounded px-2 py-1 text-xs ${
+                  mode === m ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-700"
+                }`}
+              >
+                {m === "blame" ? "Sources" : "Satellite NO₂"}
+              </button>
             ))}
           </div>
+
+          {mode === "blame" ? (
+            <div className="mt-3 space-y-1 text-xs">
+              {Object.entries(SOURCE_COLORS).map(([k, [r, g, b]]) => (
+                <div key={k} className="flex items-center gap-2">
+                  <span className="inline-block h-3 w-3 rounded" style={{ background: `rgb(${r},${g},${b})` }} />
+                  <span>{k.replace("_", " ")}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="mt-3 text-xs text-gray-600">
+              Sentinel-5P tropospheric NO₂ column — blue (low) → red (high). The satellite half of the fusion.
+            </div>
+          )}
         </div>
 
         <ForecastPanel city={active} />

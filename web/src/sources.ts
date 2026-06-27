@@ -29,3 +29,9 @@ export function colorFor(shares: Shares): [number, number, number, number] {
   const top = shares[d] ?? 0.5;
   return [r, g, b, Math.round(110 + 130 * Math.min(1, top))];
 }
+
+// Satellite NO2 column (mol/m^2) -> sequential blue→red heat. Urban range ~4e-5..2e-4.
+export function satColor(no2_sat: number): [number, number, number, number] {
+  const t = Math.max(0, Math.min(1, ((no2_sat || 0) - 4e-5) / 1.6e-4));
+  return [Math.round(50 + 190 * t), Math.round(120 * (1 - t)), Math.round(200 * (1 - t)), 175];
+}
