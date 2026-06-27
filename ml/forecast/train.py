@@ -94,11 +94,14 @@ def write_forecasts(wide: pd.DataFrame, horizon_h: int) -> int:
     issued_at = datetime.now(timezone.utc).isoformat()
     rows = []
     for i, (_, r) in enumerate(latest.iterrows()):
+        # enforce pi_low <= value <= pi_high (independent quantile models can cross on small data)
+        lo, mid, hi = sorted(
+            (float(preds["pi_low"][i]), float(preds["value"][i]), float(preds["pi_high"][i]))
+        )
         rows.append({
             "city_id": r["city_id"], "h3_cell": r["h3_cell"], "issued_at": issued_at,
             "horizon_h": horizon_h, "target_var": "pm25",
-            "value": float(preds["value"][i]),
-            "pi_low": float(preds["pi_low"][i]), "pi_high": float(preds["pi_high"][i]),
+            "value": mid, "pi_low": lo, "pi_high": hi,
             "persistence_value": float(r["pm25"]), "model_version": MODEL_VERSION,
         })
     _client().table("forecasts").insert(rows).execute()
