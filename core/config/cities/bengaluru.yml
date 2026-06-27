@@ -1,0 +1,13 @@
+# City onboarding config — Bengaluru.  Owner: Sejal (multi-city configs).
+# "Clean city deteriorating" story + Kannada advisory.
+city_id: bengaluru
+name: Bengaluru
+state: KA
+bbox: [77.45, 12.83, 77.75, 13.14]
+center: [77.59, 12.97]
+languages: [kn, en]
+h3_res: 8
+caaqms_station_ids:
+  - "KA001"   # placeholder — replace with real station ids
+ward_geojson_ref: "data/wards/bengaluru.geojson"
+active: true

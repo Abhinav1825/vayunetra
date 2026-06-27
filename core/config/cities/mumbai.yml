@@ -1,0 +1,13 @@
+# City onboarding config — Mumbai.  Owner: Sejal (multi-city configs).
+# Coastal dispersion story + Marathi advisory.
+city_id: mumbai
+name: Mumbai
+state: MH
+bbox: [72.77, 18.89, 72.99, 19.27]
+center: [72.87, 19.07]
+languages: [mr, en, hi]
+h3_res: 8
+caaqms_station_ids:
+  - "MH001"   # placeholder — replace with real station ids
+ward_geojson_ref: "data/wards/mumbai.geojson"
+active: true

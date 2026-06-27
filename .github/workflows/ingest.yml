@@ -1,0 +1,25 @@
+name: ingest (data refresh)
+
+# Data-pipeline crons (ARCHITECTURE.md §7.4). Owner: Abhinav.
+# GitHub Actions only runs workflows from .github/workflows/ (infra/workflows/ is the doc home).
+# Public repo -> unlimited free minutes.
+on:
+  schedule:
+    - cron: "5 * * * *"     # hourly: ground + weather ingest
+  workflow_dispatch:
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -r requirements.txt
+      - name: Ingest ground + weather -> measurements
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          DATA_GOV_IN_API_KEY: ${{ secrets.DATA_GOV_IN_API_KEY }}
+        run: echo "TODO: python -m connectors.run ingest_ground ingest_weather"
+      # TODO Abhinav: add forecast (6-hourly), attribution (hourly), rollup (nightly),
+      # ee_satellite_features (daily), and a keep-alive ping so Supabase never idles out.

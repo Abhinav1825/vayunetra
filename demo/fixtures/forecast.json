@@ -1,0 +1,11 @@
+[
+  { "h3_cell": "883da1a3a1fffff", "issued_at": "2026-06-27T06:00:00Z", "horizon_h": 24,
+    "target_var": "aqi", "value": 312, "pi_low": 280, "pi_high": 345,
+    "persistence_value": 295, "model_version": "lgbm-v1" },
+  { "h3_cell": "883da1a3a1fffff", "issued_at": "2026-06-27T06:00:00Z", "horizon_h": 48,
+    "target_var": "aqi", "value": 288, "pi_low": 250, "pi_high": 330,
+    "persistence_value": 295, "model_version": "lgbm-v1" },
+  { "h3_cell": "883da1a3a1fffff", "issued_at": "2026-06-27T06:00:00Z", "horizon_h": 72,
+    "target_var": "aqi", "value": 264, "pi_low": 220, "pi_high": 315,
+    "persistence_value": 295, "model_version": "lgbm-v1" }
+]

@@ -1,0 +1,14 @@
+[
+  { "id": 1, "city_id": "delhi", "h3_cell": "883da1a3a1fffff", "ts": "2026-06-27T09:00:00Z",
+    "source_id": 101, "priority_score": 0.91, "contribution": 0.41, "pop_exposed": 18400,
+    "rationale": "3 active construction sites drive 41% of ward-12 PM2.5",
+    "rag_citations": [{ "rule": "CPCB Dust Control Norms 2016", "url": "" }],
+    "rubric_score": { "attribution_match": 2, "actionability": 2, "exposure": 2, "regulatory": 2, "confidence": 1, "total": 9 },
+    "status": "proposed" },
+  { "id": 2, "city_id": "delhi", "h3_cell": "883da1a3a3fffff", "ts": "2026-06-27T09:00:00Z",
+    "source_id": 102, "priority_score": 0.77, "contribution": 0.30, "pop_exposed": 9200,
+    "rationale": "Industrial cluster: elevated SO2 + NO2 signature",
+    "rag_citations": [{ "rule": "Consent-to-Operate conditions", "url": "" }],
+    "rubric_score": { "total": 7 },
+    "status": "proposed" }
+]

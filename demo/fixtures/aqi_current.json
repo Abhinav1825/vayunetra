@@ -1,0 +1,5 @@
+[
+  { "h3_cell": "883da1a3a1fffff", "aqi": 312, "pm25": 168, "dominant_source": "construction_dust", "ts": "2026-06-27T09:00:00Z" },
+  { "h3_cell": "883da1a3a3fffff", "aqi": 248, "pm25": 121, "dominant_source": "traffic", "ts": "2026-06-27T09:00:00Z" },
+  { "h3_cell": "883da1a3a5fffff", "aqi": 96,  "pm25": 34,  "dominant_source": "transported", "ts": "2026-06-27T09:00:00Z" }
+]

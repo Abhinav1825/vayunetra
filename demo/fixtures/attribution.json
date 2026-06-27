@@ -1,0 +1,12 @@
+[
+  { "h3_cell": "883da1a3a1fffff",
+    "ts_window": ["2026-06-27T08:00:00Z", "2026-06-27T09:00:00Z"],
+    "shares": { "construction_dust": 0.68, "traffic": 0.22, "transported": 0.10 },
+    "confidence": 0.83,
+    "evidence": { "top_features": ["no2", "aod", "pm10_pm25_ratio"] } },
+  { "h3_cell": "883da1a3a3fffff",
+    "ts_window": ["2026-06-27T08:00:00Z", "2026-06-27T09:00:00Z"],
+    "shares": { "traffic": 0.54, "industrial": 0.30, "other": 0.16 },
+    "confidence": 0.71,
+    "evidence": { "top_features": ["no2", "co", "so2"] } }
+]

@@ -1,0 +1,28 @@
+# =====================================================================
+# City onboarding config — Delhi.  Adding a city = drop a file like this.
+# This IS the scalability story (ARCHITECTURE.md §18, §20). No per-city code.
+# Owner: Omkar (F5/F6). caaqms_station_ids must be filled with real CPCB ids.
+# =====================================================================
+city_id: delhi
+name: Delhi
+state: DL
+
+# bbox as [min_lng, min_lat, max_lng, max_lat] (EPSG:4326)
+bbox: [76.84, 28.40, 77.35, 28.88]
+center: [77.21, 28.61]
+
+# Showcase languages for this city (citizen advisory)
+languages: [hi, en]
+
+# H3 resolution for hyperlocal cells (res 8 ≈ ~1 km). Global default.
+h3_res: 8
+
+# Real CPCB CAAQMS station ids (data.gov.in) — TODO Omkar: fill from the live list.
+caaqms_station_ids:
+  - "DL001"   # placeholder — replace with real station ids
+  - "DL002"
+
+# Path/ref to ward boundary GeoJSON (Storage/R2 or repo data/)
+ward_geojson_ref: "data/wards/delhi.geojson"
+
+active: true

@@ -1,0 +1,51 @@
+# VayuNetra — Python deps (all free / OSS). Pin versions when you lock the env.
+# Install:  python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
+
+# --- API ---
+fastapi
+uvicorn[standard]
+pydantic>=2
+websockets
+python-dotenv
+
+# --- Data / geospatial ---
+h3
+geopandas
+shapely
+rasterio
+pandas
+numpy
+pyyaml
+
+# --- DB / Supabase ---
+supabase
+psycopg[binary]
+sqlalchemy
+pgvector
+
+# --- ML (MVP) ---
+scikit-learn
+lightgbm
+xgboost
+shap
+# PyTorch / segmentation-models / torchvision are installed in Colab/Kaggle for E1/E2/GNN.
+
+# --- Agents / LLM / RAG ---
+langgraph
+langchain-core
+google-generativeai          # Gemini (free tier); swap per LLM_PROVIDER
+sentence-transformers        # local bge-small embeddings + CLIP (E6)
+
+# --- Earth Engine / connectors ---
+earthengine-api
+requests
+httpx
+
+# --- Channels ---
+python-telegram-bot
+twilio
+
+# --- Dev / test ---
+pytest
+pytest-cov
+ruff

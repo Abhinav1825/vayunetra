@@ -1,0 +1,10 @@
+[
+  { "city_id": "delhi", "ward_id": "ward-12", "issued_at": "2026-06-27T09:00:00Z", "horizon_h": 24,
+    "risk_tier": "very_poor", "audience_segment": "outdoor_worker", "language": "hi",
+    "channel": "telegram",
+    "message": "कल सुबह वायु गुणवत्ता 'बहुत खराब' रहेगी। भारी काम शाम 4 बजे के बाद करें और मास्क पहनें।" },
+  { "city_id": "bengaluru", "ward_id": "ward-84", "issued_at": "2026-06-27T09:00:00Z", "horizon_h": 24,
+    "risk_tier": "poor", "audience_segment": "general", "language": "kn",
+    "channel": "ivr",
+    "message": "ನಾಳೆ ಬೆಳಿಗ್ಗೆ ಗಾಳಿಯ ಗುಣಮಟ್ಟ 'ಕಳಪೆ' ಆಗಿರುತ್ತದೆ. ಹೊರಾಂಗಣ ಚಟುವಟಿಕೆ ಕಡಿಮೆ ಮಾಡಿ." }
+]
