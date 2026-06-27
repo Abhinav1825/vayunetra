@@ -39,6 +39,20 @@ def test_build_feature_table_broadcasts_met_and_adds_lags():
     assert list(a["temp"]) == [25, 26, 27, 28]
 
 
+def test_physics_ventilation_feature():
+    t = "2026-06-27T00:00:00+00:00"
+    rows = [
+        {"city_id": "delhi", "h3_cell": "A", "ts": t, "variable": "pm25", "value": 100},
+        {"city_id": "delhi", "h3_cell": "met", "ts": t, "variable": "wind_u", "value": 3.0},
+        {"city_id": "delhi", "h3_cell": "met", "ts": t, "variable": "wind_v", "value": 4.0},
+        {"city_id": "delhi", "h3_cell": "met", "ts": t, "variable": "blh", "value": 500.0},
+    ]
+    wide = build_feature_table(pd.DataFrame(rows))
+    r = wide[wide.h3_cell == "A"].iloc[0]
+    assert r["wind_speed"] == 5.0        # sqrt(3^2 + 4^2)
+    assert r["ventilation"] == 2500.0    # wind_speed * blh
+
+
 def test_make_supervised_target_alignment():
     wide = build_feature_table(_long())
     X, y, meta, cols = make_supervised(wide, horizon_h=1)

@@ -31,6 +31,12 @@ def build_feature_table(long_df: pd.DataFrame) -> pd.DataFrame:
     wide = poll_wide.merge(met_wide, on=["city_id", "ts"], how="left")
     wide = wide.sort_values(["h3_cell", "ts"]).reset_index(drop=True)
 
+    # physics-informed feature: ventilation coefficient = transport wind speed x mixing height.
+    # Low ventilation (calm + shallow boundary layer) => pollution accumulates. (ARCH §9.2)
+    if {"wind_u", "wind_v", "blh"} <= set(wide.columns):
+        wide["wind_speed"] = (wide["wind_u"] ** 2 + wide["wind_v"] ** 2) ** 0.5
+        wide["ventilation"] = wide["wind_speed"] * wide["blh"]
+
     wide["hour"] = wide["ts"].dt.hour
     wide["dow"] = wide["ts"].dt.dayofweek
     for lag in LAGS:
