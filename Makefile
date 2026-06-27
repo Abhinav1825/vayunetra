@@ -1,8 +1,12 @@
 .PHONY: install api web seed migrate test lint
 
-install:        ## install python + web deps
+install:        ## install lean python (CPU, no CUDA) + web deps
 	pip install -r requirements.txt
 	cd web && npm install
+
+install-ml:     ## heavy ML stack — CPU PyTorch + transformers (only if you need local embeddings/training)
+	pip install torch --index-url https://download.pytorch.org/whl/cpu
+	pip install -r requirements-ml.txt
 
 api:            ## run the FastAPI backend (serves demo fixtures in DEMO_MODE)
 	uvicorn api.main:app --reload

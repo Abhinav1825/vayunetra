@@ -1,0 +1,17 @@
+# VayuNetra — heavy ML stack (PyTorch + transformers). Install ONLY if you need:
+#   - local embeddings: bge-small for RAG (Abhinav) / CLIP for E6 (Sejal)
+#   - local model training/experiments
+# GPU training itself runs free on Colab/Kaggle — you do NOT need GPU torch on a laptop.
+#
+# ⚠️ Install CPU-only torch FIRST so pip doesn't pull ~4GB of CUDA libs:
+#     pip install torch --index-url https://download.pytorch.org/whl/cpu
+#     pip install -r requirements-ml.txt
+#
+# (Or just `make install-ml`, which does both.)
+
+-r requirements.txt
+
+torch                        # install CPU build first (see note above)
+sentence-transformers        # local bge-small embeddings (RAG) + CLIP (E6)
+transformers
+xgboost                      # optional alternative to LightGBM (note: pulls GPU libs)

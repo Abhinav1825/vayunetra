@@ -1,4 +1,5 @@
-# VayuNetra — Python deps (all free / OSS). Pin versions when you lock the env.
+# VayuNetra — core deps (lean, CPU-only, NO CUDA). Runs API, connectors, agents,
+# seed, and the Stage-1 LightGBM/GBM models. Heavy PyTorch stack is in requirements-ml.txt.
 # Install:  python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
 
 # --- API ---
@@ -23,18 +24,15 @@ psycopg[binary]
 sqlalchemy
 pgvector
 
-# --- ML (MVP) ---
+# --- ML (MVP — CPU, no CUDA) ---
 scikit-learn
 lightgbm
-xgboost
 shap
-# PyTorch / segmentation-models / torchvision are installed in Colab/Kaggle for E1/E2/GNN.
 
-# --- Agents / LLM / RAG ---
+# --- Agents / LLM / RAG client ---
 langgraph
 langchain-core
 google-generativeai          # Gemini (free tier); swap per LLM_PROVIDER
-sentence-transformers        # local bge-small embeddings + CLIP (E6)
 
 # --- Earth Engine / connectors ---
 earthengine-api

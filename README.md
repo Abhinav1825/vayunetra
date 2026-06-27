@@ -32,7 +32,9 @@ psql "$SUPABASE_DB_URL" -f infra/supabase/migrations/0002_roles_rls.sql
 
 # 2. API (serves demo fixtures in DEMO_MODE — works with zero live deps)
 python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements.txt        # lean, CPU-only (no CUDA)
+# need local embeddings (RAG/CLIP) or local training? add the heavy stack:
+#   make install-ml   (installs CPU PyTorch + transformers — GPU training is on Colab/Kaggle)
 uvicorn api.main:app --reload          # -> http://localhost:8000/health
 
 # 3. Web (Sejal owns the app shell)
