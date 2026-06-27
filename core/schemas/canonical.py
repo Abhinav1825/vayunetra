@@ -28,6 +28,9 @@ class Variable(str, Enum):
     wind_u = "wind_u"
     wind_v = "wind_v"
     blh = "blh"
+    temp = "temp"
+    rh = "rh"
+    precip = "precip"
     traffic = "traffic"
 
 
