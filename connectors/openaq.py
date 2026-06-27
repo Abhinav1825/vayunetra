@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import time
 from pathlib import Path
 
 import requests
@@ -59,14 +60,34 @@ def rows_from_records(city_id: str, records: list[dict], h3_res: int = 8) -> lis
     return rows
 
 
-# --- OpenAQ v3 HTTP (network; verify on first live run) -------------------
-def _get(path: str, params: dict) -> dict:
+# --- OpenAQ v3 HTTP (throttled + 429-aware; free tier ~60 req/min) ---------
+MIN_INTERVAL_S = 1.2          # space requests to stay under the per-minute limit
+_last_call = [0.0]
+
+
+def _throttle() -> None:
+    gap = time.monotonic() - _last_call[0]
+    if gap < MIN_INTERVAL_S:
+        time.sleep(MIN_INTERVAL_S - gap)
+    _last_call[0] = time.monotonic()
+
+
+def _get(path: str, params: dict, retries: int = 5) -> dict:
     key = os.environ.get("OPENAQ_API_KEY")
     if not key:
         raise RuntimeError("OPENAQ_API_KEY missing in .env — sign up at https://openaq.org")
-    resp = requests.get(f"{BASE}{path}", params=params, headers={"X-API-Key": key}, timeout=30)
-    resp.raise_for_status()
-    return resp.json()
+    headers = {"X-API-Key": key}
+    for attempt in range(retries):
+        _throttle()
+        resp = requests.get(f"{BASE}{path}", params=params, headers=headers, timeout=30)
+        if resp.status_code == 429:                       # rate limited -> back off
+            wait = float(resp.headers.get("Retry-After") or 0) or min(60, 2 ** attempt * 3)
+            print(f"    429 rate-limited; waiting {wait:.0f}s (attempt {attempt + 1}/{retries})")
+            time.sleep(wait)
+            continue
+        resp.raise_for_status()
+        return resp.json()
+    raise RuntimeError(f"OpenAQ still rate-limiting after {retries} retries: {path}")
 
 
 def find_sensors(lat: float, lng: float, radius_m: int = 25000) -> list[dict]:
@@ -89,11 +110,10 @@ def find_sensors(lat: float, lng: float, radius_m: int = 25000) -> list[dict]:
     return sensors
 
 
-def fetch_sensor_hourly(sensor: dict, datetime_from: str) -> list[dict]:
+def fetch_sensor_hourly(sensor: dict, datetime_from: str, max_pages: int = 5) -> list[dict]:
     """Hourly history for one sensor since `datetime_from` (ISO) -> normalised records."""
     records: list[dict] = []
-    page = 1
-    while True:
+    for page in range(1, max_pages + 1):
         data = _get(
             f"/sensors/{sensor['sensor_id']}/measurements/hourly",
             {"datetime_from": datetime_from, "limit": 1000, "page": page},
@@ -111,19 +131,28 @@ def fetch_sensor_hourly(sensor: dict, datetime_from: str) -> list[dict]:
             })
         if len(results) < 1000:
             break
-        page += 1
     return records
 
 
-def fetch_city(city_id: str, days: int = 14) -> list[dict]:
+def fetch_city(city_id: str, days: int = 14, max_sensors: int = 40) -> list[dict]:
     from datetime import datetime, timedelta, timezone
 
     cfg = load_city(city_id)
     lng, lat = cfg["center"]
-    since = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+    since = (datetime.now(timezone.utc) - timedelta(days=days)).replace(microsecond=0).isoformat()
+
+    sensors = find_sensors(lat, lng)
+    sensors.sort(key=lambda s: 0 if s["variable"] == "pm25" else 1)   # prioritise the target
+    if len(sensors) > max_sensors:
+        print(f"  found {len(sensors)} sensors; capping to {max_sensors} (raise with --max-sensors)")
+        sensors = sensors[:max_sensors]
+    print(f"  fetching {len(sensors)} sensors x ~{days}d hourly (throttled ~{MIN_INTERVAL_S}s/req)...")
+
     records: list[dict] = []
-    for sensor in find_sensors(lat, lng):
-        records.extend(fetch_sensor_hourly(sensor, since))
+    for i, sensor in enumerate(sensors, 1):
+        recs = fetch_sensor_hourly(sensor, since)
+        records.extend(recs)
+        print(f"    [{i}/{len(sensors)}] {sensor['variable']:5s} sensor {sensor['sensor_id']}: {len(recs)} pts")
     return rows_from_records(city_id, records, cfg.get("h3_res", 8))
 
 
@@ -140,10 +169,11 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--city", default="delhi")
     ap.add_argument("--days", type=int, default=14)
+    ap.add_argument("--max-sensors", type=int, default=40)
     ap.add_argument("--push", action="store_true")
     args = ap.parse_args()
 
-    rows = fetch_city(args.city, args.days)
+    rows = fetch_city(args.city, args.days, args.max_sensors)
     cells = {r["h3_cell"] for r in rows}
     variables = sorted({r["variable"] for r in rows})
     print(f"{args.city}: {len(rows)} rows · {len(cells)} cells · vars {variables}")
