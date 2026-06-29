@@ -1,0 +1,48 @@
+{
+  "packages": [
+    {
+      "rank": 1,
+      "description": "Halt construction at Sarai Kale Khan + mandate water sprinklers + increase sweeping frequency on NH-48",
+      "interventions": [
+        {"type": "construction_halt", "target": "Sarai Kale Khan Site", "source_id": 101},
+        {"type": "water_sprinkler_mandate", "target": "NH-48 corridor", "source_id": null},
+        {"type": "sweeping_increase", "target": "Arterial roads Ward 12–14", "source_id": null}
+      ],
+      "aqi_reduction_avg": -18,
+      "people_protected": 42000,
+      "pm25_tonnes_avoided": 3.1,
+      "inspector_hours": 12,
+      "cost_inr": 0,
+      "rubric_score": 9
+    },
+    {
+      "rank": 2,
+      "description": "Inspect Mayapuri Industrial Cluster + enforce diesel generator ban in Ward 7",
+      "interventions": [
+        {"type": "industrial_inspection", "target": "Mayapuri Industrial Cluster", "source_id": 102},
+        {"type": "dg_ban_enforcement", "target": "Ward 7 commercial zone", "source_id": null}
+      ],
+      "aqi_reduction_avg": -12,
+      "people_protected": 22000,
+      "pm25_tonnes_avoided": 1.8,
+      "inspector_hours": 8,
+      "cost_inr": 0,
+      "rubric_score": 7
+    },
+    {
+      "rank": 3,
+      "description": "Halt open burning at Timarpur waste site + issue fines",
+      "interventions": [
+        {"type": "burning_halt", "target": "Timarpur Waste Site", "source_id": 103}
+      ],
+      "aqi_reduction_avg": -8,
+      "people_protected": 12000,
+      "pm25_tonnes_avoided": 0.9,
+      "inspector_hours": 4,
+      "cost_inr": 0,
+      "rubric_score": 6
+    }
+  ],
+  "budget_inspector_hours": 20,
+  "generated_at": "2026-06-27T09:00:00Z"
+}
