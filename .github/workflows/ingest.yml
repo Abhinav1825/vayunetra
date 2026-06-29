@@ -6,20 +6,67 @@ name: ingest (data refresh)
 on:
   schedule:
     - cron: "5 * * * *"     # hourly: ground + weather ingest
+    - cron: "30 1 * * *"    # 01:30 UTC daily: forecast rollup + enforcement run
   workflow_dispatch:
 
 jobs:
-  ingest:
+  ingest-ground-weather:
+    name: Ingest ground + weather measurements
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        with: { python-version: "3.11" }
+        with: { python-version: "3.11", cache: "pip" }
       - run: pip install -r requirements.txt
-      - name: Ingest ground + weather -> measurements
+      - name: Ingest ground + weather → measurements
         env:
-          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          DEMO_MODE: "false"
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           DATA_GOV_IN_API_KEY: ${{ secrets.DATA_GOV_IN_API_KEY }}
-        run: echo "TODO: python -m connectors.run ingest_ground ingest_weather"
-      # TODO Abhinav: add forecast (6-hourly), attribution (hourly), rollup (nightly),
-      # ee_satellite_features (daily), and a keep-alive ping so Supabase never idles out.
+          OPENAQ_API_KEY: ${{ secrets.OPENAQ_API_KEY }}
+        run: |
+          python -m connectors.openaq --cities delhi,bengaluru,mumbai || true
+          python -m connectors.weather --cities delhi,bengaluru,mumbai || true
+      - name: Keep-alive ping (prevents Supabase project pause)
+        env:
+          DEMO_MODE: "false"
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          python -c "
+          import os, sys
+          try:
+              from core.supa import client
+              db = client()
+              db.table('cities').select('city_id').limit(1).execute()
+              print('Keep-alive ping sent.')
+          except Exception as e:
+              print(f'Keep-alive skipped (demo/no creds): {e}')
+          " || true
+
+  forecast-enforcement-rollup:
+    name: Daily forecast + enforcement run
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '30 1 * * *' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11", cache: "pip" }
+      - run: pip install -r requirements.txt
+      - name: Run multi-agent enforcement pipeline for all cities
+        env:
+          DEMO_MODE: "false"
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          LLM_PROVIDER: "gemini"
+        run: |
+          python -c "
+          from agents.enforcement import run_enforcement
+          for city in ['delhi', 'bengaluru', 'mumbai']:
+              recs = run_enforcement(city_id=city, write_to_db=True)
+              print(f'{city}: {len(recs)} enforcement recs written')
+          " || true

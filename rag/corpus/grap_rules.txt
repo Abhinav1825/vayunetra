@@ -1,0 +1,173 @@
+Graded Response Action Plan (GRAP) — India
+Source: Commission for Air Quality Management in National Capital Region and Adjoining Areas (CAQM)
+Document ID: GRAP-2023-CONSOLIDATED
+
+=============================================================
+GRADED RESPONSE ACTION PLAN (GRAP) — FULL TEXT
+=============================================================
+
+GRAP is a set of emergency measures activated as per Air Quality Index (AQI) levels in the Delhi-NCR region. These measures are graded based on the severity of pollution, and each stage of GRAP has specific restrictions and requirements.
+
+=============================================================
+STAGE 1 — AQI 201–300 (POOR)
+=============================================================
+
+1.1 Dust Control at Construction Sites
+- All construction sites must register on the CAQM portal and comply with dust suppression norms.
+- Anti-smog guns mandatory for sites exceeding 500 sq.m.
+- Regular sprinkling of water on roads and construction areas.
+- Storage of construction material in covered areas only.
+- Proper green net coverage of construction structures.
+- Violation penalty: ₹5,000 to ₹1,00,000 per instance.
+
+1.2 Road Dust Control
+- Mechanical sweeping of all national highways, expressways, state highways within city limits.
+- Water sprinkling on roads through tankers twice daily.
+- Proper disposal of waste and debris from road construction/maintenance activities.
+
+1.3 Vehicular Control
+- Enhanced checking of Pollution Under Control (PUC) certificates by traffic police.
+- Strict action against vehicles emitting visible smoke.
+- Removal of old/end-of-life vehicles from roads.
+
+1.4 Industrial/Generator Control
+- Hotels and restaurants: switch to approved fuels (LPG, PNG, approved bio-fuel).
+- No use of coal, firewood, biomass in hotels and restaurants.
+- Industrial units to maintain emission log and share with SPCB.
+
+1.5 Open Burning
+- Complete ban on open burning of waste, leaves, garbage.
+- Real-time fire monitoring via satellite feed; immediate action on detected fires.
+- Fine: ₹5,000 per incident of open burning.
+
+=============================================================
+STAGE 2 — AQI 301–400 (VERY POOR)
+=============================================================
+
+(All Stage 1 measures continue, plus:)
+
+2.1 Construction
+- Demolition activities of all types banned.
+- Stone crushing banned.
+- Only essential construction activities permitted (hospitals, roads, metro, defence).
+
+2.2 Diesel Generators
+- DG sets banned (except for essential services: hospitals, railways, telecom towers).
+- Mandatory DG declaration by industries and commercial establishments.
+
+2.3 Vehicles
+- Strict enforcement against heavy diesel trucks entering city limits during day hours.
+- Light commercial vehicles (BS-IV and below): restricted entry.
+- Fly-ash transport only in covered vehicles.
+
+2.4 Industries
+- Industries running on pet coke banned.
+- All units to maximize use of PNG; coal usage minimized.
+- Random inspections by SPCB teams with 24-hour enforcement.
+
+=============================================================
+STAGE 3 — AQI 401–450 (SEVERE)
+=============================================================
+
+(All Stage 1, 2 measures continue, plus:)
+
+3.1 Construction
+- All construction activities banned except those with essential/emergency exemptions.
+- Penalty for violations: ₹50,000 per incident + sealing of site.
+
+3.2 Vehicles
+- Odd-even vehicle scheme for private cars in affected districts.
+- Diesel trucks banned; only CNG/electric trucks permitted.
+- Increased deployment of DRTC/DTC buses with reduced fares.
+
+3.3 Schools and Offices
+- Schools (up to Class 5) to shift to online/hybrid mode.
+- Government departments encouraged to grant 50% WFH.
+
+3.4 Brick Kilns and Industrial Units
+- Brick kilns to shut down operations.
+- Industries with high pollution load directed to reduce production to 50%.
+- Hot mix plants and stone crushers: operations halted.
+
+=============================================================
+STAGE 4 — AQI >450 (SEVERE+)
+=============================================================
+
+(All previous measures continue, plus:)
+
+4.1 Emergency Measures
+- All construction and demolition activities: complete halt.
+- Factories and industries: major reduction in operations; highly polluting units: shut down.
+- Schools (up to Class 12) closed.
+- Government offices operate with minimum staff; remaining WFH.
+- Odd-even scheme expanded; private car bans possible.
+- Emergency emergency response protocol: coordination with NDMA.
+
+4.2 Emergency Health Response
+- State governments to establish emergency health coordination.
+- Civil hospitals: additional respiratory care wards activated.
+- Helpline numbers published; mobile health units deployed.
+
+=============================================================
+ENFORCEMENT ACTIONS AND PENALTIES
+=============================================================
+
+Violation Type                              | Penalty
+--------------------------------------------|-----------------------------
+Open burning of waste/stubble               | ₹5,000–1,00,000
+Construction without dust suppression       | ₹5,000–1,00,000; site closure
+Operating DG set during ban                 | ₹10,000–5,00,000
+Running high-pollution industry during ban  | ₹1,00,000–5,00,000; seal unit
+Vehicle without valid PUC certificate       | ₹10,000 (as per MVA 2019)
+Diesel truck entry during restrictions      | ₹20,000; vehicle impounding
+
+=============================================================
+ENFORCEMENT AGENCY RESPONSIBILITIES
+=============================================================
+
+Agency                        | Responsibility
+------------------------------|----------------------------------
+SPCB (State Pollution Control)| Industrial inspections, penalty notices, DG enforcement
+Traffic Police                | Vehicle PUC enforcement, odd-even implementation
+Municipal Corporations        | Dust control, road sweeping, construction monitoring
+CAQM                          | Coordination, data monitoring, high-level directions
+District Magistrate           | Emergency coordination, site closures, prosecution
+
+=============================================================
+LEGAL BASIS FOR ENFORCEMENT
+=============================================================
+
+1. Environment (Protection) Act, 1986 — Section 5 directions for closure/prohibition.
+2. Air (Prevention and Control of Pollution) Act, 1981 — SPCB enforcement authority.
+3. National Green Tribunal Act, 2010 — NGT directions have been used to enforce GRAP.
+4. Motor Vehicles Act, 2019 — Traffic penalties for vehicular pollution violations.
+5. Solid Waste Management Rules, 2016 — Prohibition on open burning of waste.
+6. Construction and Demolition Waste Management Rules, 2016 — Construction site norms.
+
+=============================================================
+INSPECTION CHECKLIST FOR FIELD INSPECTORS
+=============================================================
+
+Construction Site Inspection:
+[ ] Valid registration on CAQM portal (website/QR code visible at site)
+[ ] Anti-smog gun/water sprinkler operational and in use
+[ ] Green net coverage of all exposed structures (≥70% coverage)
+[ ] Construction material stored in covered/enclosed areas
+[ ] Site boundary has dust suppression barriers
+[ ] Record of daily water sprinkling maintained at site
+[ ] Concrete mixing done only in enclosed/covered areas
+[ ] No open burning of construction waste on site
+
+Industrial Unit Inspection:
+[ ] Valid Consent-to-Operate (CTO) from SPCB visible at premises
+[ ] Emission monitoring data log available and updated
+[ ] Stack emission within prescribed limits (last test report)
+[ ] DG set type documented; if diesel, compliance with ban period
+[ ] Approved fuel in use (CTO-specified); coal/pet coke banned during GRAP 2+
+[ ] No unauthorized discharge to air/water
+
+Open Burning Inspection:
+[ ] Check for any smoldering waste/garbage/leaves within 500m radius
+[ ] Photograph and GPS-tag any burning instances
+[ ] Issue on-the-spot notice with fine of ₹5,000
+[ ] Report to control room for satellite confirmation

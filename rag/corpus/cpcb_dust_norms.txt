@@ -1,0 +1,133 @@
+CPCB Dust Control Norms for Construction Sites — 2016
+Source: Central Pollution Control Board
+Document ID: CPCB-DUST-NORMS-2016
+
+=============================================================
+DUST CONTROL NORMS FOR CONSTRUCTION SITES — INDIA
+=============================================================
+
+These norms are applicable to all construction, demolition, and renovation activities in India, particularly in non-attainment cities and areas covered under GRAP.
+
+Legal Authority: Environment (Protection) Act, 1986; Air (Prevention and Control of Pollution) Act, 1981.
+
+=============================================================
+PART 1 — APPLICABILITY AND REGISTRATION
+=============================================================
+
+1.1 All construction projects with a built-up area ≥5,000 sq.m or involving land disturbance ≥500 sq.m must:
+(a) Obtain prior Environmental Clearance (EC) or register with the State SPCB.
+(b) Prepare and submit a Dust Management Plan (DMP) before commencement.
+(c) Appoint a Site Pollution Control Officer (SPCO) responsible for compliance.
+
+1.2 Registration Requirements:
+- Register on CAQM portal (for Delhi-NCR) or State portal within 7 days of commencement.
+- Display registration number prominently at site entrance.
+- Provide contact details of SPCO and owner; accessible 24x7 for regulatory inspection.
+
+=============================================================
+PART 2 — MANDATORY DUST SUPPRESSION MEASURES
+=============================================================
+
+2.1 Water Sprinkling (Mandatory)
+- Water must be sprinkled at least TWICE daily at:
+  (a) All active excavation and earthwork areas.
+  (b) Site access/exit points (to trap dust from vehicles).
+  (c) Stockpile areas of excavated soil, sand, aggregate.
+  (d) Perimeter areas of the site.
+- During GRAP Stage 1+: increase frequency to 4 times daily.
+- Automated water sprinkler systems recommended for sites >20,000 sq.m.
+
+2.2 Green/Anti-Dust Netting
+- All vertical surfaces (walls, hoardings, scaffolding): minimum 70% coverage with green net/tarpaulin.
+- Material stockpiles: covered with tarpaulin or dust suppression sheets at all times.
+- All trucks exiting site must be covered with tarpaulin.
+
+2.3 Anti-Smog Guns
+- Mandatory for sites ≥20,000 sq.m.
+- Must be operational during all working hours.
+- Coverage radius: minimum 50m; deployed at site periphery.
+- Minimum 2 guns per 20,000 sq.m of active construction area.
+
+2.4 Enclosure of Operations
+- Concrete batching and mixing: only in enclosed, covered structures.
+- Cutting, grinding, sanding of materials: done in enclosed areas with dust collectors.
+- Waste material: stored in covered bins; not left in open piles.
+
+2.5 Construction Material Storage
+- Sand, soil, aggregate: stored in enclosed/covered bunkers or covered with tarpaulin.
+- Bagged cement: stored in covered, waterproof areas.
+- No stockpiling material within 5m of public roads/footpaths.
+
+=============================================================
+PART 3 — VEHICLE AND TRANSPORT REQUIREMENTS
+=============================================================
+
+3.1 All vehicles entering and exiting the construction site must:
+- Have valid Pollution Under Control (PUC) certificate.
+- Be covered with tarpaulin when carrying loose material (soil, sand, aggregate, debris).
+- Carry vehicle registration number clearly visible; comply with weight limits.
+
+3.2 Vehicle Wheels:
+- Wheel wash/rumble strips mandatory at all site exits to remove mud and dust.
+- Vehicles must not track mud/dust onto public roads; sweeping of exit roads mandatory.
+
+3.3 Idling:
+- No vehicle to idle at site for more than 3 minutes; engines off when waiting.
+
+=============================================================
+PART 4 — DEMOLITION ACTIVITIES
+=============================================================
+
+4.1 Pre-demolition requirements:
+- Site boundary fencing: minimum 1.8m height, dust-proof sheeting.
+- Cover all windows and openings of adjacent buildings.
+- Notify adjacent residents/businesses 72 hours in advance.
+- Wet-wrecking method preferred over dry demolition.
+
+4.2 During demolition:
+- Continuous water misting during all demolition activities.
+- No dropping of materials from height >2m without dust containment chute.
+- Immediate bagging and removal of demolition waste.
+
+4.3 Post-demolition:
+- Site stabilization within 72 hours.
+- Temporary vegetation cover or dust suppressant on bare earth.
+
+=============================================================
+PART 5 — MONITORING AND RECORD-KEEPING
+=============================================================
+
+5.1 Daily records to be maintained:
+- Water consumption log (quantity sprinkled; frequency per day).
+- Anti-smog gun operating hours.
+- Vehicle movement log (in/out, PUC status).
+- Any incidents of dust escape with corrective actions taken.
+
+5.2 Monthly compliance report to be submitted to SPCB.
+
+5.3 CPCB/SPCB officers have the right to inspect sites at any time without prior notice.
+
+=============================================================
+PART 6 — PENALTIES FOR NON-COMPLIANCE
+=============================================================
+
+Violation                                         | Penalty
+--------------------------------------------------|-------------------------------
+No registration / no DMP                          | ₹5,000–1,00,000 + stop work
+No water sprinkling (during active construction)  | ₹5,000 per inspection
+No green net coverage                             | ₹5,000–50,000
+No anti-smog gun (mandatory sites)                | ₹10,000–50,000
+Vehicle without tarpaulin / expired PUC           | ₹5,000 per vehicle
+Open burning of C&D waste                         | ₹5,000–1,00,000 + FIR
+Non-compliance after notice                       | Site sealing + ₹1,00,000
+
+=============================================================
+PART 7 — EXEMPTIONS
+=============================================================
+
+The following activities are exempt from certain provisions:
+- Emergency repairs to essential infrastructure (power, water, sewage).
+- Government-declared emergency projects (national security, disaster relief).
+- Agriculture activities on rural land (different rules apply).
+
+Note: Exemptions must be documented and certified by relevant authority.
