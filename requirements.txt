@@ -47,3 +47,7 @@ twilio
 pytest
 pytest-cov
 ruff
+
+# --- Eval / notebooks (eval/evaluate.ipynb) ---
+matplotlib
+seaborn
