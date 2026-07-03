@@ -23,7 +23,7 @@ jobs:
         env:
           DEMO_MODE: "true"
           LOG_LEVEL: "warning"
-        run: pytest tests/ -q || true
+        run: pytest tests/ -q
 
   api-smoke:
     runs-on: ubuntu-latest
@@ -60,4 +60,4 @@ jobs:
           VITE_DEMO_MODE: "true"
         run: |
           npm install
-          npm run build || true
+          npm run build

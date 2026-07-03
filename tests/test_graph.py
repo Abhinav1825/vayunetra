@@ -7,7 +7,7 @@ from __future__ import annotations
 import os
 import pytest
 
-os.environ.setdefault("DEMO_MODE", "true")
+os.environ["DEMO_MODE"] = "true"
 
 
 def test_build_graph_compiles():

@@ -1,4 +1,4 @@
-"""Shared Supabase access helpers (service-role).  Used by ML training/serving scripts."""
+"""Shared Supabase access helpers."""
 from __future__ import annotations
 
 import os
@@ -6,10 +6,23 @@ import os
 import core.env  # noqa: F401  (loads .env)
 
 
-def client():
+def service_client():
+    """Supabase client with service-role privileges for trusted server jobs."""
     from supabase import create_client
 
     return create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+
+
+def anon_client():
+    """Supabase client that honors caller JWT/RLS when auth(token) is applied."""
+    from supabase import create_client
+
+    return create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_ANON_KEY"])
+
+
+def client():
+    """Backward-compatible service-role client for existing pipelines."""
+    return service_client()
 
 
 def load_measurements(city_id: str) -> list[dict]:
