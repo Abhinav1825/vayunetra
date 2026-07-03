@@ -242,7 +242,7 @@ def enforcement_node(state: GraphState) -> dict:
 
     try:
         from agents.enforcement import run_enforcement
-        recs = run_enforcement(city_id=city_id, attribution_data=attribution_data)
+        recs = run_enforcement(city_id=city_id, attribution_data=attribution_data, write_to_db=not DEMO_MODE)
         rec_dicts = [r.to_dict() for r in recs]
 
         # Collect RAG citations for cross-cutting state
@@ -382,6 +382,29 @@ def run_query(city_id: str, query: str = "", focus_cells: list | None = None) ->
         "citations": [],
     }
     result = graph.invoke(initial_state)
+
+    if not DEMO_MODE:
+        trace_list = result.get("trace") or []
+        latency = _compute_latency(trace_list)
+        ts_map = {t["node"]: t["ts"] for t in trace_list}
+        trace_nodes = [t["node"] for t in trace_list]
+        try:
+            from core.supa import client
+            db = client()
+            db.table("action_traces").insert({
+                "city_id": city_id,
+                "signal_ts": ts_map.get("orchestrator") or _now_iso(),
+                "attribution_ts": ts_map.get("attribution"),
+                "forecast_ts": ts_map.get("forecast"),
+                "enforcement_ts": ts_map.get("enforcement"),
+                "advisory_ts": ts_map.get("advisory"),
+                "total_latency_ms": latency,
+                "trace": {"nodes": trace_nodes},
+            }).execute()
+            print(f"[graph] Persisted action trace for {city_id} ({latency}ms)")
+        except Exception as e:
+            print(f"[graph] Failed to persist action trace: {e}")
+
     return dict(result)
 
 

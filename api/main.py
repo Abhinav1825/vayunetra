@@ -10,15 +10,18 @@ Run:
 """
 from __future__ import annotations
 
+import base64
 import json
 import os
 import time
+import asyncio
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi import FastAPI, HTTPException, Query, Request, Depends, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 
 import core.env  # noqa: F401  (loads .env)
@@ -55,10 +58,43 @@ def fixture(name: str, default: Any = None) -> Any:
     return default if default is not None else []
 
 
-def _db():
-    """Supabase client for live reads (DEMO_MODE=false). Service-role, server-side only."""
-    from core.supa import client
-    return client()
+security = HTTPBearer(auto_error=False)
+
+
+def _decode_bearer_payload(token: str) -> dict:
+    try:
+        payload_b64 = token.split(".")[1]
+        payload_b64 += "=" * ((4 - len(payload_b64) % 4) % 4)
+        return json.loads(base64.urlsafe_b64decode(payload_b64))
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid token format")
+
+
+def _validated_token(credentials: HTTPAuthorizationCredentials | None) -> str | None:
+    if DEMO_MODE:
+        return None
+
+    token = credentials.credentials if credentials else None
+    if not token:
+        raise HTTPException(status_code=401, detail="Missing authorization token")
+
+    payload = _decode_bearer_payload(token)
+    role = payload.get("role", "")
+    if role not in ("authenticated", "service_role", "admin"):
+        raise HTTPException(status_code=403, detail="Insufficient role privileges")
+    return token
+
+
+def get_db(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Supabase client using the caller's JWT so PostgREST enforces RLS."""
+    if DEMO_MODE:
+        return None
+
+    from core.supa import anon_client
+    db = anon_client()
+    token = _validated_token(credentials)
+    db.postgrest.auth(token)
+    return db
 
 
 # ---------------------------------------------------------------------------
@@ -76,11 +112,11 @@ def health() -> dict:
 # ---------------------------------------------------------------------------
 
 @app.get("/cities", tags=["data"])
-def cities() -> dict:
+def cities(db=Depends(get_db)) -> dict:
     """List all active cities."""
     if DEMO_MODE:
         return ok(fixture("cities"))
-    rows = _db().table("cities").select("*").eq("active", True).execute().data
+    rows = db.table("cities").select("*").eq("active", True).execute().data
     return ok(rows)
 
 
@@ -92,12 +128,13 @@ def cities() -> dict:
 def aqi_current(
     city: str = Query(..., description="City ID, e.g. 'delhi'"),
     bbox: Optional[str] = Query(None, description="Bounding box: lon_min,lat_min,lon_max,lat_max"),
+    db=Depends(get_db)
 ) -> dict:
     """Latest per-cell AQI measurements for a city."""
     if DEMO_MODE:
         return ok(fixture("aqi_current"))
     rows = (
-        _db().table("measurements")
+        db.table("measurements")
         .select("h3_cell,ts,value,variable,confidence")
         .eq("city_id", city)
         .eq("variable", "pm25")
@@ -127,6 +164,7 @@ def attribution(
     cell: Optional[str] = Query(None, description="H3 cell ID"),
     ward: Optional[str] = Query(None, description="Ward name/ID"),
     ts: Optional[str] = Query(None, description="Timestamp ISO string"),
+    db=Depends(get_db)
 ) -> dict:
     """Per-cell source attribution (the blame map)."""
     if DEMO_MODE:
@@ -136,7 +174,7 @@ def attribution(
         return ok(data)
 
     q = (
-        _db().table("attribution")
+        db.table("attribution")
         .select("h3_cell,source_category,share,confidence,evidence,ts_window")
         .eq("city_id", city)
     )
@@ -167,6 +205,7 @@ def forecast(
     city: str = Query(..., description="City ID"),
     cell: Optional[str] = Query(None, description="H3 cell ID"),
     horizon: int = Query(24, description="Forecast horizon in hours (24/48/72)"),
+    db=Depends(get_db)
 ) -> dict:
     """AQI forecasts with persistence baseline for comparison."""
     if DEMO_MODE:
@@ -178,7 +217,7 @@ def forecast(
         return ok(data)
 
     q = (
-        _db().table("forecasts")
+        db.table("forecasts")
         .select("h3_cell,issued_at,horizon_h,target_var,value,pi_low,pi_high,persistence_value,model_version")
         .eq("city_id", city)
     )
@@ -199,6 +238,7 @@ def enforcement_list(
     date: Optional[str] = Query(None, description="Date filter YYYY-MM-DD"),
     status: Optional[str] = Query(None, description="Status filter: proposed|approved|dispatched"),
     limit: int = Query(50, description="Max results"),
+    db=Depends(get_db)
 ) -> dict:
     """Ranked enforcement worklist for the city."""
     if DEMO_MODE:
@@ -208,7 +248,7 @@ def enforcement_list(
         return ok(data[:limit])
 
     q = (
-        _db().table("enforcement_recs")
+        db.table("enforcement_recs")
         .select(
             "id,city_id,h3_cell,ts,source_id,priority_score,contribution,pop_exposed,"
             "rationale,rag_citations,rubric_score,status"
@@ -225,7 +265,7 @@ def enforcement_list(
 
 
 @app.get("/enforcement/{rec_id}/dossier", tags=["enforcement"])
-def enforcement_dossier(rec_id: int) -> dict:
+def enforcement_dossier(rec_id: int, db=Depends(get_db)) -> dict:
     """Full evidence dossier for an enforcement recommendation, with RAG citations.
 
     Includes: rationale, regulatory citations, rubric score, suggested notice text,
@@ -240,7 +280,7 @@ def enforcement_dossier(rec_id: int) -> dict:
 
 
 @app.post("/enforcement/{rec_id}/status", tags=["enforcement"])
-def enforcement_update_status(rec_id: int, body: dict) -> dict:
+def enforcement_update_status(rec_id: int, body: dict, db=Depends(get_db)) -> dict:
     """Update enforcement rec status (approved / dispatched / dismissed)."""
     new_status = body.get("status")
     valid_statuses = {"proposed", "approved", "dispatched", "dismissed"}
@@ -250,7 +290,7 @@ def enforcement_update_status(rec_id: int, body: dict) -> dict:
     if DEMO_MODE:
         return ok({"rec_id": rec_id, "status": new_status, "demo": True})
 
-    _db().table("enforcement_recs").update({"status": new_status}).eq("id", rec_id).execute()
+    db.table("enforcement_recs").update({"status": new_status}).eq("id", rec_id).execute()
     return ok({"rec_id": rec_id, "status": new_status})
 
 
@@ -263,6 +303,7 @@ def advisory(
     city: str = Query(..., description="City ID"),
     ward: Optional[str] = Query(None, description="Ward name/ID"),
     lang: str = Query("en", description="Language code: en|hi|kn|mr"),
+    db=Depends(get_db)
 ) -> dict:
     """Ward-level citizen health advisories in specified language."""
     if DEMO_MODE:
@@ -274,7 +315,7 @@ def advisory(
         return ok(data)
 
     q = (
-        _db().table("advisories")
+        db.table("advisories")
         .select("*")
         .eq("city_id", city)
         .order("issued_at", desc=True)
@@ -298,7 +339,7 @@ class AgentQueryBody(BaseModel):
 
 
 @app.post("/agent/query", tags=["agent"])
-def agent_query(body: AgentQueryBody) -> dict:
+def agent_query(body: AgentQueryBody, db=Depends(get_db)) -> dict:
     """Route a natural-language or programmatic query to the LangGraph orchestrator.
 
     Returns: answer, trace (per-node timing), enforcement recs, advisories, citations.
@@ -339,7 +380,7 @@ class SimulateBody(BaseModel):
 
 
 @app.post("/simulate", tags=["stage2"])
-def simulate(body: SimulateBody) -> dict:
+def simulate(body: SimulateBody, db=Depends(get_db)) -> dict:
     """What-if intervention simulator (E3 — Stage 2 engine, stub in Stage 1)."""
     # Stage 1: return demo fixture
     return ok(fixture("simulate", default={
@@ -362,7 +403,7 @@ class OptimizeBody(BaseModel):
 
 
 @app.post("/optimize", tags=["stage2"])
-def optimize(body: OptimizeBody) -> dict:
+def optimize(body: OptimizeBody, db=Depends(get_db)) -> dict:
     """Prescriptive intervention optimiser (E5 — Stage 2 engine, stub in Stage 1)."""
     return ok(fixture("optimize", default={"packages": []}))
 
@@ -381,7 +422,7 @@ class CityBody(BaseModel):
 
 
 @app.post("/admin/cities", tags=["admin"])
-def admin_onboard_city(body: CityBody) -> dict:
+def admin_onboard_city(body: CityBody, db=Depends(get_db)) -> dict:
     """Onboard a new city (config-driven, zero code change)."""
     if not body.city_id:
         return err("bad_request", "city_id is required")
@@ -389,7 +430,7 @@ def admin_onboard_city(body: CityBody) -> dict:
         return ok({"onboarded": body.city_id, "demo": True})
 
     # Upsert city row
-    _db().table("cities").upsert({
+    db.table("cities").upsert({
         "city_id": body.city_id,
         "name": body.name,
         "state": body.state,
@@ -407,6 +448,7 @@ def admin_onboard_city(body: CityBody) -> dict:
 def get_traces(
     city: str = Query(..., description="City ID"),
     limit: int = Query(20, description="Max traces"),
+    db=Depends(get_db)
 ) -> dict:
     """Retrieve recent signal-to-action latency traces (North-Star metric)."""
     if DEMO_MODE:
@@ -423,7 +465,7 @@ def get_traces(
             }
         ])
     rows = (
-        _db().table("action_traces")
+        db.table("action_traces")
         .select("*")
         .eq("city_id", city)
         .order("signal_ts", desc=True)
@@ -435,15 +477,69 @@ def get_traces(
 
 
 # ---------------------------------------------------------------------------
-# WebSocket stub — /live
+# WebSocket — /live
 # ---------------------------------------------------------------------------
 
-# TODO Abhinav (Stage 1): implement WebSocket push of attribution/forecast/alert updates.
-# Implementation sketch:
-#   @app.websocket("/live")
-#   async def websocket_live(ws: WebSocket):
-#       await ws.accept()
-#       while True:
-#           payload = await get_latest_signals(city_id)
-#           await ws.send_json(ok(payload))
-#           await asyncio.sleep(60)
+@app.websocket("/live")
+async def websocket_live(ws: WebSocket, city: str = "delhi"):
+    """WebSocket push of attribution/forecast/alert updates."""
+    token = None
+    if not DEMO_MODE:
+        token = ws.query_params.get("token")
+        if not token:
+            auth_header = ws.headers.get("authorization", "")
+            if auth_header.lower().startswith("bearer "):
+                token = auth_header.split(" ", 1)[1]
+        if not token:
+            await ws.close(code=1008, reason="Missing authorization token")
+            return
+        try:
+            payload = _decode_bearer_payload(token)
+        except HTTPException:
+            await ws.close(code=1008, reason="Invalid token format")
+            return
+        role = payload.get("role", "")
+        if role not in ("authenticated", "service_role", "admin"):
+            await ws.close(code=1008, reason="Insufficient role privileges")
+            return
+
+    await ws.accept()
+    if DEMO_MODE:
+        db = None
+    else:
+        from core.supa import anon_client
+        db = anon_client()
+        db.postgrest.auth(token)
+
+    try:
+        while True:
+            if DEMO_MODE:
+                payload = {
+                    "city": city,
+                    "aqi": fixture("aqi_current"),
+                    "attribution": fixture("attribution"),
+                    "forecast": fixture("forecast"),
+                }
+            else:
+                try:
+                    # In a real app we'd query the DB or use Supabase Realtime
+                    # Here we poll latest data to push
+                    measurements = db.table("measurements").select("h3_cell,ts,value").eq("city_id", city).eq("variable", "pm25").order("ts", desc=True).limit(50).execute().data
+                    payload = {
+                        "city": city,
+                        "aqi": measurements,
+                        "ts": datetime.now(timezone.utc).isoformat()
+                    }
+                except Exception:
+                    payload = {"error": "Failed to fetch live data"}
+
+            await ws.send_json(ok(payload))
+            await asyncio.sleep(60)
+    except WebSocketDisconnect:
+        pass
+    except Exception as e:
+        print(f"WebSocket error: {e}")
+        try:
+            await ws.close()
+        except Exception:
+            pass

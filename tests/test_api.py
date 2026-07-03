@@ -8,7 +8,7 @@ import os
 import json
 import pytest
 
-os.environ.setdefault("DEMO_MODE", "true")
+os.environ["DEMO_MODE"] = "true"
 
 from fastapi.testclient import TestClient
 from api.main import app

@@ -27,8 +27,12 @@ jobs:
           DATA_GOV_IN_API_KEY: ${{ secrets.DATA_GOV_IN_API_KEY }}
           OPENAQ_API_KEY: ${{ secrets.OPENAQ_API_KEY }}
         run: |
-          python -m connectors.openaq --cities delhi,bengaluru,mumbai || true
-          python -m connectors.weather --cities delhi,bengaluru,mumbai || true
+          python -m connectors.openaq --city delhi || true
+          python -m connectors.openaq --city bengaluru || true
+          python -m connectors.openaq --city mumbai || true
+          python -m connectors.openmeteo --city delhi || true
+          python -m connectors.openmeteo --city bengaluru || true
+          python -m connectors.openmeteo --city mumbai || true
       - name: Keep-alive ping (prevents Supabase project pause)
         env:
           DEMO_MODE: "false"
@@ -56,17 +60,25 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: "3.11", cache: "pip" }
       - run: pip install -r requirements.txt
+      - name: Ingest RAG corpus
+        env:
+          DEMO_MODE: "false"
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: python -m rag.ingest
       - name: Run multi-agent enforcement pipeline for all cities
         env:
           DEMO_MODE: "false"
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           LLM_PROVIDER: "gemini"
         run: |
           python -c "
-          from agents.enforcement import run_enforcement
+          from agents.graph import run_query
           for city in ['delhi', 'bengaluru', 'mumbai']:
-              recs = run_enforcement(city_id=city, write_to_db=True)
-              print(f'{city}: {len(recs)} enforcement recs written')
-          " || true
+              state = run_query(city_id=city, query='daily scheduled pipeline')
+              print(f'{city}: {len(state.get(\"enforcement\") or [])} enforcement recs, latency={state.get(\"latency_ms\", 0)}ms')
+          "

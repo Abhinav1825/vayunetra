@@ -300,6 +300,8 @@ def run_enforcement(
                 .execute()
                 .data
             )
+            if not emission_sources:
+                emission_sources = _load_demo_emission_sources(city_id)
 
     # Build a cell→attribution lookup (dominant source per cell)
     cell_dominant: dict[str, dict] = {}

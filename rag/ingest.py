@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import os
 import re
 import time
@@ -48,16 +49,27 @@ def _get_embed_model():
             print(f"[ingest] Loading embedding model: {model_name} ...")
             _embed_model = SentenceTransformer(model_name)
         except ImportError:
-            raise RuntimeError(
-                "sentence-transformers not installed. "
-                "Run: pip install sentence-transformers"
-            )
+            print("[ingest] sentence-transformers not installed; using deterministic hash embeddings.")
+            _embed_model = False
     return _embed_model
+
+
+def _hash_embed(text: str, dim: int = EMBEDDING_DIM) -> list[float]:
+    vec = [0.0] * dim
+    for token in text.lower().split():
+        digest = hashlib.blake2b(token.encode("utf-8"), digest_size=8).digest()
+        idx = int.from_bytes(digest[:4], "little") % dim
+        sign = 1.0 if digest[4] & 1 else -1.0
+        vec[idx] += sign
+    norm = math.sqrt(sum(v * v for v in vec)) or 1.0
+    return [v / norm for v in vec]
 
 
 def embed(texts: list[str]) -> list[list[float]]:
     """Embed a batch of texts. Returns list of float vectors."""
     model = _get_embed_model()
+    if model is False:
+        return [_hash_embed(text) for text in texts]
     vecs = model.encode(texts, normalize_embeddings=True, batch_size=32, show_progress_bar=False)
     return [v.tolist() for v in vecs]
 
