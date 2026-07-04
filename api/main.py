@@ -80,7 +80,9 @@ def _validated_token(credentials: HTTPAuthorizationCredentials | None) -> str | 
 
     payload = _decode_bearer_payload(token)
     role = payload.get("role", "")
-    if role not in ("authenticated", "service_role", "admin"):
+    # "anon" is accepted for public read-only dashboard access; PostgREST RLS
+    # still governs exactly which rows an anonymous caller may read.
+    if role not in ("anon", "authenticated", "service_role", "admin"):
         raise HTTPException(status_code=403, detail="Insufficient role privileges")
     return token
 
