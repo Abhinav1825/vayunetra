@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import os
 import hashlib
+import ast
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
@@ -240,7 +241,17 @@ def _live_retrieve(query: str, top_k: int, source_filter: Optional[str]) -> list
         emb = row.get("embedding")
         if not emb:
             continue
-        rvec = np.array(emb)
+        if isinstance(emb, str):
+            try:
+                emb = json.loads(emb)
+            except json.JSONDecodeError:
+                try:
+                    emb = ast.literal_eval(emb)
+                except (ValueError, SyntaxError):
+                    continue
+        rvec = np.array([float(x) for x in emb])
+        if rvec.shape != qvec.shape:
+            continue
         sim = float(np.dot(qvec, rvec))
         scored.append((sim, row))
 

@@ -1,4 +1,4 @@
-.PHONY: install api web seed migrate test lint
+.PHONY: install api web seed migrate live-bootstrap test lint
 
 install:        ## install lean python (CPU, no CUDA) + web deps
 	pip install -r requirements.txt
@@ -19,6 +19,9 @@ web:            ## run the Vite frontend
 
 seed:           ## generate the Delhi seed fixture
 	python scripts/seed_delhi.py
+
+live-bootstrap:  ## populate live Supabase with kb_chunks, enforcement_recs, and action_traces
+	python scripts/bootstrap_live.py
 
 link:           ## link the local repo to the remote Supabase project (one-time)
 	npx supabase link --project-ref dwqjqpohgkxekqilhotr

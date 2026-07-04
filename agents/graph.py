@@ -21,7 +21,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import TypedDict, Optional, Any
 
-from langgraph.graph import END, START, StateGraph
+try:
+    from langgraph.graph import END, START, StateGraph
+except ImportError:  # pragma: no cover - fallback for lean environments
+    END = START = None
+    StateGraph = None
 
 import core.env  # noqa: F401
 
@@ -330,6 +334,9 @@ def spike_gate(state: GraphState) -> str:
 # ---------------------------------------------------------------------------
 
 def build_graph():
+    if StateGraph is None:
+        raise ImportError("langgraph is not installed; sequential fallback is used instead")
+
     g = StateGraph(GraphState)
 
     # Register nodes
@@ -371,17 +378,48 @@ def get_graph():
     return _graph
 
 
-def run_query(city_id: str, query: str = "", focus_cells: list | None = None) -> dict:
-    """Convenience function used by the FastAPI /agent/query endpoint."""
-    graph = get_graph()
-    initial_state: GraphState = {
+def _run_sequential(city_id: str, query: str = "", focus_cells: list | None = None) -> dict:
+    """Fallback pipeline used when langgraph is unavailable.
+
+    This preserves the same output shape for bootstrap and API use while
+    avoiding a hard dependency on langgraph in lean runtime environments.
+    """
+    state: GraphState = {
         "city_id": city_id,
         "query": query,
         "focus_cells": focus_cells or [],
         "trace": [],
         "citations": [],
     }
-    result = graph.invoke(initial_state)
+
+    state.update(orchestrator(state))
+    state.update(attribution_node(state))
+    state.update(forecast_node(state))
+
+    if spike_gate(state) == "enforcement":
+        state.update(enforcement_node(state))
+
+    state.update(advisory_node(state))
+
+    trace_list = state.get("trace") or []
+    state["latency_ms"] = _compute_latency(trace_list)
+    return dict(state)
+
+
+def run_query(city_id: str, query: str = "", focus_cells: list | None = None) -> dict:
+    """Convenience function used by the FastAPI /agent/query endpoint."""
+    if StateGraph is None:
+        result = _run_sequential(city_id=city_id, query=query, focus_cells=focus_cells)
+    else:
+        graph = get_graph()
+        initial_state: GraphState = {
+            "city_id": city_id,
+            "query": query,
+            "focus_cells": focus_cells or [],
+            "trace": [],
+            "citations": [],
+        }
+        result = graph.invoke(initial_state)
 
     if not DEMO_MODE:
         trace_list = result.get("trace") or []

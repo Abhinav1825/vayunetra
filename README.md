@@ -32,6 +32,9 @@ npx supabase link --project-ref dwqjqpohgkxekqilhotr # one-time (enter DB passwo
 npx supabase db push                                 # applies schema + RLS + city seed
 python scripts/seed_delhi.py --push                  # synthetic Delhi measurements
 
+# Optional live bootstrap after the live attribution/forecast tables exist
+make live-bootstrap                                  # kb_chunks + enforcement_recs + action_traces
+
 # 2. API (serves demo fixtures in DEMO_MODE — works with zero live deps)
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt        # lean, CPU-only (no CUDA)

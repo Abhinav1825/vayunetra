@@ -318,7 +318,8 @@ def run_enforcement(
 
     for source in emission_sources:
         source_type = source.get("type", "other")
-        pop_exposed = source.get("pop_exposed_estimate", 5000)
+        attrs = source.get("attributes") or {}
+        pop_exposed = source.get("pop_exposed_estimate") or attrs.get("pop_exposed_estimate") or 5000
 
         # Map source type to attribution category
         cat_map = {
