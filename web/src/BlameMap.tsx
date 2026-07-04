@@ -76,7 +76,10 @@ export default function BlameMap({
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    mapRef.current?.flyTo({ center, zoom: ZOOM });
+    const [lng, lat] = center;
+    if (Number.isFinite(lng) && Number.isFinite(lat)) {
+      mapRef.current?.flyTo({ center, zoom: ZOOM });
+    }
   }, [center]);
 
   useEffect(() => {

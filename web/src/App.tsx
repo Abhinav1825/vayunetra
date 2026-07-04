@@ -9,8 +9,22 @@ import CitizenPanel from "./CitizenPanel";
 import ComparativePanel from "./ComparativePanel";
 import CityIntelPanel from "./CityIntelPanel";
 
-type City = { city_id: string; name: string; center: [number, number]; languages?: string[] };
+type LngLat = [number, number];
+type GeoPoint = { coordinates: [number, number] };
+type City = { city_id: string; name: string; center?: LngLat | GeoPoint; languages?: string[] };
 type Tab = "action" | "citizen" | "compare";
+
+const DELHI: LngLat = [77.21, 28.61];
+
+// /cities returns `center` as a plain [lng,lat] (demo fixtures) OR a GeoJSON
+// Point (live PostGIS). Normalize both to a finite [lng,lat] for MapLibre.
+function toLngLat(center: City["center"]): LngLat {
+  const co = Array.isArray(center) ? center : center?.coordinates;
+  if (Array.isArray(co) && Number.isFinite(co[0]) && Number.isFinite(co[1])) {
+    return [co[0], co[1]];
+  }
+  return DELHI;
+}
 
 export default function App() {
   const [cities, setCities] = useState<City[]>([]);
@@ -23,7 +37,7 @@ export default function App() {
   }, []);
 
   const city = cities.find((c) => c.city_id === active);
-  const center: [number, number] = city?.center ?? [77.21, 28.61];
+  const center = toLngLat(city?.center);
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-slate-100">
