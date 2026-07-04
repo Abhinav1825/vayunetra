@@ -127,11 +127,9 @@ def fetch_city(
 
 
 def push_to_supabase(rows: list[dict]) -> None:
-    import os
+    from core.supa import client
 
-    from supabase import create_client
-
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = client()
     for i in range(0, len(rows), 500):
         client.table("measurements").insert(rows[i : i + 500]).execute()
     print(f"pushed {len(rows)} weather measurements to Supabase")

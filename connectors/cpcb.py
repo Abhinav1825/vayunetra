@@ -122,9 +122,9 @@ def fetch_city(city_id: str, limit: int = 1000) -> list[dict]:
 
 
 def push_to_supabase(rows: list[dict]) -> None:
-    from supabase import create_client
+    from core.supa import client
 
-    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    client = client()
     for i in range(0, len(rows), 500):
         client.table("measurements").insert(rows[i : i + 500]).execute()
     print(f"pushed {len(rows)} CPCB measurements to Supabase")
