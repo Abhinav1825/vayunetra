@@ -2,6 +2,8 @@
 
 ## Architecture Diagram Draft
 
+Concrete artifact: `docs/STAGE1_ARCHITECTURE_DIAGRAM.mmd`
+
 ```mermaid
 flowchart LR
     OSM[OSM roads, land use, POIs] --> STATIC[Static layer connector]
@@ -22,6 +24,8 @@ flowchart LR
 
 ## Pitch Deck Draft
 
+Concrete artifact: `docs/STAGE1_PITCH_DECK.html`
+
 1. Problem: cities can measure air, but cannot act fast enough.
 2. VayuNetra: attribution -> forecast -> enforcement -> citizen advisory.
 3. Blame map: source-colored H3 cells with confidence and evidence.
@@ -34,5 +38,7 @@ flowchart LR
 10. Impact close: signal-to-action latency is visible and under five minutes in the demo snapshot.
 
 ## Demo Video Script Draft
+
+Concrete recording runbook: `docs/STAGE1_DEMO_VIDEO_RUNBOOK.md`
 
 Open on Delhi in the authority console. Switch the map from source attribution to satellite NO2 and back, then click through the forecast horizons to show the spike. Open the action tab and read the top enforcement recommendation. Switch to Citizen, change language to Hindi, and show the Telegram/IVR text. Switch to Compare, jump to Bengaluru and Mumbai, and point out that the same app shell and API contract drive all three cities. Close with the latency widget: signal to action in minutes, not weeks.
