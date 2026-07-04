@@ -1,0 +1,53 @@
+# VayuNetra — core deps (lean, CPU-only, NO CUDA). Runs API, connectors, agents,
+# seed, and the Stage-1 LightGBM/GBM models. Heavy PyTorch stack is in requirements-ml.txt.
+# Install:  python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
+
+# --- API ---
+fastapi
+uvicorn[standard]
+pydantic>=2
+websockets
+python-dotenv
+
+# --- Data / geospatial ---
+h3
+geopandas
+shapely
+rasterio
+pandas
+numpy
+pyyaml
+
+# --- DB / Supabase ---
+supabase
+psycopg[binary]
+sqlalchemy
+pgvector
+
+# --- ML (MVP — CPU, no CUDA) ---
+scikit-learn
+lightgbm
+shap
+
+# --- Agents / LLM / RAG client ---
+langgraph
+langchain-core
+google-generativeai          # Gemini (free tier); swap per LLM_PROVIDER
+
+# --- Earth Engine / connectors ---
+earthengine-api
+requests
+httpx
+
+# --- Channels ---
+python-telegram-bot
+twilio
+
+# --- Dev / test ---
+pytest
+pytest-cov
+ruff
+
+# --- Eval / notebooks (eval/evaluate.ipynb) ---
+matplotlib
+seaborn

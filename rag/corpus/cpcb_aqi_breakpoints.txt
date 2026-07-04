@@ -1,0 +1,99 @@
+CPCB AQI Health Breakpoints and Standard Operating Procedures
+Source: Central Pollution Control Board, India
+Document ID: CPCB-AQI-BREAKPOINTS-2024
+
+=============================================================
+1. NATIONAL AMBIENT AIR QUALITY STANDARDS (NAAQS) INDIA
+=============================================================
+
+The National Ambient Air Quality Standards (NAAQS) define the maximum allowable concentrations of key air pollutants over specific averaging periods.
+
+Pollutant              | Annual Average | 24-hour Average | Short-term (1-hour)
+-----------------------|---------------|-----------------|--------------------
+PM2.5 (µg/m³)          | 40            | 60              | —
+PM10 (µg/m³)           | 60            | 100             | —
+NO2 (µg/m³)            | 40            | 80              | —
+SO2 (µg/m³)            | 50            | 80              | —
+CO (mg/m³)             | 2             | 4               | 10 (8-hr)
+O3 (µg/m³)             | —             | 100             | 180 (1-hr)
+
+=============================================================
+2. CPCB AQI CATEGORIES AND HEALTH IMPLICATIONS
+=============================================================
+
+AQI Range   | Category      | Health Implications
+------------|---------------|----------------------------------------------
+0–50        | Good          | Minimal impact; air quality considered satisfactory
+51–100      | Satisfactory  | Minor breathing discomfort to sensitive people
+101–200     | Moderate      | Breathing discomfort to people with lung disease (asthma); discomfort to general public with prolonged exposure
+201–300     | Poor          | Breathing discomfort to most people on prolonged exposure
+301–400     | Very Poor     | Respiratory illness on prolonged exposure; Heart disease patients may experience significant health impacts
+401–500     | Severe        | Health impacts even on light physical activity; serious impact on people with heart/lung disease
+>500        | Severe+       | Emergency health conditions; entire population likely to be affected
+
+=============================================================
+3. HEALTH ADVISORIES BY SEGMENT AND AQI LEVEL
+=============================================================
+
+3.1 General Population
+- AQI 0–100: Normal activities; no restrictions advised.
+- AQI 101–200: Reduce prolonged outdoor exertion; wear masks if outdoors for extended periods.
+- AQI 201–300: Avoid prolonged outdoor activities; wear N95 masks; use air purifiers indoors.
+- AQI 301+: Stay indoors; keep windows closed; use air purifiers; seek medical attention if symptoms appear.
+
+3.2 Sensitive Groups (Children, Elderly, Pregnant Women, Respiratory Patients)
+- AQI 51–100: Take extra caution; limit time outdoors.
+- AQI 101–200: Avoid outdoor activities; use masks; keep medication accessible.
+- AQI 201+: Stay indoors; seek medical attention immediately if experiencing symptoms.
+
+3.3 Outdoor Workers
+- AQI 101–200: Shift heavy outdoor work to early morning or late evening when AQI may be lower; use masks.
+- AQI 201–300: Reduce workload; take frequent breaks indoors; wear protective masks.
+- AQI 301+: Halt outdoor work if possible; use respirators; consider rest assignments indoors.
+
+3.4 Schools and Educational Institutions
+- AQI 201–300: Cancel outdoor sports and activities; keep children indoors during recess.
+- AQI 301+: Consider closing schools or shifting to online learning; all outdoor activities cancelled.
+
+=============================================================
+4. EMERGENCY RESPONSE TRIGGERS (GRAP / NCAP)
+=============================================================
+
+Level 1 — AQI 201–300 (Poor)
+Trigger: City AQI crosses 200 for 3 consecutive days.
+Actions:
+- Increase mechanized road sweeping frequency to 2x daily on main roads.
+- Ban open burning of garbage and agricultural waste within city limits.
+- Deploy water sprinklers at construction sites generating dust.
+- Enhanced enforcement at known pollution hotspots (industrial clusters, construction sites).
+- Issue public advisory via SMS broadcast and social media.
+
+Level 2 — AQI 301–400 (Very Poor)
+Trigger: City AQI crosses 300.
+Actions:
+- All Level 1 actions continue.
+- Ban operation of diesel generators except hospitals and emergency services.
+- Restrict movement of older vehicles (pre-BS-IV) during peak hours (8 AM–6 PM).
+- Increase frequency of anti-dust campaigns at major construction sites.
+- Mandatory anti-smog guns at construction sites exceeding 20,000 sq.m.
+
+Level 3 — AQI 401–450 (Severe)
+Trigger: City AQI crosses 400.
+Actions:
+- All Level 1 and 2 actions continue.
+- Odd-Even vehicle scheme implementation.
+- Closure of brick kilns and hot mix plants within 30km radius.
+- Halt all non-essential construction activities.
+- Close schools for outdoor activities; advise work-from-home.
+- Emergency response teams deployed to conduct real-time source verification.
+
+Level 4 — AQI >450 (Severe+)
+Trigger: City AQI crosses 450.
+Actions:
+- All Level 1, 2, 3 actions continue.
+- Complete vehicle ban (except emergency and public transport).
+- All construction projects halted including essential.
+- Industries directed to reduce production by 50%; highly polluting units shut down.
+- Educational institutions closed; government offices encourage WFH.
+- Emergency health camps set up at multiple locations.
+- Direct coordination with hospitals to prepare for increased respiratory admissions.

@@ -1,0 +1,140 @@
+National Clean Air Programme (NCAP) — Guidelines and Action Framework
+Source: Ministry of Environment, Forest and Climate Change (MoEFCC), India
+Document ID: NCAP-2019-GUIDELINES
+
+=============================================================
+NATIONAL CLEAN AIR PROGRAMME (NCAP) — OVERVIEW
+=============================================================
+
+The National Clean Air Programme (NCAP) is a long-term, time-bound, national-level strategy to combat the air pollution problem across the country. It was launched in January 2019 with a target to achieve 20–30% reduction in PM2.5 and PM10 concentrations by 2024 (with 2017 as base year), later revised to 40% reduction by 2026.
+
+Key Features:
+- City-specific action plans for 131 non-attainment cities.
+- Identification of key sectors contributing to pollution (vehicles, industries, dust, open burning).
+- Multi-stakeholder engagement (ULBs, SPCBs, traffic police, industry).
+- Monitoring and evaluation framework using CAAQMS data.
+
+=============================================================
+NCAP — SECTOR-WISE ACTION PLANS
+=============================================================
+
+1. VEHICULAR SECTOR
+Targets:
+- Transition to BS-VI vehicles and fuels.
+- Phase out pre-BS-IV commercial vehicles from city roads.
+- Strengthen PUC (Pollution Under Control) certification system.
+- Promote electric vehicles (EVs): target 30% of new vehicle sales by 2030.
+- BRTS (Bus Rapid Transit) and multi-modal connectivity to reduce personal vehicle use.
+
+Actions for Cities:
+- Designate low-emission zones in city centers.
+- Restrict diesel taxis/autorickshaws; incentivize CNG/electric conversions.
+- Deploy enforcement teams at key entry/exit points for PUC checking.
+- Real-time vehicle count and emission estimates at major intersections.
+
+2. INDUSTRIAL SECTOR
+Targets:
+- All major industries (thermal, cement, steel, brick kilns) to meet revised NAAQS stack emission standards.
+- 100% monitoring via OCEMS (Online Continuous Emission Monitoring Systems) for large industries.
+- Technology upgrades for highly polluting small/medium industries.
+
+Actions for Cities:
+- Annual inspection and renewal of Consent-to-Operate (CTO) for all industries.
+- Immediate closure for industries operating without CTO or exceeding emission norms.
+- Stack emission testing of all industries in non-attainment cities at least once per year.
+- Brick kilns: mandatory adoption of zigzag technology; ban on traditional fixed-chimney kilns.
+
+3. DUST CONTROL (CONSTRUCTION AND ROADS)
+Targets:
+- Zero visible dust from construction sites and roads in the top 50 non-attainment cities.
+- 100% mechanized sweeping of arterial roads in non-attainment cities.
+
+Actions for Cities:
+- Registration of all construction sites ≥500 sq.m on the CPCB/CAQM portal.
+- Mandatory installation of anti-smog guns at sites ≥20,000 sq.m.
+- Water sprinklers at construction site boundaries; covered material storage.
+- Road-side dust suppression: daily water sprinkling, green belts, road side drains.
+- Capture and reuse of C&D (Construction and Demolition) waste at dedicated processing plants.
+
+4. OPEN BURNING
+Targets:
+- Zero instances of open burning of garbage, leaves, agricultural waste, and municipal solid waste.
+- Complete transition from open dumping to sanitary landfills or waste-to-energy.
+
+Actions for Cities:
+- Deployment of satellite-based fire detection (MODIS/VIIRS) for real-time monitoring.
+- Integration of fire alerts into enforcement systems for immediate ground action.
+- Awareness campaigns for farmers: crop residue management alternatives.
+- SHG involvement in collection and composting of agricultural residue.
+
+5. BIOMASS AND HOUSEHOLD BURNING
+Targets:
+- Transition of 5 crore households from biomass cooking to LPG/PNG by 2024.
+- Elimination of municipal waste burning in urban areas.
+
+Actions for Cities:
+- Ujjwala Yojana beneficiary tracking and refill support.
+- Community composting programs for organic waste.
+- Enforcement of Solid Waste Management Rules, 2016.
+
+=============================================================
+NCAP — ENFORCEMENT AND MONITORING FRAMEWORK
+=============================================================
+
+1. Real-Time Monitoring
+- Continuous Ambient Air Quality Monitoring Stations (CAAQMS): 1000+ stations across India.
+- Data published on CPCB CAMS portal in near-real-time.
+- City-level AQI bulletin published daily by CPCB.
+
+2. Performance Review
+- Quarterly review of city action plan progress by CPCB.
+- Annual ranking of NCAP cities based on PM2.5 reduction.
+- Cities achieving targets: eligible for Smart Cities and AMRUT funding.
+- Cities not achieving targets: enhanced scrutiny; possible suspension of grants.
+
+3. Citizen Grievance
+- NCAP grievance portal for citizens to report violations.
+- 24-hour control rooms in each non-attainment city.
+- Integration with national Clean Air Helpline.
+
+=============================================================
+FUNDING AND INCENTIVES
+=============================================================
+
+- 15th Finance Commission grants: Cities earmark 25% for air quality.
+- NCAP grants to non-attainment cities: ₹100–500 crore over 5 years based on population.
+- Green Finance: MoEFCC channels World Bank climate funds for EV infrastructure, clean cooking, industrial upgrades.
+
+=============================================================
+LEGAL AND REGULATORY BASIS
+=============================================================
+
+1. Environment Protection Act, 1986 — Primary authority for national air quality standards.
+2. Air (Prevention and Control of Pollution) Act, 1981 — SPCB establishment and powers.
+3. National Environmental Policy, 2006 — Framework for pollution control as national priority.
+4. NCAP Notification, 2019 — MoEFCC gazette notification establishing NCAP framework.
+5. NGT Orders on Non-Attainment Cities — Judicial oversight of NCAP implementation progress.
+
+=============================================================
+SPECIFIC ACTIONS FOR ENFORCEMENT AGENTS IN NON-ATTAINMENT CITIES
+=============================================================
+
+Priority 1: High-Contribution Sources (Based on Local Source Apportionment)
+- Identify top 5 source categories contributing >60% of PM2.5 locally.
+- Concentrate 80% of enforcement resources on those source categories.
+- Document inspections with GPS-tagged photographs and meter readings.
+
+Priority 2: Seasonal Compliance Drives
+- Winter (October–February): Focus on open burning, industrial stack emissions, vehicular emissions.
+- Summer (March–June): Focus on road dust, construction sites.
+- Monsoon (July–September): Focus on industrial effluent and waste management.
+
+Priority 3: Hotspot Management
+- Identify top 10 hotspot areas (highest AQI cells) using CAAQMS + model data.
+- Deploy dedicated enforcement teams to each hotspot for 30-day intensive campaigns.
+- Track AQI reduction post-enforcement to measure effectiveness.
+
+Priority 4: Inter-Agency Coordination
+- Monthly cross-agency review meetings (SPCB + Traffic + Municipal + Industries Dept).
+- Shared enforcement data on city pollution control platform.
+- Joint raids for complex violations (e.g., illegal brick kilns with vehicular transport).

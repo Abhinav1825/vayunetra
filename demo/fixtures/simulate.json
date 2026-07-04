@@ -1,0 +1,17 @@
+{
+  "delta_aqi_by_cell": {
+    "883da1a3a1fffff": -45,
+    "883da1a3a3fffff": -18,
+    "883da1b29a7ffff": -12
+  },
+  "people_protected": 28400,
+  "pm25_tonnes_avoided": 2.3,
+  "exposure_hours_reduced": 681600,
+  "intervention": {
+    "type": "construction_halt",
+    "description": "Halt construction at Sarai Kale Khan site + water sprinkling mandate",
+    "ward": "Ward 12 — Sarai Kale Khan"
+  },
+  "confidence": 0.81,
+  "generated_at": "2026-06-27T09:00:00Z"
+}

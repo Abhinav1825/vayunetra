@@ -1,0 +1,11 @@
+[
+  { "city_id": "delhi", "h3_cell": "883da11429fffff", "issued_at": "2026-06-27T06:00:00Z", "horizon_h": 24, "target_var": "pm25", "value": 168, "pi_low": 142, "pi_high": 196, "persistence_value": 151, "model_version": "lgbm-v1" },
+  { "city_id": "delhi", "h3_cell": "883da11429fffff", "issued_at": "2026-06-27T06:00:00Z", "horizon_h": 48, "target_var": "pm25", "value": 148, "pi_low": 120, "pi_high": 180, "persistence_value": 151, "model_version": "lgbm-v1" },
+  { "city_id": "delhi", "h3_cell": "883da11429fffff", "issued_at": "2026-06-27T06:00:00Z", "horizon_h": 72, "target_var": "pm25", "value": 126, "pi_low": 96, "pi_high": 158, "persistence_value": 151, "model_version": "lgbm-v1" },
+  { "city_id": "bengaluru", "h3_cell": "8860145b4bfffff", "issued_at": "2026-06-27T06:00:00Z", "horizon_h": 24, "target_var": "pm25", "value": 82, "pi_low": 64, "pi_high": 104, "persistence_value": 66, "model_version": "lgbm-v1" },
+  { "city_id": "bengaluru", "h3_cell": "8860145b4bfffff", "issued_at": "2026-06-27T06:00:00Z", "horizon_h": 48, "target_var": "pm25", "value": 76, "pi_low": 58, "pi_high": 98, "persistence_value": 66, "model_version": "lgbm-v1" },
+  { "city_id": "bengaluru", "h3_cell": "8860145b4bfffff", "issued_at": "2026-06-27T06:00:00Z", "horizon_h": 72, "target_var": "pm25", "value": 68, "pi_low": 50, "pi_high": 92, "persistence_value": 66, "model_version": "lgbm-v1" },
+  { "city_id": "mumbai", "h3_cell": "88608b0b6bfffff", "issued_at": "2026-06-27T06:00:00Z", "horizon_h": 24, "target_var": "pm25", "value": 96, "pi_low": 72, "pi_high": 124, "persistence_value": 82, "model_version": "lgbm-v1" },
+  { "city_id": "mumbai", "h3_cell": "88608b0b6bfffff", "issued_at": "2026-06-27T06:00:00Z", "horizon_h": 48, "target_var": "pm25", "value": 88, "pi_low": 66, "pi_high": 116, "persistence_value": 82, "model_version": "lgbm-v1" },
+  { "city_id": "mumbai", "h3_cell": "88608b0b6bfffff", "issued_at": "2026-06-27T06:00:00Z", "horizon_h": 72, "target_var": "pm25", "value": 78, "pi_low": 58, "pi_high": 106, "persistence_value": 82, "model_version": "lgbm-v1" }
+]
