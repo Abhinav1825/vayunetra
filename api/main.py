@@ -55,6 +55,15 @@ def fixture(name: str, default: Any = None) -> Any:
     return default if default is not None else []
 
 
+def fixture_rows(name: str, city: str | None = None, default: Any = None) -> Any:
+    """Load a fixture and filter list rows by city_id when available."""
+    rows = fixture(name, default)
+    if city and isinstance(rows, list):
+        city_rows = [r for r in rows if r.get("city_id") == city]
+        return city_rows if city_rows else rows
+    return rows
+
+
 def _db():
     """Supabase client for live reads (DEMO_MODE=false). Service-role, server-side only."""
     from core.supa import client
@@ -95,7 +104,7 @@ def aqi_current(
 ) -> dict:
     """Latest per-cell AQI measurements for a city."""
     if DEMO_MODE:
-        return ok(fixture("aqi_current"))
+        return ok(fixture_rows("aqi_current", city))
     rows = (
         _db().table("measurements")
         .select("h3_cell,ts,value,variable,confidence")
@@ -130,7 +139,7 @@ def attribution(
 ) -> dict:
     """Per-cell source attribution (the blame map)."""
     if DEMO_MODE:
-        data = fixture("attribution")
+        data = fixture_rows("attribution", city)
         if cell:
             data = [r for r in data if r.get("h3_cell") == cell]
         return ok(data)
@@ -170,7 +179,7 @@ def forecast(
 ) -> dict:
     """AQI forecasts with persistence baseline for comparison."""
     if DEMO_MODE:
-        data = fixture("forecast")
+        data = fixture_rows("forecast", city)
         if cell:
             data = [r for r in data if r.get("h3_cell") == cell]
         if horizon:
@@ -202,7 +211,7 @@ def enforcement_list(
 ) -> dict:
     """Ranked enforcement worklist for the city."""
     if DEMO_MODE:
-        data = fixture("enforcement")
+        data = fixture_rows("enforcement", city)
         if status:
             data = [r for r in data if r.get("status") == status]
         return ok(data[:limit])
@@ -231,6 +240,8 @@ def enforcement_dossier(rec_id: int) -> dict:
     Includes: rationale, regulatory citations, rubric score, suggested notice text,
     and (Stage 2, Sejal E6) satellite patch.
     """
+    if DEMO_MODE:
+        return ok(fixture("dossier", default={"rec_id": rec_id, "citations": [], "satellite_patch": None}))
     from agents.enforcement import build_dossier
     try:
         dossier = build_dossier(rec_id)
@@ -266,7 +277,7 @@ def advisory(
 ) -> dict:
     """Ward-level citizen health advisories in specified language."""
     if DEMO_MODE:
-        data = fixture("advisory")
+        data = fixture_rows("advisory", city)
         if ward:
             data = [r for r in data if r.get("ward_id") == ward]
         if lang:
@@ -285,6 +296,59 @@ def advisory(
     if lang:
         q = q.eq("language", lang)
     return ok(q.execute().data)
+
+
+# ---------------------------------------------------------------------------
+# Sejal Stage-1 static layers, mobility, comparison, and latency widgets
+# ---------------------------------------------------------------------------
+
+@app.get("/static-layers", tags=["data"])
+def static_layers(city: str = Query(..., description="City ID")) -> dict:
+    """OSM/WorldPop-style static layers: emission sources, roads, vulnerability."""
+    if DEMO_MODE:
+        data = fixture_rows("static_layers", city)
+        return ok(data[0] if isinstance(data, list) and data else data)
+    sources = _db().table("emission_sources").select("*").eq("city_id", city).execute().data
+    return ok({"city_id": city, "emission_sources": sources, "vulnerability": [], "roads": []})
+
+
+@app.get("/mobility", tags=["data"])
+def mobility(city: str = Query(..., description="City ID")) -> dict:
+    """Traffic proxy rows generated from OSM roads + time-of-day/day-of-week multipliers."""
+    if DEMO_MODE:
+        return ok(fixture_rows("mobility", city))
+    rows = (
+        _db().table("measurements")
+        .select("city_id,h3_cell,station_id,ts,variable,value,unit,source,confidence")
+        .eq("city_id", city)
+        .eq("variable", "traffic")
+        .order("ts", desc=True)
+        .limit(1000)
+        .execute()
+        .data
+    )
+    return ok(rows)
+
+
+@app.get("/comparison", tags=["data"])
+def comparison() -> dict:
+    """Agent 5 multi-city comparison: trends, signatures, and playbook recommendations."""
+    return ok(fixture("comparison", default={"summary": {}, "cities": []}))
+
+
+@app.get("/latency", tags=["system"])
+def latency_widget(city: Optional[str] = Query(None, description="City ID")) -> dict:
+    """Latest signal-to-action telemetry for the top-bar latency widget."""
+    if DEMO_MODE:
+        rows = fixture_rows("latency", city)
+        if city and isinstance(rows, list):
+            return ok(rows[0] if rows else {})
+        return ok(rows)
+    q = _db().table("action_traces").select("*").order("signal_ts", desc=True).limit(20)
+    if city:
+        q = q.eq("city_id", city)
+    rows = q.execute().data
+    return ok(rows[0] if city and rows else rows)
 
 
 # ---------------------------------------------------------------------------

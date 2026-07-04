@@ -1,0 +1,8 @@
+[
+  { "city_id": "delhi", "h3_cell": "883da11429fffff", "station_id": "delhi-road-1", "ts": "2026-06-27T08:00:00Z", "variable": "traffic", "value": 135, "unit": "index", "source": "osm_gtfs", "confidence": 0.72 },
+  { "city_id": "delhi", "h3_cell": "883da11467fffff", "station_id": "delhi-road-1", "ts": "2026-06-27T18:00:00Z", "variable": "traffic", "value": 145, "unit": "index", "source": "osm_gtfs", "confidence": 0.72 },
+  { "city_id": "bengaluru", "h3_cell": "8860145b4bfffff", "station_id": "bengaluru-road-1", "ts": "2026-06-27T08:00:00Z", "variable": "traffic", "value": 155.25, "unit": "index", "source": "osm_gtfs", "confidence": 0.72 },
+  { "city_id": "bengaluru", "h3_cell": "8860145b49fffff", "station_id": "bengaluru-road-1", "ts": "2026-06-27T18:00:00Z", "variable": "traffic", "value": 166.75, "unit": "index", "source": "osm_gtfs", "confidence": 0.72 },
+  { "city_id": "mumbai", "h3_cell": "88608b0b6bfffff", "station_id": "mumbai-road-1", "ts": "2026-06-27T08:00:00Z", "variable": "traffic", "value": 162, "unit": "index", "source": "osm_gtfs", "confidence": 0.72 },
+  { "city_id": "mumbai", "h3_cell": "88608b0b69fffff", "station_id": "mumbai-road-1", "ts": "2026-06-27T18:00:00Z", "variable": "traffic", "value": 174, "unit": "index", "source": "osm_gtfs", "confidence": 0.72 }
+]
