@@ -1,5 +1,11 @@
 [
-  { "h3_cell": "883da1a3a1fffff", "aqi": 312, "pm25": 168, "dominant_source": "construction_dust", "ts": "2026-06-27T09:00:00Z" },
-  { "h3_cell": "883da1a3a3fffff", "aqi": 248, "pm25": 121, "dominant_source": "traffic", "ts": "2026-06-27T09:00:00Z" },
-  { "h3_cell": "883da1a3a5fffff", "aqi": 96,  "pm25": 34,  "dominant_source": "transported", "ts": "2026-06-27T09:00:00Z" }
+  { "city_id": "delhi", "h3_cell": "883da11429fffff", "aqi": 312, "pm25": 168, "dominant_source": "construction_dust", "ts": "2026-06-27T09:00:00Z" },
+  { "city_id": "delhi", "h3_cell": "883da11467fffff", "aqi": 248, "pm25": 121, "dominant_source": "traffic", "ts": "2026-06-27T09:00:00Z" },
+  { "city_id": "delhi", "h3_cell": "883da1142dfffff", "aqi": 96, "pm25": 34, "dominant_source": "transported", "ts": "2026-06-27T09:00:00Z" },
+  { "city_id": "bengaluru", "h3_cell": "8860145b4bfffff", "aqi": 142, "pm25": 66, "dominant_source": "traffic", "ts": "2026-06-27T09:00:00Z" },
+  { "city_id": "bengaluru", "h3_cell": "8860145b49fffff", "aqi": 158, "pm25": 74, "dominant_source": "construction_dust", "ts": "2026-06-27T09:00:00Z" },
+  { "city_id": "bengaluru", "h3_cell": "8860145b41fffff", "aqi": 88, "pm25": 30, "dominant_source": "traffic", "ts": "2026-06-27T09:00:00Z" },
+  { "city_id": "mumbai", "h3_cell": "88608b0b6bfffff", "aqi": 176, "pm25": 82, "dominant_source": "traffic", "ts": "2026-06-27T09:00:00Z" },
+  { "city_id": "mumbai", "h3_cell": "88608b0b69fffff", "aqi": 204, "pm25": 102, "dominant_source": "construction_dust", "ts": "2026-06-27T09:00:00Z" },
+  { "city_id": "mumbai", "h3_cell": "88608b0b61fffff", "aqi": 119, "pm25": 52, "dominant_source": "transported", "ts": "2026-06-27T09:00:00Z" }
 ]

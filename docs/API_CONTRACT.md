@@ -30,6 +30,10 @@
 | GET | `/enforcement?city&date` | ranked enforcement recommendations | officer+ | Abhinav |
 | POST | `/enforcement/{id}/dossier` | cited evidence packet + satellite patch (E6) | officer+ | Abhinav |
 | GET | `/advisory?city&ward&lang` | localized citizen advisory | all | Abhinav |
+| GET | `/static-layers?city` | OSM/WorldPop-style sources, roads, vulnerability | all | Sejal |
+| GET | `/mobility?city` | traffic proxy measurements from OSM roads + time model | all | Sejal |
+| GET | `/comparison` | Agent 5 multi-city trends + playbook recommendations | all | Sejal |
+| GET | `/latency?city` | latest signal-to-action widget payload | all | Sejal |
 | POST | `/agent/query` | conversational orchestrator (NL → action) | officer+ | Abhinav |
 | POST | `/simulate` | what-if intervention → ΔAQI + people/₹/CO₂e (E3,E7) | officer+ | Abhinav(engine)+Sejal(UI) |
 | POST | `/optimize` | best intervention bundle under budget → top-3 (E5) | officer+ | Abhinav(engine)+Sejal(UI) |
