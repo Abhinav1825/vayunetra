@@ -1,59 +1,279 @@
-"""Dependency-free PDF generator for enforcement notices.  Owner: Abhinav lane.
+"""Professional, dependency-free PDF generator for enforcement notices.
 
-Renders the draft notice text (from ``_build_notice_text``) into a single-page
-A4 PDF using only the standard library — no reportlab/fpdf, so it runs on the
-Render backend without extra packages. Good enough for an officer-review draft.
+Renders the draft enforcement notice into a styled A4 document using only the
+Python standard library (no reportlab/fpdf) — so it runs on the Render backend
+with zero extra packages. Features:
+
+- Branded header band + accent rule
+- Metadata panel (reference / date / authority)
+- Bold section headings with accent underlines
+- Bullet lists
+- A light "DRAFT" watermark (it is an officer-review draft)
+- Footer with disclaimer + page number
+- Exact line wrapping using Adobe Helvetica font metrics
+- Multi-page flow with automatic page breaks
 """
 from __future__ import annotations
 
-import textwrap
+import re
+
+# --- Adobe AFM advance widths (per 1000 em) for printable ASCII 32..126 -------
+_HELV = [278, 278, 355, 556, 556, 889, 667, 191, 333, 333, 389, 584, 278, 333, 278, 278,
+         556, 556, 556, 556, 556, 556, 556, 556, 556, 556, 278, 278, 584, 584, 584, 556,
+         1015, 667, 667, 722, 722, 667, 611, 778, 722, 278, 500, 667, 556, 833, 722, 778,
+         667, 778, 722, 667, 611, 722, 667, 944, 667, 667, 611, 278, 278, 278, 469, 556,
+         333, 556, 556, 500, 556, 556, 278, 556, 556, 222, 222, 500, 222, 833, 556, 556,
+         556, 556, 333, 500, 278, 556, 500, 722, 500, 500, 500, 334, 260, 334, 584]
+_HELVB = [278, 333, 474, 556, 556, 889, 722, 238, 333, 333, 389, 584, 278, 333, 278, 278,
+          556, 556, 556, 556, 556, 556, 556, 556, 556, 556, 333, 333, 584, 584, 584, 611,
+          975, 722, 722, 722, 722, 667, 611, 778, 722, 278, 556, 722, 611, 833, 722, 778,
+          667, 778, 722, 667, 611, 722, 667, 944, 667, 667, 611, 333, 278, 333, 584, 556,
+          333, 556, 611, 556, 611, 556, 333, 611, 611, 278, 278, 556, 278, 889, 611, 611,
+          611, 611, 389, 556, 333, 611, 556, 778, 556, 556, 500, 389, 280, 389, 584]
+
+# Unicode punctuation -> latin-1/ASCII (the standard-14 fonts can't render — ' " etc.)
+_TRANS = {
+    "—": "-", "–": "-", "‒": "-", "−": "-",
+    "‘": "'", "’": "'", "“": '"', "”": '"',
+    "•": "-", "·": "-", "…": "...", " ": " ", "₹": "Rs ",
+}
+
+# Palette
+NAVY = (0.106, 0.161, 0.290)
+ACCENT = (0.16, 0.45, 0.75)
+WHITE = (1, 1, 1)
+DARK = (0.13, 0.13, 0.16)
+GRAY = (0.42, 0.42, 0.46)
+LIGHT = (0.955, 0.965, 0.980)
+RULE = (0.80, 0.82, 0.86)
+BORDER = (0.85, 0.87, 0.90)
 
 
-def _escape(s: str) -> str:
+def _ascii(s: str) -> str:
+    for k, v in _TRANS.items():
+        s = s.replace(k, v)
+    return s.encode("latin-1", "replace").decode("latin-1")
+
+
+def _char_w(ch: str, bold: bool) -> int:
+    o = ord(ch)
+    return (_HELVB if bold else _HELV)[o - 32] if 32 <= o <= 126 else 556
+
+
+def _text_w(s: str, size: float, bold: bool = False) -> float:
+    return sum(_char_w(c, bold) for c in s) * size / 1000.0
+
+
+def _wrap(text: str, size: float, max_w: float, bold: bool = False) -> list[str]:
+    words = text.split()
+    if not words:
+        return [""]
+    lines, cur = [], words[0]
+    for w in words[1:]:
+        if _text_w(cur + " " + w, size, bold) <= max_w:
+            cur += " " + w
+        else:
+            lines.append(cur)
+            cur = w
+    lines.append(cur)
+    return lines
+
+
+def _pdf_esc(s: str) -> str:
     return s.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
 
 
-def notice_pdf_bytes(text: str) -> bytes:
-    """Build a minimal, valid single-page A4 PDF from plain text."""
-    # Wrap on explicit newlines, then soft-wrap long lines to the page width.
-    lines: list[str] = []
-    for raw in text.split("\n"):
-        if raw.strip() == "":
-            lines.append("")
+def _parse(text: str):
+    """Split notice text into (title, [(label,value)] meta, [(heading,[body])] blocks)."""
+    lines = text.split("\n")
+    i, n = 0, len(lines)
+    while i < n and not lines[i].strip():
+        i += 1
+    title = lines[i].strip() if i < n else "ENFORCEMENT NOTICE"
+    i += 1
+    meta = []
+    while i < n and lines[i].strip():
+        m = re.match(r"^([A-Za-z][A-Za-z ]+):\s*(.*)$", lines[i])
+        if m:
+            meta.append((m.group(1), m.group(2)))
+        i += 1
+    blocks, head, body = [], None, []
+    def flush():
+        nonlocal head, body
+        if head is not None or body:
+            blocks.append((head, body))
+        head, body = None, []
+    while i < n:
+        s = lines[i].strip()
+        i += 1
+        if not s:
+            if body and body[-1] != "":
+                body.append("")
+            continue
+        if len(s) <= 40 and re.match(r"^[A-Z0-9][A-Z0-9 /&().,-]*:$", s):
+            flush()
+            head = s[:-1]
         else:
-            lines.extend(textwrap.wrap(raw, width=95) or [""])
+            body.append(s)
+    flush()
+    return title, meta, blocks
 
-    # Build the content stream: 11pt Helvetica, 14pt leading, top-left origin.
-    parts = ["BT", "/F1 11 Tf", "50 800 Td", "14 TL"]
-    for ln in lines:
-        safe = _escape(ln.encode("latin-1", "replace").decode("latin-1"))
-        parts.append(f"({safe}) Tj T*")
-    parts.append("ET")
-    content = "\n".join(parts).encode("latin-1", "replace")
 
-    objs = [
-        b"<< /Type /Catalog /Pages 2 0 R >>",
-        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] "
-        b"/Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>",
-        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
-        b"<< /Length " + str(len(content)).encode() + b" >>\nstream\n" + content + b"\nendstream",
-    ]
+class _Doc:
+    W, H, M = 595, 842, 50
+
+    def __init__(self):
+        self.pages, self.ops, self.y, self.pageno = [], [], self.H - self.M, 0
+
+    @property
+    def cw(self) -> float:
+        return self.W - 2 * self.M
+
+    def _watermark(self):
+        self.ops.append("BT /F2 92 Tf 0.930 0.930 0.945 rg "
+                        "0.7071 0.7071 -0.7071 0.7071 150 300 Tm (DRAFT) Tj ET")
+
+    def start_page(self):
+        self.pageno += 1
+        self.ops = []
+        self._watermark()
+        self.y = self.H - self.M
+
+    def rect(self, x, y, w, h, c):
+        self.ops.append(f"{c[0]:.3f} {c[1]:.3f} {c[2]:.3f} rg {x:.2f} {y:.2f} {w:.2f} {h:.2f} re f")
+
+    def box(self, x, y, w, h, c, lw=0.8):
+        self.ops.append(f"{lw} w {c[0]:.3f} {c[1]:.3f} {c[2]:.3f} RG {x:.2f} {y:.2f} {w:.2f} {h:.2f} re S")
+
+    def line(self, x1, x2, y, c, lw=1.0):
+        self.ops.append(f"{lw} w {c[0]:.3f} {c[1]:.3f} {c[2]:.3f} RG {x1:.2f} {y:.2f} m {x2:.2f} {y:.2f} l S")
+
+    def text(self, x, y, s, size, bold=False, color=DARK):
+        f = "F2" if bold else "F1"
+        self.ops.append(f"BT /{f} {size} Tf {color[0]:.3f} {color[1]:.3f} {color[2]:.3f} rg "
+                        f"1 0 0 1 {x:.2f} {y:.2f} Tm ({_pdf_esc(s)}) Tj ET")
+
+    def ensure(self, h):
+        if self.y - h < self.M + 46:
+            self._footer()
+            self.pages.append("\n".join(self.ops))
+            self.start_page()
+
+    def para(self, s, size=10.5, color=DARK, indent=0.0):
+        lead = size * 1.4
+        for ln in _wrap(s, size, self.cw - indent, False):
+            self.ensure(lead)
+            self.text(self.M + indent, self.y, ln, size, False, color)
+            self.y -= lead
+
+    def bullet(self, s, size=10.5):
+        lead = size * 1.4
+        lines = _wrap(s, size, self.cw - 16, False)
+        self.ensure(lead)
+        self.rect(self.M + 3, self.y + 2.6, 2.6, 2.6, ACCENT)
+        self.text(self.M + 14, self.y, lines[0], size, False, DARK)
+        self.y -= lead
+        for ln in lines[1:]:
+            self.ensure(lead)
+            self.text(self.M + 14, self.y, ln, size, False, DARK)
+            self.y -= lead
+
+    def _footer(self):
+        y = self.M - 4
+        self.line(self.M, self.W - self.M, y + 14, RULE, 0.6)
+        self.text(self.M, y, "VayuNetra AI  -  system-generated draft. Verify and authorise before official issuance.",
+                  7.5, False, GRAY)
+        pt = f"Page {self.pageno}"
+        self.text(self.W - self.M - _text_w(pt, 7.5), y, pt, 7.5, False, GRAY)
+
+    def finish(self):
+        self._footer()
+        self.pages.append("\n".join(self.ops))
+
+
+def notice_pdf_bytes(text: str) -> bytes:
+    """Render an enforcement-notice PDF (bytes) from plain/structured notice text."""
+    title, meta, blocks = _parse(_ascii(text))
+    d = _Doc()
+    d.start_page()
+
+    # Header band + accent stripe
+    d.rect(0, d.H - 76, d.W, 76, NAVY)
+    d.rect(0, d.H - 80, d.W, 4, ACCENT)
+    d.text(d.M, d.H - 40, "VAYUNETRA", 22, True, WHITE)
+    d.text(d.M, d.H - 58, "AI-Powered Air Quality Enforcement", 9.5, False, (0.80, 0.85, 0.92))
+    tag = "OFFICIAL NOTICE"
+    d.text(d.W - d.M - _text_w(tag, 9, True), d.H - 40, tag, 9, True, (0.80, 0.85, 0.92))
+
+    # Title
+    d.y = d.H - 76 - 34
+    d.text((d.W - _text_w(title, 17, True)) / 2, d.y, title, 17, True, NAVY)
+    d.y -= 12
+    d.line(d.M, d.W - d.M, d.y, RULE, 0.8)
+    d.y -= 22
+
+    # Metadata panel
+    if meta:
+        boxh = len(meta) * 18 + 14
+        top = d.y
+        d.rect(d.M, top - boxh, d.cw, boxh, LIGHT)
+        d.box(d.M, top - boxh, d.cw, boxh, BORDER)
+        ry = top - 17
+        for label, val in meta:
+            d.text(d.M + 14, ry, label.upper(), 8.5, True, ACCENT)
+            d.text(d.M + 150, ry, val, 10, False, DARK)
+            ry -= 18
+        d.y = top - boxh - 24
+
+    # Sections
+    for head, body in blocks:
+        if head:
+            d.ensure(26)
+            d.text(d.M, d.y, head.upper(), 11, True, NAVY)
+            d.line(d.M, d.M + min(_text_w(head.upper(), 11, True), 130), d.y - 4, ACCENT, 1.4)
+            d.y -= 19
+        for ln in body:
+            if ln == "":
+                d.y -= 5
+            elif ln.startswith("- "):
+                d.bullet(ln[2:])
+            elif ln.lower().startswith("this is a system-generated"):
+                d.y -= 4
+                d.para(ln, 9, GRAY)
+            else:
+                d.para(ln)
+        d.y -= 9
+
+    d.finish()
+    return _assemble(d.pages)
+
+
+def _assemble(pages: list[str]) -> bytes:
+    objs: dict[int, bytes] = {}
+    objs[1] = b"<< /Type /Catalog /Pages 2 0 R >>"
+    kids = " ".join(f"{5 + 2 * k} 0 R" for k in range(len(pages)))
+    objs[2] = f"<< /Type /Pages /Kids [{kids}] /Count {len(pages)} >>".encode()
+    objs[3] = b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>"
+    objs[4] = b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>"
+    for k, content in enumerate(pages):
+        page_no, c_no = 5 + 2 * k, 6 + 2 * k
+        objs[page_no] = (
+            f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] "
+            f"/Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents {c_no} 0 R >>"
+        ).encode()
+        body = content.encode("latin-1", "replace")
+        objs[c_no] = b"<< /Length " + str(len(body)).encode() + b" >>\nstream\n" + body + b"\nendstream"
 
     out = b"%PDF-1.4\n"
-    offsets: list[int] = []
-    for i, body in enumerate(objs, start=1):
-        offsets.append(len(out))
-        out += f"{i} 0 obj\n".encode() + body + b"\nendobj\n"
-
+    offsets: dict[int, int] = {}
+    for num in sorted(objs):
+        offsets[num] = len(out)
+        out += f"{num} 0 obj\n".encode() + objs[num] + b"\nendobj\n"
     xref_pos = len(out)
-    size = len(objs) + 1
-    out += b"xref\n0 " + str(size).encode() + b"\n"
-    out += b"0000000000 65535 f \n"
-    for off in offsets:
-        out += ("%010d 00000 n \n" % off).encode()
-    out += (
-        b"trailer\n<< /Size " + str(size).encode() + b" /Root 1 0 R >>\n"
-        b"startxref\n" + str(xref_pos).encode() + b"\n%%EOF"
-    )
+    size = max(objs) + 1
+    out += b"xref\n0 " + str(size).encode() + b"\n0000000000 65535 f \n"
+    for num in range(1, size):
+        out += ("%010d 00000 n \n" % offsets[num]).encode()
+    out += (b"trailer\n<< /Size " + str(size).encode() + b" /Root 1 0 R >>\n"
+            b"startxref\n" + str(xref_pos).encode() + b"\n%%EOF")
     return out
