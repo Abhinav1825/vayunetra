@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api } from "./api";
+import { api, downloadFile } from "./api";
 
 type Rec = {
   id: number;
@@ -13,10 +13,22 @@ type Rec = {
 
 export default function EnforcementPanel({ city }: { city: string }) {
   const [rows, setRows] = useState<Rec[]>([]);
+  const [busy, setBusy] = useState<number | null>(null);
 
   useEffect(() => {
     api<Rec[]>(`/enforcement?city=${city}&limit=5`).then(setRows).catch(() => setRows([]));
   }, [city]);
+
+  async function getNotice(id: number) {
+    setBusy(id);
+    try {
+      await downloadFile(`/enforcement/${id}/notice.pdf`, `notice_${id}.pdf`);
+    } catch {
+      /* swallow — the button just re-enables so the user can retry */
+    } finally {
+      setBusy(null);
+    }
+  }
 
   return (
     <div className="rounded-lg bg-white/95 p-3 text-sm shadow">
@@ -32,6 +44,13 @@ export default function EnforcementPanel({ city }: { city: string }) {
             <div className="mt-1 text-xs text-gray-500">
               {Math.round(r.contribution * 100)}% contribution · {r.pop_exposed.toLocaleString()} exposed
             </div>
+            <button
+              onClick={() => getNotice(r.id)}
+              disabled={busy === r.id}
+              className="mt-2 rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700 disabled:opacity-50"
+            >
+              {busy === r.id ? "Generating…" : "Notice PDF"}
+            </button>
           </div>
         ))}
         {rows.length === 0 && <div className="text-xs text-gray-500">No active recommendations</div>}

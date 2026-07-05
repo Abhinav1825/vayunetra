@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-from fastapi import FastAPI, HTTPException, Query, Request, Depends, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Query, Request, Depends, WebSocket, WebSocketDisconnect, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
@@ -294,6 +294,24 @@ def enforcement_dossier(rec_id: int, db=Depends(get_db)) -> dict:
         return ok(dossier)
     except Exception as e:
         return err("dossier_error", str(e))
+
+
+@app.get("/enforcement/{rec_id}/notice.pdf", tags=["enforcement"])
+def enforcement_notice_pdf(rec_id: int, db=Depends(get_db)) -> Response:
+    """Downloadable PDF of the draft enforcement notice (for officer review)."""
+    from agents.notice_pdf import notice_pdf_bytes
+    if DEMO_MODE:
+        dossier = fixture("dossier", default={})
+        text = dossier.get("suggested_notice_text") or "ENFORCEMENT NOTICE\n\n(demo mode)"
+    else:
+        from agents.enforcement import build_dossier
+        dossier = build_dossier(rec_id)
+        text = dossier.get("suggested_notice_text") or f"ENFORCEMENT NOTICE\n\nRecommendation #{rec_id}"
+    return Response(
+        content=notice_pdf_bytes(text),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="notice_{rec_id}.pdf"'},
+    )
 
 
 @app.post("/enforcement/{rec_id}/status", tags=["enforcement"])

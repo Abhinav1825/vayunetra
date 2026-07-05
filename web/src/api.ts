@@ -23,3 +23,19 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   }
   return env.data;
 }
+
+/** Fetch a binary endpoint (e.g. a PDF) with auth and trigger a browser download. */
+export async function downloadFile(path: string, filename: string): Promise<void> {
+  const headers = new Headers();
+  if (TOKEN) headers.set("Authorization", `Bearer ${TOKEN}`);
+  const res = await fetch(`${BASE}${path}`, { headers });
+  if (!res.ok) throw new Error(`Download failed (${res.status})`);
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}

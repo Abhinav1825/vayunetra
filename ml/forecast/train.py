@@ -73,6 +73,19 @@ def backtest(wide: pd.DataFrame, horizon_h: int, n_folds: int = 3) -> dict:
     }
 
 
+def _finite(x) -> float | None:
+    """Coerce to a finite float, else None (Postgres NULL).
+
+    NaN/inf break JSON serialization on insert (and sparse-city cells can
+    produce them), so anything non-finite becomes NULL rather than crashing.
+    """
+    try:
+        f = float(x)
+    except (TypeError, ValueError):
+        return None
+    return f if (f == f and f not in (float("inf"), float("-inf"))) else None
+
+
 def write_forecasts(wide: pd.DataFrame, horizon_h: int) -> int:
     """Train on all samples, predict the latest row per cell, write to `forecasts`."""
     X, y, _, feature_cols = make_supervised(wide, horizon_h)
@@ -83,20 +96,27 @@ def write_forecasts(wide: pd.DataFrame, horizon_h: int) -> int:
     X_pred = latest[feature_cols]
     preds = {name: _fit_predict(X, y, X_pred, a)[1] for name, a in QUANTILES.items()}
     issued_at = datetime.now(timezone.utc).isoformat()
+    y_mean = float(y.mean())
     rows = []
     for i, (_, r) in enumerate(latest.iterrows()):
+        mid = _finite(preds["value"][i])
+        if mid is None:
+            continue  # no central estimate for this cell -> skip (keeps NaN out of the payload)
         # enforce pi_low <= value <= pi_high (independent quantile models can cross on small data)
-        lo, mid, hi = sorted(
-            (float(preds["pi_low"][i]), float(preds["value"][i]), float(preds["pi_high"][i]))
-        )
+        bounds = sorted(v for v in (_finite(preds["pi_low"][i]), mid, _finite(preds["pi_high"][i])) if v is not None)
+        lo, hi = bounds[0], bounds[-1]
+        hour = r.get("hour")
+        clim_val = _finite(clim.get(int(hour), y_mean)) if pd.notna(hour) else y_mean
         rows.append({
             "city_id": r["city_id"], "h3_cell": r["h3_cell"], "issued_at": issued_at,
             "horizon_h": horizon_h, "target_var": "pm25",
             "value": mid, "pi_low": lo, "pi_high": hi,
-            "persistence_value": float(r["pm25"]),
-            "climatology_value": float(clim.get(int(r["hour"]), y.mean())),
+            "persistence_value": _finite(r["pm25"]),
+            "climatology_value": clim_val if clim_val is not None else y_mean,
             "model_version": MODEL_VERSION,
         })
+    if not rows:
+        return 0
     # idempotent: replace this city+horizon's forecasts instead of accumulating
     city_id = str(latest["city_id"].iloc[0])
     c = client()
