@@ -47,6 +47,29 @@ def render_twiml(advisory: dict) -> str:
     )
 
 
+def _recipients() -> list[str]:
+    """All configured recipients: TWILIO_TO_NUMBERS (comma-separated) or TWILIO_TO_NUMBER."""
+    many = os.getenv("TWILIO_TO_NUMBERS", "")
+    nums = [n.strip() for n in many.split(",") if n.strip()]
+    if not nums:
+        single = os.getenv("TWILIO_TO_NUMBER", "").strip()
+        if single:
+            nums = [single]
+    return nums
+
+
+def broadcast_ivr_calls(advisory: dict) -> list[dict]:
+    """Place the advisory call to every configured recipient; never let one failure stop the rest."""
+    results: list[dict] = []
+    for num in _recipients():
+        try:
+            r = make_ivr_call(advisory, num)
+            results.append({"to": num, "status": r.get("status", "queued"), "sid": r.get("sid")})
+        except Exception as e:  # noqa: BLE001 — report per-number, keep calling the others
+            results.append({"to": num, "status": "error", "detail": str(e)[:200]})
+    return results
+
+
 def make_ivr_call(advisory: dict, to_number: str | None = None) -> dict:
     """Place a real Twilio voice call for one advisory.
 

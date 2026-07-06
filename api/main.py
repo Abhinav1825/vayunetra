@@ -411,13 +411,17 @@ def advisory_broadcast(body: dict, db=Depends(get_db)) -> dict:
     else:
         results["telegram"] = {"status": "skipped", "detail": "TELEGRAM_BOT_TOKEN/CHAT_ID not configured"}
 
-    # IVR — only when explicitly requested (it rings a real phone)
+    # IVR — only when explicitly requested (it rings real phones).
+    # Fans out to every number in TWILIO_TO_NUMBERS (fallback: TWILIO_TO_NUMBER).
     if body.get("ivr"):
-        if os.getenv("TWILIO_ACCOUNT_SID") and os.getenv("TWILIO_PHONE_NUMBER") and os.getenv("TWILIO_TO_NUMBER"):
+        if os.getenv("TWILIO_ACCOUNT_SID") and os.getenv("TWILIO_PHONE_NUMBER") and (
+            os.getenv("TWILIO_TO_NUMBERS") or os.getenv("TWILIO_TO_NUMBER")
+        ):
             try:
-                from channels.ivr import make_ivr_call
-                r = make_ivr_call(adv)
-                results["ivr"] = {"status": "calling", "sid": r.get("sid")}
+                from channels.ivr import broadcast_ivr_calls
+                calls = broadcast_ivr_calls(adv)
+                sent = sum(1 for c in calls if c["status"] != "error")
+                results["ivr"] = {"status": f"calling {sent}/{len(calls)} numbers", "calls": calls}
             except Exception as e:  # noqa: BLE001
                 results["ivr"] = {"status": "error", "detail": str(e)[:200]}
         else:
