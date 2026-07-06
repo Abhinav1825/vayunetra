@@ -38,9 +38,12 @@ app = FastAPI(
         "Multi-agent system: Attribution · Forecast · Enforcement · Advisory · Multi-City."
     ),
 )
+# Locked to the deployed frontend + local dev; extend via ALLOWED_ORIGINS (comma-separated).
+_DEFAULT_ORIGINS = "https://vayunetra-aqi.vercel.app,http://localhost:5173,http://localhost:4173"
+ALLOWED_ORIGINS = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", _DEFAULT_ORIGINS).split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # TODO Abhinav: lock to Vercel origin in prod
+    allow_origins=ALLOWED_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -363,6 +366,66 @@ def advisory(
     return ok(q.execute().data)
 
 
+# In-memory broadcast throttle: the button is on a public page, so cap real-world
+# side effects (Telegram messages / phone calls) to one broadcast per window.
+_BROADCAST_WINDOW_S = 300
+_last_broadcast: dict[str, float] = {}
+
+
+@app.post("/advisory/broadcast", tags=["advisory"])
+def advisory_broadcast(body: dict, db=Depends(get_db)) -> dict:
+    """Push the latest advisory through the live channels (Telegram + optional IVR).
+
+    Demo-facing: lets the UI trigger a real multi-channel delivery on stage.
+    Rate-limited server-side; each channel reports ok / skipped(reason) / error.
+    """
+    city = body.get("city", "delhi")
+    now = time.time()
+    if now - _last_broadcast.get(city, 0.0) < _BROADCAST_WINDOW_S:
+        wait = int(_BROADCAST_WINDOW_S - (now - _last_broadcast[city]))
+        return err("rate_limited", f"Broadcast already sent recently — retry in {wait}s")
+    _last_broadcast[city] = now
+
+    # Pick the freshest English advisory for the city (fixture in DEMO_MODE).
+    if DEMO_MODE:
+        rows = [r for r in fixture_rows("advisory", city) if (r.get("language") or "en") == "en"]
+    else:
+        rows = (
+            _db().table("advisories").select("*").eq("city_id", city)
+            .eq("language", "en").order("issued_at", desc=True).limit(1).execute().data
+        )
+    if not rows:
+        return err("no_advisory", f"No advisory available for {city}")
+    adv = rows[0]
+
+    results: dict[str, Any] = {"advisory": {"ward_id": adv.get("ward_id"), "message": adv.get("message")}}
+
+    # Telegram
+    if os.getenv("TELEGRAM_BOT_TOKEN") and os.getenv("TELEGRAM_CHAT_ID"):
+        try:
+            from channels.telegram import send_telegram_advisory
+            r = asyncio.run(send_telegram_advisory(adv))
+            results["telegram"] = {"status": "sent", "message_id": r.get("message_id")}
+        except Exception as e:  # noqa: BLE001 — never let one channel kill the broadcast
+            results["telegram"] = {"status": "error", "detail": str(e)[:200]}
+    else:
+        results["telegram"] = {"status": "skipped", "detail": "TELEGRAM_BOT_TOKEN/CHAT_ID not configured"}
+
+    # IVR — only when explicitly requested (it rings a real phone)
+    if body.get("ivr"):
+        if os.getenv("TWILIO_ACCOUNT_SID") and os.getenv("TWILIO_PHONE_NUMBER") and os.getenv("TWILIO_TO_NUMBER"):
+            try:
+                from channels.ivr import make_ivr_call
+                r = make_ivr_call(adv)
+                results["ivr"] = {"status": "calling", "sid": r.get("sid")}
+            except Exception as e:  # noqa: BLE001
+                results["ivr"] = {"status": "error", "detail": str(e)[:200]}
+        else:
+            results["ivr"] = {"status": "skipped", "detail": "Twilio not configured on this server"}
+
+    return ok(results)
+
+
 # ---------------------------------------------------------------------------
 # Sejal Stage-1 static layers, mobility, comparison, and latency widgets
 # ---------------------------------------------------------------------------
@@ -587,7 +650,8 @@ async def websocket_live(ws: WebSocket, city: str = "delhi"):
             await ws.close(code=1008, reason="Invalid token format")
             return
         role = payload.get("role", "")
-        if role not in ("authenticated", "service_role", "admin"):
+        # "anon" allowed: /live only pushes public read-only data (RLS still applies).
+        if role not in ("anon", "authenticated", "service_role", "admin"):
             await ws.close(code=1008, reason="Insufficient role privileges")
             return
 

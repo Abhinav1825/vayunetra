@@ -1,0 +1,8 @@
+[
+  { "city_id": "delhi", "name": "Delhi", "state": "DL", "center": [77.21, 28.61],
+    "bbox": [76.84, 28.40, 77.35, 28.88], "languages": ["hi", "en"], "active": true },
+  { "city_id": "bengaluru", "name": "Bengaluru", "state": "KA", "center": [77.59, 12.97],
+    "bbox": [77.45, 12.83, 77.75, 13.14], "languages": ["kn", "en"], "active": true },
+  { "city_id": "mumbai", "name": "Mumbai", "state": "MH", "center": [72.87, 19.07],
+    "bbox": [72.77, 18.89, 72.99, 19.27], "languages": ["mr", "en", "hi"], "active": true }
+]

@@ -7,6 +7,24 @@ A multi-agent **action engine** that fuses CAAQMS ground sensors, Sentinel-5P/MO
 mobility feeds, weather, and land use into: **source attribution → hyperlocal forecast →
 enforcement intelligence → citizen advisory → multi-city comparison.**
 
+## 🌐 Live demo
+| | |
+|---|---|
+| **App (Vercel)** | https://vayunetra-aqi.vercel.app |
+| **API (Render)** | https://vayunetra-c8i8.onrender.com/health |
+| **Try it** | Click any hexagon on the blame map → that cell's full story (blame → forecast → act). *action* tab → Evidence dossier (RAG citations) → Notice PDF. *citizen* tab → advisories in 4 languages + live Telegram/IVR broadcast. |
+
+**Live right now:** 3 cities (Delhi · Bengaluru · Mumbai) · 170k+ real measurements (OpenAQ + Open-Meteo + Sentinel-5P) · 138 attribution cells · 63 quantile forecasts · 144 advisories in 4 languages · 18 RAG-cited enforcement recommendations · signal→action latency traced end-to-end.
+
+**Honest numbers** (walk-forward backtests on live data, 3 folds — regenerate via [eval/evaluate.ipynb](eval/evaluate.ipynb)):
+| City | skill vs persistence (24/48/72h) | skill vs climatology (24/48/72h) |
+|---|---|---|
+| Delhi (n=27k) | +4% / +4% / +8% | **+31%** / +18% / +16% |
+| Bengaluru | **+15%** / +17% / +9% | +14% / +5% / −7% |
+| Mumbai | **+15%** / +18% / **+30%** | +3% / +3% / +4% |
+
+*skill = 1 − RMSE_model / RMSE_baseline. We show both baselines, including the weak spots — real model, real data, no demo props.*
+
 ## 📚 Docs (read in this order)
 1. [docs/PRD.md](docs/PRD.md) — product requirements (the "what" and "why")
 2. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — buildable blueprint (the "how")

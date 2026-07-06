@@ -1,0 +1,12 @@
+{
+  "summary": {
+    "cities_compared": 3,
+    "highest_risk_city": "delhi",
+    "shared_pattern": "construction dust and traffic dominate the Stage-1 snapshot"
+  },
+  "cities": [
+    { "city_id": "delhi", "name": "Delhi", "current_pm25": 107.67, "forecast_24h_pm25": 168, "trend": "deteriorating", "dominant_source": "construction_dust", "signature_match": "construction-winter", "playbook": ["pre-wet exposed soil", "inspect large construction sites", "route debris trucks away from schools"] },
+    { "city_id": "bengaluru", "name": "Bengaluru", "current_pm25": 56.67, "forecast_24h_pm25": 82, "trend": "deteriorating", "dominant_source": "traffic", "signature_match": "traffic-signature", "playbook": ["stagger freight windows", "increase bus priority on high-NO2 corridors", "deploy anti-idling checks"] },
+    { "city_id": "mumbai", "name": "Mumbai", "current_pm25": 78.67, "forecast_24h_pm25": 96, "trend": "deteriorating", "dominant_source": "traffic", "signature_match": "traffic-signature", "playbook": ["stagger freight windows", "increase bus priority on high-NO2 corridors", "deploy anti-idling checks"] }
+  ]
+}

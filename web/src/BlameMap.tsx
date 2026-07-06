@@ -5,7 +5,7 @@ import { H3HexagonLayer } from "@deck.gl/geo-layers";
 import { api } from "./api";
 import { colorFor, dominantSource, satColor, type Shares } from "./sources";
 
-type AttrCell = {
+export type AttrCell = {
   h3_cell: string;
   shares: Shares;
   confidence: number;
@@ -56,10 +56,14 @@ export default function BlameMap({
   city,
   center,
   mode,
+  selected,
+  onSelect,
 }: {
   city: string;
   center: [number, number];
   mode: MapMode;
+  selected?: string | null;
+  onSelect?: (cell: AttrCell | null) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -92,17 +96,23 @@ export default function BlameMap({
       data: cells,
       getHexagon: (d) => d.h3_cell,
       getFillColor: (d) => (mode === "satellite" ? satColor(d.evidence?.no2_sat ?? 0) : colorFor(d.shares)),
-      getLineColor: [255, 255, 255, 90],
+      getLineColor: (d) => (d.h3_cell === selected ? [30, 64, 175, 255] : [255, 255, 255, 90]),
+      getLineWidth: (d) => (d.h3_cell === selected ? 3 : 1),
       lineWidthMinPixels: 1,
+      lineWidthUnits: "pixels",
       extruded: false,
       pickable: true,
-      updateTriggers: { getFillColor: mode },
+      onClick: ({ object }: { object?: AttrCell }) => {
+        onSelect?.(object && object.h3_cell !== selected ? object : null);
+        return true;
+      },
+      updateTriggers: { getFillColor: mode, getLineColor: selected, getLineWidth: selected },
     });
     overlayRef.current?.setProps({
       layers: [layer],
       getTooltip: ({ object }: { object?: AttrCell }) => (object ? tooltip(object, mode) : null),
     });
-  }, [cells, mode]);
+  }, [cells, mode, selected, onSelect]);
 
   return <div ref={containerRef} className="h-full w-full" />;
 }

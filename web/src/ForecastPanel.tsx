@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "./api";
+import { FORECAST_SKILL, SKILL_ASOF, pct } from "./metrics";
 
 type FC = {
   h3_cell: string;
@@ -21,6 +22,8 @@ export default function ForecastPanel({ city }: { city: string }) {
   useEffect(() => {
     api<FC[]>(`/forecast?city=${city}&horizon=${horizon}`).then(setRows).catch(() => setRows([]));
   }, [city, horizon]);
+
+  const skill = FORECAST_SKILL[city];
 
   const avg = rows.length ? Math.round(rows.reduce((s, r) => s + r.value, 0) / rows.length) : null;
   const avgPers = rows.length
@@ -44,6 +47,16 @@ export default function ForecastPanel({ city }: { city: string }) {
           </button>
         ))}
       </div>
+
+      {skill && (
+        <div
+          className="mt-2 rounded bg-indigo-50 px-2 py-1 text-[10px] leading-4 text-indigo-800"
+          title={`Walk-forward backtest (3 folds, n=${skill.n}) on live data, ${SKILL_ASOF}. skill = 1 − RMSE_model/RMSE_baseline`}
+        >
+          backtested skill @{horizon}h: <b>{pct(skill.vsPersistence[horizon])}</b> vs persistence ·{" "}
+          <b>{pct(skill.vsClimatology[horizon])}</b> vs climatology
+        </div>
+      )}
 
       {avg !== null ? (
         <div className="mt-2 text-xs text-gray-700">

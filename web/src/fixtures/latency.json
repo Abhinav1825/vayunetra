@@ -1,0 +1,5 @@
+[
+  { "city_id": "delhi", "signal_ts": "2026-06-27T08:00:00Z", "attribution_ts": "2026-06-27T08:01:12Z", "forecast_ts": "2026-06-27T08:02:05Z", "enforcement_ts": "2026-06-27T08:03:30Z", "advisory_ts": "2026-06-27T08:04:15Z", "total_latency_ms": 255000 },
+  { "city_id": "bengaluru", "signal_ts": "2026-06-27T08:00:00Z", "attribution_ts": "2026-06-27T08:01:00Z", "forecast_ts": "2026-06-27T08:01:52Z", "enforcement_ts": "2026-06-27T08:02:44Z", "advisory_ts": "2026-06-27T08:03:20Z", "total_latency_ms": 200000 },
+  { "city_id": "mumbai", "signal_ts": "2026-06-27T08:00:00Z", "attribution_ts": "2026-06-27T08:01:18Z", "forecast_ts": "2026-06-27T08:02:10Z", "enforcement_ts": "2026-06-27T08:03:05Z", "advisory_ts": "2026-06-27T08:03:56Z", "total_latency_ms": 236000 }
+]

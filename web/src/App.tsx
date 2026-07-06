@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
-import BlameMap, { type MapMode } from "./BlameMap";
+import BlameMap, { type AttrCell, type MapMode } from "./BlameMap";
 import ForecastPanel from "./ForecastPanel";
 import { SOURCE_COLORS } from "./sources";
 import { api } from "./api";
+import AqiHeader from "./AqiHeader";
+import CellStoryPanel from "./CellStoryPanel";
 import LatencyWidget from "./LatencyWidget";
 import EnforcementPanel from "./EnforcementPanel";
 import CitizenPanel from "./CitizenPanel";
@@ -31,47 +33,92 @@ export default function App() {
   const [active, setActive] = useState("delhi");
   const [mode, setMode] = useState<MapMode>("blame");
   const [tab, setTab] = useState<Tab>("action");
+  const [cell, setCell] = useState<AttrCell | null>(null);
+  const [fallback, setFallback] = useState(false);
 
   useEffect(() => {
     api<City[]>("/cities").then(setCities).catch(() => setCities([]));
   }, []);
 
+  // Demo insurance: api.ts dispatches this when the backend is unreachable
+  // and bundled fixtures were served instead.
+  useEffect(() => {
+    const on = () => setFallback(true);
+    window.addEventListener("api-fallback", on);
+    return () => window.removeEventListener("api-fallback", on);
+  }, []);
+
+  useEffect(() => setCell(null), [active]); // clear story on city switch
+
   const city = cities.find((c) => c.city_id === active);
   const center = toLngLat(city?.center);
 
   return (
-    <div className="relative h-full w-full overflow-hidden bg-slate-100">
-      <BlameMap city={active} center={center} mode={mode} />
+    <div className="relative h-full w-full overflow-y-auto bg-slate-100 lg:overflow-hidden">
+      {/* Map — in-flow on mobile, full-bleed on desktop */}
+      <div className="relative z-0 h-[46vh] w-full lg:absolute lg:inset-0 lg:h-full">
+        <BlameMap city={active} center={center} mode={mode} selected={cell?.h3_cell} onSelect={setCell} />
 
-      <div className="absolute left-4 right-4 top-4 flex flex-wrap items-start justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2 rounded-lg bg-white/95 p-2 shadow">
-          <div className="px-2 text-sm font-semibold">VayuNetra</div>
-          <select
-            className="rounded border px-2 py-1 text-sm"
-            value={active}
-            onChange={(e) => setActive(e.target.value)}
-          >
-            {cities.length === 0 && <option value="delhi">Delhi</option>}
-            {cities.map((c) => (
-              <option key={c.city_id} value={c.city_id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-          {(["action", "citizen", "compare"] as Tab[]).map((t) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`rounded px-3 py-1 text-sm ${tab === t ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-700"}`}
+        {/* Header overlays the map on all breakpoints */}
+        <div className="absolute left-2 right-2 top-2 z-10 flex flex-wrap items-start justify-between gap-2 lg:left-4 lg:right-4 lg:top-4">
+          <div className="flex flex-wrap items-center gap-2 rounded-lg bg-white/95 p-2 shadow">
+            <div className="px-2 text-sm font-semibold">VayuNetra</div>
+            <select
+              className="rounded border px-2 py-1 text-sm"
+              value={active}
+              onChange={(e) => setActive(e.target.value)}
             >
-              {t}
-            </button>
-          ))}
+              {cities.length === 0 && <option value="delhi">Delhi</option>}
+              {cities.map((c) => (
+                <option key={c.city_id} value={c.city_id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+            {(["action", "citizen", "compare"] as Tab[]).map((t) => (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className={`rounded px-3 py-1 text-sm ${tab === t ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-700"}`}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-start gap-2">
+            <AqiHeader city={active} />
+            <LatencyWidget city={active} />
+          </div>
         </div>
-        <LatencyWidget city={active} />
+
+        {fallback && (
+          <div className="absolute inset-x-2 top-20 z-10 mx-auto max-w-md rounded-md bg-amber-100 px-3 py-1.5 text-center text-xs text-amber-900 shadow lg:top-24">
+            ⚠ backend waking up — showing bundled demo snapshot.{" "}
+            <button className="underline" onClick={() => window.location.reload()}>
+              retry
+            </button>
+            <button className="ml-2 text-amber-500" onClick={() => setFallback(false)}>
+              ✕
+            </button>
+          </div>
+        )}
+
+        <div className="absolute bottom-1 right-2 z-10 text-[9px] text-gray-500 lg:hidden">scroll for panels ↓</div>
       </div>
 
-      <div className="absolute bottom-4 left-4 top-24 w-72 space-y-3 overflow-auto pr-1">
+      {/* Left rail (desktop) / first stack (mobile) */}
+      <div className="relative z-10 space-y-3 p-3 lg:absolute lg:bottom-4 lg:left-4 lg:top-24 lg:w-72 lg:overflow-auto lg:p-0 lg:pr-1">
+        {cell && (
+          <CellStoryPanel
+            city={active}
+            cell={cell}
+            onClose={() => setCell(null)}
+            onAct={() => {
+              setTab("action");
+              setCell(null);
+            }}
+          />
+        )}
         <div className="rounded-lg bg-white/95 p-3 text-sm shadow">
           <div className="font-semibold">Map Layers</div>
           <div className="mt-2 flex gap-1">
@@ -96,6 +143,7 @@ export default function App() {
                   <span>{k.replace("_", " ")}</span>
                 </div>
               ))}
+              <div className="pt-1 text-[10px] text-gray-400">tip: click a hexagon for its full story</div>
             </div>
           ) : (
             <div className="mt-3 text-xs text-gray-600">
@@ -108,7 +156,8 @@ export default function App() {
         <CityIntelPanel city={active} />
       </div>
 
-      <div className="absolute bottom-4 right-4 top-24 w-96 space-y-3 overflow-auto pr-1">
+      {/* Right rail (desktop) / second stack (mobile) */}
+      <div className="relative z-10 space-y-3 p-3 pt-0 lg:absolute lg:bottom-4 lg:right-4 lg:top-24 lg:w-96 lg:overflow-auto lg:p-0 lg:pr-1">
         {tab === "action" && <EnforcementPanel city={active} />}
         {tab === "citizen" && <CitizenPanel city={active} languages={city?.languages} />}
         {tab === "compare" && <ComparativePanel onSelectCity={setActive} />}
