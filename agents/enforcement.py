@@ -312,6 +312,36 @@ def run_enforcement(
         if existing is None or share > existing.get("share", 0):
             cell_dominant[h3] = {**row, "city_id": city_id}
 
+    # Per-category rows indexed by cell, for spatial (nearest-cell) matching
+    rows_by_cat_cell: dict[str, dict[str, dict]] = {}
+    for row in attribution_data:
+        cat, h3 = row.get("source_category"), row.get("h3_cell", "")
+        if cat and h3:
+            rows_by_cat_cell.setdefault(cat, {})[h3] = row
+
+    def _nearest_attr(source_cell: str | None, category: str) -> Optional[dict]:
+        """The attribution row for this category at the source's OWN nearest cell.
+
+        Previously every source inherited the city-wide dominant share for its
+        category, so unrelated sites all claimed the same (often huge) number.
+        """
+        cat_rows = rows_by_cat_cell.get(category) or {}
+        if not cat_rows:
+            return None
+        if source_cell in cat_rows:
+            return cat_rows[source_cell]
+        if not source_cell:
+            return None
+        try:
+            from core.spatial.h3_utils import cell_to_latlng
+            slat, slng = cell_to_latlng(source_cell)
+            return min(
+                cat_rows.values(),
+                key=lambda r: (lambda la, ln: (la - slat) ** 2 + (ln - slng) ** 2)(*cell_to_latlng(r["h3_cell"])),
+            )
+        except Exception:  # noqa: BLE001 — malformed cell id -> no spatial match
+            return None
+
     # Match sources to cells
     recs: list[EnforcementRec] = []
     source_types_seen: set[str] = set()
@@ -330,18 +360,23 @@ def run_enforcement(
         }
         source_category = cat_map.get(source_type, "other")
 
-        # Find the best matching attribution row for this source's category
-        best_attr = None
-        best_share = 0.0
-        for row in attribution_data:
-            if row.get("source_category") == source_category and row.get("share", 0) > best_share:
-                best_attr = row
-                best_share = row["share"]
-
+        # Prefer the attribution at the source's own location (OSM rows carry h3_cell);
+        # fall back to the city-wide dominant row for the category.
+        best_attr = _nearest_attr(attrs.get("h3_cell"), source_category)
         if best_attr is None:
-            # Fall back to first attribution row
+            best_share = 0.0
+            for row in attribution_data:
+                if row.get("source_category") == source_category and row.get("share", 0) > best_share:
+                    best_attr = row
+                    best_share = row["share"]
+        if best_attr is None:
             best_attr = attribution_data[0] if attribution_data else {}
-            best_share = best_attr.get("share", 0.1)
+        best_share = best_attr.get("share", 0.1)
+
+        # A source whose category contributes ~nothing at its location is not
+        # an enforcement candidate — emitting "contributes 0%" destroys trust.
+        if best_share < 0.02:
+            continue
 
         h3_cell = best_attr.get("h3_cell", "")
         confidence = best_attr.get("confidence", 0.7)
@@ -379,7 +414,10 @@ def run_enforcement(
         from core.supa import client
         db = client()
         rows = [r.to_dict() for r in recs]
-        db.table("enforcement_recs").insert(rows).execute()
+        # idempotent: replace this city's worklist instead of appending duplicates
+        db.table("enforcement_recs").delete().eq("city_id", city_id).execute()
+        if rows:
+            db.table("enforcement_recs").insert(rows).execute()
         print(f"[enforcement] Wrote {len(rows)} recommendations to Supabase.")
 
     return recs

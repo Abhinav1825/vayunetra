@@ -26,13 +26,15 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           DATA_GOV_IN_API_KEY: ${{ secrets.DATA_GOV_IN_API_KEY }}
           OPENAQ_API_KEY: ${{ secrets.OPENAQ_API_KEY }}
+        # --push is what actually persists rows — without it this job fetches
+        # summaries and discards them (measurements went stale for 3 days).
         run: |
-          python -m connectors.openaq --city delhi || true
-          python -m connectors.openaq --city bengaluru || true
-          python -m connectors.openaq --city mumbai || true
-          python -m connectors.openmeteo --city delhi || true
-          python -m connectors.openmeteo --city bengaluru || true
-          python -m connectors.openmeteo --city mumbai || true
+          python -m connectors.openaq --city delhi --days 2 --push || true
+          python -m connectors.openaq --city bengaluru --days 2 --push || true
+          python -m connectors.openaq --city mumbai --days 2 --push || true
+          python -m connectors.openmeteo --city delhi --push || true
+          python -m connectors.openmeteo --city bengaluru --push || true
+          python -m connectors.openmeteo --city mumbai --push || true
       - name: Keep-alive ping (prevents Supabase project pause)
         env:
           DEMO_MODE: "false"
@@ -80,6 +82,16 @@ jobs:
           python -m connectors.osm_sources --city bengaluru --push || true
           sleep 30
           python -m connectors.osm_sources --city mumbai --push || true
+      - name: Refresh forecasts + attribution (model outputs must track the data)
+        env:
+          DEMO_MODE: "false"
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          for c in delhi bengaluru mumbai; do
+            python -m ml.forecast.train --city $c --write || true
+            python -m ml.attribution.attribute --city $c --write || true
+          done
       - name: Run multi-agent enforcement pipeline for all cities
         env:
           DEMO_MODE: "false"
@@ -95,3 +107,11 @@ jobs:
               state = run_query(city_id=city, query='daily scheduled pipeline')
               print(f'{city}: {len(state.get(\"enforcement\") or [])} enforcement recs, latency={state.get(\"latency_ms\", 0)}ms')
           "
+      - name: Refresh citizen advisories from the new forecasts
+        env:
+          DEMO_MODE: "false"
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          LLM_PROVIDER: "gemini"
+        run: python scripts/refresh_advisories.py || true

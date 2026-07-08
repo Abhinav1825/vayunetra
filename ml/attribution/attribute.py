@@ -25,6 +25,8 @@ from .signatures import calibrate_references, signature_shares
 POLLUTANTS = ["pm25", "pm10", "no2", "so2", "co", "o3", "fire", "no2_sat"]
 METHOD = "signature-v1"
 METHOD_HYBRID = "hybrid-gbm-shap-v2"
+METHOD_SHRUNK = "signature-citymean-v1"
+SHRINK_WEIGHT = 0.5   # marker-less cells: 50% city hybrid mean + 50% own signature
 
 
 def latest_pollutants(long_df: pd.DataFrame) -> tuple[dict[str, dict], pd.Timestamp]:
@@ -66,12 +68,29 @@ def _apply_hybrid(
     wide = build_wide(long_df)
     hybrid, r2 = apportion_cells(wide, sig_by_cell)
 
+    # City-level hybrid mean: the shrinkage target for cells without local markers.
+    # A fixed "transported" baseline made every sensor-less cell identical; shrinking
+    # toward the city's ML apportionment (modulated by each cell's own satellite/ratio
+    # signature) is both more defensible and spatially varied.
+    from .signatures import CATEGORIES
+    city_mean = {
+        c: sum(ap.shares.get(c, 0.0) for ap in hybrid.values()) / len(hybrid)
+        for c in CATEGORIES
+    }
+
     upgraded: list[dict] = []
     for row in rows:
         cell = row["h3_cell"]
         ap = hybrid.get(cell)
         if ap is None:
-            upgraded.append(row)  # cell too sparse -> keep the signature row
+            sig_share = row["share"]
+            shrunk = SHRINK_WEIGHT * city_mean.get(row["source_category"], 0.0) + (1 - SHRINK_WEIGHT) * sig_share
+            upgraded.append({
+                **row,
+                "share": round(shrunk, 4),
+                "method_version": METHOD_SHRUNK,
+                "evidence": {**row["evidence"], "shrunk_toward": "city_hybrid_mean"},
+            })
             continue
         upgraded.append({
             **row,
@@ -80,8 +99,23 @@ def _apply_hybrid(
             "method_version": METHOD_HYBRID,
             "evidence": {**row["evidence"], "shap_drivers": ap.shap_drivers, "model_r2": round(r2, 3)},
         })
+
+    # renormalise + recompute confidence for the shrunk cells (signature semantics)
+    by_cell: dict[str, list[dict]] = {}
+    for r in upgraded:
+        if r["method_version"] == METHOD_SHRUNK:
+            by_cell.setdefault(r["h3_cell"], []).append(r)
+    for cell_rows in by_cell.values():
+        total = sum(r["share"] for r in cell_rows) or 1.0
+        for r in cell_rows:
+            r["share"] = round(r["share"] / total, 4)
+        conf = round(min(0.95, max(0.30, max(r["share"] for r in cell_rows))), 3)
+        for r in cell_rows:
+            r["confidence"] = conf
+
     n_upgraded = len({r["h3_cell"] for r in upgraded if r["method_version"] == METHOD_HYBRID})
-    print(f"  hybrid GBM+SHAP: upgraded {n_upgraded} cells (holdout R2={r2:.2f})")
+    print(f"  hybrid GBM+SHAP: upgraded {n_upgraded} cells (holdout R2={r2:.2f}); "
+          f"{len(by_cell)} marker-less cells shrunk toward city mean")
     return upgraded, METHOD_HYBRID
 
 

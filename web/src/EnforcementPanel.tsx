@@ -1,8 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { cellToLatLng } from "h3-js";
 import { api, downloadFile } from "./api";
 
 type Rec = {
   id: number;
+  h3_cell?: string;
   priority_score: number;
   contribution: number;
   pop_exposed: number;
@@ -10,6 +12,19 @@ type Rec = {
   status: string;
   rubric_score?: { total?: number };
 };
+
+/** Rough km between two H3 cells (equirectangular — fine at city scale). */
+function cellKm(a: string, b: string): number | null {
+  try {
+    const [la1, ln1] = cellToLatLng(a);
+    const [la2, ln2] = cellToLatLng(b);
+    const x = (ln2 - ln1) * Math.cos(((la1 + la2) / 2) * (Math.PI / 180));
+    const y = la2 - la1;
+    return Math.sqrt(x * x + y * y) * 111.32;
+  } catch {
+    return null;
+  }
+}
 
 type Citation = { rule?: string; url?: string; excerpt?: string; similarity?: number };
 
@@ -22,7 +37,7 @@ type Dossier = {
   suggested_notice_text?: string;
 };
 
-export default function EnforcementPanel({ city }: { city: string }) {
+export default function EnforcementPanel({ city, focusCell }: { city: string; focusCell?: string | null }) {
   const [rows, setRows] = useState<Rec[] | null>(null);
   const [open, setOpen] = useState<number | null>(null);
   const [dossier, setDossier] = useState<Dossier | null>(null);
@@ -31,8 +46,17 @@ export default function EnforcementPanel({ city }: { city: string }) {
   useEffect(() => {
     setRows(null);
     setOpen(null);
-    api<Rec[]>(`/enforcement?city=${city}&limit=5`).then(setRows).catch(() => setRows([]));
+    api<Rec[]>(`/enforcement?city=${city}&limit=8`).then(setRows).catch(() => setRows([]));
   }, [city]);
+
+  // With a focused hexagon, closest actions come first — the story's step 3.
+  const ordered = useMemo(() => {
+    if (!rows) return null;
+    if (!focusCell) return rows;
+    return rows
+      .map((r) => ({ ...r, km: r.h3_cell ? cellKm(focusCell, r.h3_cell) : null }))
+      .sort((a, b) => (a.km ?? 1e9) - (b.km ?? 1e9));
+  }, [rows, focusCell]);
 
   function toggleDossier(id: number) {
     if (open === id) {
@@ -57,8 +81,15 @@ export default function EnforcementPanel({ city }: { city: string }) {
 
   return (
     <div className="rounded-lg bg-white/95 p-3 text-sm shadow">
-      <div className="font-semibold">Enforcement Worklist</div>
-      {rows === null ? (
+      <div className="flex items-center justify-between">
+        <div className="font-semibold">Enforcement Worklist</div>
+        {focusCell && (
+          <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">
+            nearest to selected cell first
+          </span>
+        )}
+      </div>
+      {ordered === null ? (
         <div className="mt-2 space-y-2">
           {[0, 1, 2].map((i) => (
             <div key={i} className="h-16 animate-pulse rounded-md bg-gray-100" />
@@ -66,11 +97,24 @@ export default function EnforcementPanel({ city }: { city: string }) {
         </div>
       ) : (
         <div className="mt-2 space-y-2">
-          {rows.map((r) => (
-            <div key={r.id} className="rounded-md border border-gray-200 p-2">
+          {ordered.map((r: Rec & { km?: number | null }) => (
+            <div
+              key={r.id}
+              className={`rounded-md border p-2 ${
+                focusCell && r.h3_cell === focusCell ? "border-blue-400 bg-blue-50/50" : "border-gray-200"
+              }`}
+            >
               <div className="flex items-center justify-between gap-2">
                 <span className="font-medium">Priority {Math.round(r.priority_score * 100)}</span>
-                <span className="text-xs text-gray-500">rubric {r.rubric_score?.total ?? "--"}/10</span>
+                <span className="flex items-center gap-1.5 text-xs text-gray-500">
+                  {focusCell && r.h3_cell === focusCell && (
+                    <span className="rounded bg-blue-600 px-1 py-0.5 text-[9px] font-semibold text-white">📍 this cell</span>
+                  )}
+                  {focusCell && r.h3_cell !== focusCell && typeof r.km === "number" && (
+                    <span className="text-[10px] text-gray-400">~{r.km < 1 ? "<1" : Math.round(r.km)} km</span>
+                  )}
+                  rubric {r.rubric_score?.total ?? "--"}/10
+                </span>
               </div>
               <div className="mt-1 text-xs text-gray-700">{r.rationale}</div>
               <div className="mt-1 text-xs text-gray-500">
@@ -128,7 +172,7 @@ export default function EnforcementPanel({ city }: { city: string }) {
               )}
             </div>
           ))}
-          {rows.length === 0 && <div className="text-xs text-gray-500">No active recommendations</div>}
+          {ordered.length === 0 && <div className="text-xs text-gray-500">No active recommendations</div>}
         </div>
       )}
     </div>

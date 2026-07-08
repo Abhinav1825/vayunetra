@@ -113,10 +113,7 @@ export default function App() {
             city={active}
             cell={cell}
             onClose={() => setCell(null)}
-            onAct={() => {
-              setTab("action");
-              setCell(null);
-            }}
+            onAct={() => setTab("action")} // keep the cell focused — enforcement sorts by it
           />
         )}
         <div className="rounded-lg bg-white/95 p-3 text-sm shadow">
@@ -158,7 +155,7 @@ export default function App() {
 
       {/* Right rail (desktop) / second stack (mobile) */}
       <div className="relative z-10 space-y-3 p-3 pt-0 lg:absolute lg:bottom-4 lg:right-4 lg:top-24 lg:w-96 lg:overflow-auto lg:p-0 lg:pr-1">
-        {tab === "action" && <EnforcementPanel city={active} />}
+        {tab === "action" && <EnforcementPanel city={active} focusCell={cell?.h3_cell ?? null} />}
         {tab === "citizen" && <CitizenPanel city={active} languages={city?.languages} />}
         {tab === "compare" && <ComparativePanel onSelectCity={setActive} />}
       </div>

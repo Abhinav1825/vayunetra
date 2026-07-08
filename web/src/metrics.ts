@@ -2,6 +2,10 @@
 // Source: walk-forward backtests (3 folds) via `python -m ml.forecast.train --city <c>`
 // run against the live Supabase data on 2026-07-06. Regenerate with eval/evaluate.ipynb.
 // skill = 1 − RMSE_model / RMSE_baseline  (higher is better; 0 = no better than baseline)
+//
+// NOTE: these are POINT-IN-TIME SNAPSHOTS (see SKILL_ASOF below, shown in the UI
+// tooltip). They drift as new data lands; re-run the backtests and update here —
+// or replace with a /metrics endpoint if the drift ever matters more than a badge.
 
 export type CitySkill = {
   n: number; // backtest samples @24h

@@ -73,6 +73,74 @@ def backtest(wide: pd.DataFrame, horizon_h: int, n_folds: int = 3) -> dict:
     }
 
 
+NOMINAL_COVERAGE = 0.8   # we serve q0.1–q0.9 bands
+
+
+def _cqr_models_and_q(Xtr: pd.DataFrame, ytr: pd.Series):
+    """Conformalized Quantile Regression (Romano et al. 2019).
+
+    Fit the quantile models on the first 75% of the training window, compute
+    conformity scores E = max(lo−y, y−hi) on the last 25% (calibration split),
+    and return the models plus the coverage-restoring band adjustment Q =
+    quantile(E, nominal). Serving [lo−Q, hi+Q] gives ~nominal coverage —
+    raw q0.1/q0.9 LightGBM bands measured only 48–63% real coverage.
+    """
+    import numpy as np
+
+    fit_n = int(len(Xtr) * 0.75)
+    Xfit, yfit = Xtr.iloc[:fit_n], ytr.iloc[:fit_n]
+    Xcal, ycal = Xtr.iloc[fit_n:], ytr.iloc[fit_n:]
+    lo_model, lo_cal = _fit_predict(Xfit, yfit, Xcal, QUANTILES["pi_low"])
+    hi_model, hi_cal = _fit_predict(Xfit, yfit, Xcal, QUANTILES["pi_high"])
+    scores = np.maximum(lo_cal - ycal.to_numpy(), ycal.to_numpy() - hi_cal)
+    q = float(np.quantile(scores, NOMINAL_COVERAGE)) if len(scores) else 0.0
+    return lo_model, hi_model, max(0.0, q)
+
+
+def pi_coverage_backtest(wide: pd.DataFrame, horizon_h: int, n_folds: int = 3) -> dict:
+    """Empirical coverage of the served (CQR-calibrated) [pi_low, pi_high] band.
+
+    Reports both the raw quantile-model coverage and the conformalized coverage,
+    so the calibration's effect is visible and honest.
+    """
+    import numpy as np
+
+    X, y, meta, _ = make_supervised(wide, horizon_h)
+    n = len(X)
+    if n < 60:
+        return {"horizon_h": horizon_h, "n": n, "coverage": None, "note": "insufficient data"}
+    order = meta.sort_values("ts").index
+    X, y = X.loc[order].reset_index(drop=True), y.loc[order].reset_index(drop=True)
+
+    chunk = n // (n_folds + 1)
+    raw_cov, cqr_cov, width, total = 0, 0, 0.0, 0
+    for i in range(n_folds):
+        te0 = chunk * (i + 1)
+        te1 = chunk * (i + 2) if i < n_folds - 1 else n
+        Xtr, ytr, Xte, yte = X.iloc[:te0], y.iloc[:te0], X.iloc[te0:te1], y.iloc[te0:te1]
+        if len(Xte) == 0:
+            continue
+        lo_model, hi_model, q = _cqr_models_and_q(Xtr, ytr)
+        lo = np.asarray(lo_model.predict(Xte))
+        hi = np.asarray(hi_model.predict(Xte))
+        lo, hi = np.minimum(lo, hi), np.maximum(lo, hi)   # quantile crossing guard
+        yv = yte.to_numpy()
+        raw_cov += int(((yv >= lo) & (yv <= hi)).sum())
+        lo_c, hi_c = lo - q, hi + q
+        cqr_cov += int(((yv >= lo_c) & (yv <= hi_c)).sum())
+        width += float((hi_c - lo_c).mean()) * len(Xte)
+        total += len(Xte)
+
+    return {
+        "horizon_h": horizon_h,
+        "n": total,
+        "coverage_raw": round(raw_cov / total, 3) if total else None,
+        "coverage_cqr": round(cqr_cov / total, 3) if total else None,
+        "nominal": NOMINAL_COVERAGE,
+        "mean_width_ugm3": round(width / total, 1) if total else None,
+    }
+
+
 def _finite(x) -> float | None:
     """Coerce to a finite float, else None (Postgres NULL).
 
@@ -94,7 +162,11 @@ def write_forecasts(wide: pd.DataFrame, horizon_h: int) -> int:
     clim = y.groupby(X["hour"]).mean()   # climatology by hour-of-day (for side-by-side storage)
     latest = wide.sort_values("ts").groupby("h3_cell").tail(1)
     X_pred = latest[feature_cols]
-    preds = {name: _fit_predict(X, y, X_pred, a)[1] for name, a in QUANTILES.items()}
+    # median from the full fit; bands via CQR so real coverage ≈ the nominal 80%
+    preds = {"value": _fit_predict(X, y, X_pred, QUANTILES["value"])[1]}
+    lo_model, hi_model, q = _cqr_models_and_q(X, y)
+    preds["pi_low"] = lo_model.predict(X_pred) - q
+    preds["pi_high"] = hi_model.predict(X_pred) + q
     issued_at = datetime.now(timezone.utc).isoformat()
     y_mean = float(y.mean())
     rows = []
@@ -130,7 +202,7 @@ def write_forecasts(wide: pd.DataFrame, horizon_h: int) -> int:
     return len(rows)
 
 
-def run(city_id: str, horizons=(24, 48, 72), write: bool = False) -> None:
+def run(city_id: str, horizons=(24, 48, 72), write: bool = False, coverage: bool = False) -> None:
     long_df = pd.DataFrame(load_measurements(city_id))
     print(f"loaded {len(long_df)} measurements for {city_id}")
     wide = build_feature_table(long_df)
@@ -140,6 +212,10 @@ def run(city_id: str, horizons=(24, 48, 72), write: bool = False) -> None:
             f"  h={h:>2}h  n={r.get('n')} folds={r.get('folds')}  "
             f"skill vs persistence={r.get('skill_vs_persistence')}  vs climatology={r.get('skill_vs_climatology')}"
         )
+        if coverage:
+            c = pi_coverage_backtest(wide, h)
+            print(f"        PI coverage: raw={c.get('coverage_raw')} -> CQR={c.get('coverage_cqr')} "
+                  f"(nominal {c.get('nominal')}) mean width={c.get('mean_width_ugm3')} µg/m³")
         if write:
             print(f"        wrote {write_forecasts(wide, h)} forecasts")
 
@@ -148,8 +224,9 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--city", default="delhi")
     ap.add_argument("--write", action="store_true", help="write forecasts to Supabase")
+    ap.add_argument("--coverage", action="store_true", help="also report PI empirical coverage")
     args = ap.parse_args()
-    run(args.city, write=args.write)
+    run(args.city, write=args.write, coverage=args.coverage)
 
 
 if __name__ == "__main__":

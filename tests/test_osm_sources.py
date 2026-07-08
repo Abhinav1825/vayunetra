@@ -56,3 +56,13 @@ def test_caps_per_type():
     elements = [_el(i, {"landuse": "construction", "name": f"Site {i}"}) for i in range(20)]
     rows = rows_from_elements("mumbai", elements)
     assert len(rows) == 8  # CAP_PER_TYPE["construction"]
+
+
+def test_water_infrastructure_excluded():
+    elements = [
+        _el(1, {"landuse": "industrial", "name": "Vrishabhavathi Valley 150MLD Sewage Treatment Plant"}),
+        _el(2, {"landuse": "industrial", "name": "Okhla Wastewater Facility"}),
+        _el(3, {"landuse": "industrial", "name": "Trombay Thermal Power Station"}),
+    ]
+    names = [r["name"] for r in rows_from_elements("delhi", elements)]
+    assert names == ["Trombay Thermal Power Station"]  # water infra never blames air

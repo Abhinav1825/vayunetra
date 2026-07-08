@@ -51,6 +51,11 @@ _SIGNIFICANT = (
     "metro", "landfill", "dumping", "factory", "works",
 )
 
+# Water/sewage infrastructure is tagged `industrial` in OSM but pollutes water,
+# not air — it must never appear on a PM2.5 enforcement worklist.
+_EXCLUDE = ("sewage", "sewerage", "wastewater", "waste water", "water treatment",
+            "effluent", "pumping station", "stp ", " stp", "mld")
+
 
 def _score(el: dict, name: str) -> int:
     """Rank OSM elements so real zones beat mis-tagged corner shops before capping."""
@@ -145,6 +150,9 @@ def rows_from_elements(city_id: str, elements: list[dict], h3_res: int = 8) -> l
             if stype != "waste_burn":  # only landfills may be unnamed in OSM
                 continue
             name = f"Landfill site (OSM {el.get('type', 'way')}/{el.get('id')})"
+        low = f" {name.lower()} "
+        if any(w in low for w in _EXCLUDE):
+            continue  # water infrastructure — not an air-pollution source
         candidates.append((_score(el, name), el, stype, name))
     candidates.sort(key=lambda c: -c[0])
 
