@@ -209,14 +209,27 @@ def _generate_rationale(
     source_category: str,
     citations: list[dict],
 ) -> str:
-    """Generate a human-readable enforcement rationale string."""
+    """Generate a human-readable enforcement rationale string.
+
+    Careful claim: the attribution share belongs to the CATEGORY at that cell
+    (e.g. "construction dust: 28.6%"), and the site is the registered source of
+    that category there — saying "Site X contributes 28.6%" would over-attribute
+    a whole category to one facility.
+    """
     pct = round(share * 100, 1)
     source_name = source.get("name", "Unknown source")
     source_type = source.get("type", source_category)
+    cat_label = {
+        "construction_dust": "Construction dust",
+        "industrial": "Industrial emissions",
+        "biomass_burning": "Waste/biomass burning",
+        "traffic": "Traffic",
+    }.get(source_category, source_category.replace("_", " ").capitalize())
 
     rationale_parts = [
-        f"{source_name} ({source_type}) contributes approximately {pct}% of PM2.5 in this cell,",
-        f"exposing an estimated {pop_exposed:,} residents.",
+        f"{cat_label} contributes approximately {pct}% of PM2.5 in this cell "
+        f"(~{pop_exposed:,} residents exposed);",
+        f"{source_name} is the registered {source_type.replace('_', ' ')} source at this location.",
     ]
 
     if source_type == "construction":
