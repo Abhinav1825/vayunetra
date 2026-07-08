@@ -25,6 +25,10 @@ import pandas as pd
 from .signatures import CATEGORIES
 
 # marker feature -> source category (the apportionment mass)
+# Known limitation: pm10_pm25_ratio has PM2.5 in its denominator, so it softly
+# encodes the target (PM10 itself is NOT a feature, so the target is not
+# recoverable). Coarse-fraction markers are standard receptor-model practice;
+# the signature-prior blend further dampens any circularity.
 SOURCE_MARKERS: dict[str, str] = {
     "no2": "traffic",
     "co": "traffic",
@@ -42,6 +46,7 @@ CONDITION_FEATURES = [
 ]
 
 MIN_SAMPLES = 400          # below this, hybrid isn't trustworthy -> signature fallback
+MIN_HOLDOUT_R2 = 0.15      # a model with no out-of-sample skill must not assign ML blame
 OTHER_FLOOR = 0.05         # small unexplained-mass floor so shares never claim 100% certainty
 BLEND_WEIGHT = 0.6         # hybrid share = 0.6 * shap + 0.4 * signature prior
 RECENT_HOURS = 72          # apportion over the trailing window per cell
@@ -177,6 +182,10 @@ def apportion_cells(
         raise ValueError(f"too few samples for GBM apportionment ({len(X)} < {MIN_SAMPLES})")
 
     model, r2 = _fit_gbm(X, y)
+    if r2 < MIN_HOLDOUT_R2:
+        # SHAP from a model that can't predict out-of-sample is noise dressed
+        # as ML — keep the transparent chemistry priors instead.
+        raise ValueError(f"holdout R2 too low for trustworthy apportionment ({r2:.2f} < {MIN_HOLDOUT_R2})")
     explainer = shap.TreeExplainer(model)
 
     cutoff = wide["ts"].max() - pd.Timedelta(hours=RECENT_HOURS)

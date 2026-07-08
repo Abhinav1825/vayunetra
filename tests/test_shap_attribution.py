@@ -74,3 +74,11 @@ def test_thin_data_raises_for_fallback():
     wide = build_wide(long_df)
     with pytest.raises(ValueError):
         apportion_cells(wide, {})
+
+
+def test_unpredictable_target_raises_r2_gate():
+    # random PM2.5: the model has no out-of-sample skill -> ML blame refused
+    long_df = _synthetic_long(no2_driven=False)
+    wide = build_wide(long_df)
+    with pytest.raises(ValueError, match="R2"):
+        apportion_cells(wide, {})
