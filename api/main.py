@@ -536,14 +536,27 @@ class SimulateBody(BaseModel):
 
 @app.post("/simulate", tags=["stage2"])
 def simulate(body: SimulateBody, db=Depends(get_db)) -> dict:
-    """What-if intervention simulator (E3 — Stage 2 engine, stub in Stage 1)."""
-    # Stage 1: return demo fixture
-    return ok(fixture("simulate", default={
-        "delta_aqi_by_cell": {},
-        "people_protected": 0,
-        "pm25_tonnes_avoided": 0,
-        "confidence": 0,
-    }))
+    """What-if intervention simulator (E3) — live counterfactual over
+    attribution shares × forecasts (ml.simulator), fixture in DEMO_MODE."""
+    if DEMO_MODE:
+        return ok(fixture("simulate", default={
+            "delta_aqi_by_cell": {},
+            "people_protected": 0,
+            "pm25_tonnes_avoided": 0,
+            "confidence": 0,
+        }))
+    from ml.simulator import simulate_intervention
+    try:
+        return ok(simulate_intervention(
+            city_id=body.city,
+            intervention_type=body.intervention_type,
+            target_cells=body.target_cells,
+            horizon_h=body.horizon_h,
+        ))
+    except ValueError as e:
+        return err("bad_request", str(e))
+    except Exception as e:  # noqa: BLE001
+        return err("simulate_error", str(e))
 
 
 # ---------------------------------------------------------------------------

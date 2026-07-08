@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "./api";
 import { aqiCategory, pm25ToAqi } from "./aqi";
 import { SOURCE_COLORS, dominantSource, type Shares } from "./sources";
-import type { AttrCell } from "./BlameMap";
+import { DRIVER_LABELS, type AttrCell } from "./BlameMap";
 
 type FC = { h3_cell: string; horizon_h: number; value: number; pi_low: number; pi_high: number };
 
@@ -68,6 +68,13 @@ export default function CellStoryPanel({
             );
           })}
         </div>
+        {(ev.shap_drivers ?? []).length > 0 && (
+          <div className="mt-1.5 rounded bg-emerald-50 px-1.5 py-1 text-[10px] text-emerald-800">
+            <span className="font-semibold">SHAP drivers (µg/m³):</span>{" "}
+            {ev.shap_drivers!.map((d) => `${DRIVER_LABELS[d.feature] ?? d.feature} +${d.contribution.toFixed(1)}`).join(" · ")}
+            {typeof ev.model_r2 === "number" && <span className="text-emerald-500"> · model R² {ev.model_r2}</span>}
+          </div>
+        )}
         {(ev.no2 !== undefined || ev.no2_sat !== undefined) && (
           <div className="mt-1 text-[10px] text-gray-400">
             evidence: NO₂ {ev.no2 ?? "–"} · sat {typeof ev.no2_sat === "number" ? ev.no2_sat.toExponential(1) : "–"} ·

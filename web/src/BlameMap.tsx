@@ -5,11 +5,31 @@ import { H3HexagonLayer } from "@deck.gl/geo-layers";
 import { api } from "./api";
 import { colorFor, dominantSource, satColor, type Shares } from "./sources";
 
+export type ShapDriver = { feature: string; source: string; contribution: number };
+
 export type AttrCell = {
   h3_cell: string;
   shares: Shares;
   confidence: number;
-  evidence?: { no2?: number; no2_sat?: number; pm10_pm25_ratio?: number; [k: string]: unknown };
+  evidence?: {
+    no2?: number;
+    no2_sat?: number;
+    pm10_pm25_ratio?: number;
+    shap_drivers?: ShapDriver[];
+    model_r2?: number;
+    [k: string]: unknown;
+  };
+};
+
+// readable labels for SHAP driver features
+export const DRIVER_LABELS: Record<string, string> = {
+  no2: "NO₂",
+  co: "CO",
+  so2: "SO₂",
+  no2_sat: "satellite NO₂",
+  pm10_pm25_ratio: "PM10/PM2.5 ratio",
+  fire: "fire (FIRMS)",
+  advected_pm25: "upwind PM2.5",
 };
 
 export type MapMode = "blame" | "satellite";
@@ -44,9 +64,13 @@ function tooltip(c: AttrCell, mode: MapMode) {
     .map(([k, v]) => `${k.replace("_", " ")} ${Math.round(v * 100)}%`)
     .join("<br/>");
   const ev = c.evidence ?? {};
+  const drivers = (ev.shap_drivers ?? [])
+    .map((d) => `${DRIVER_LABELS[d.feature] ?? d.feature} +${d.contribution.toFixed(1)}`)
+    .join(" · ");
   return {
     html:
       `<b>${dominantSource(c.shares).replace("_", " ")}</b> · conf ${c.confidence}<br/>${top}` +
+      (drivers ? `<br/><span style="color:#4ade80">SHAP drivers: ${drivers} µg/m³</span>` : "") +
       `<br/><span style="color:#888">NO₂ ${ev.no2 ?? "–"} · sat ${(ev.no2_sat ?? 0).toExponential?.(1) ?? "–"} · PM10/PM2.5 ${ev.pm10_pm25_ratio ?? "–"}</span>`,
     style: { fontSize: "12px" },
   };
