@@ -20,11 +20,12 @@ from __future__ import annotations
 import numpy as np
 
 from core.spatial.h3_utils import cell_to_latlng, cells_in_bbox
-from . import downscale as D
 
 Bbox = tuple[float, float, float, float]  # (min_lng, min_lat, max_lng, max_lat)
 
 # Lazily-trained shared downscaler (training is CPU-fast; cached across calls).
+# torch is imported lazily: the lean deploy (Render/CI) has no torch, and the
+# endpoint must degrade to the covariate-modulated bilinear fallback, not 500.
 _MODEL = None
 _MODEL_METRICS: dict | None = None
 
@@ -32,8 +33,31 @@ _MODEL_METRICS: dict | None = None
 def _get_model():
     global _MODEL, _MODEL_METRICS
     if _MODEL is None:
+        from . import downscale as D
         _MODEL, _MODEL_METRICS = D.train_and_validate()
     return _MODEL, _MODEL_METRICS
+
+
+def _avg_pool_np(fine: np.ndarray, factor: int) -> np.ndarray:
+    h = fine.shape[0] // factor
+    return fine[: h * factor, : h * factor].reshape(h, factor, h, factor).mean((1, 3))
+
+
+def _bilinear_np(coarse: np.ndarray, size: int) -> np.ndarray:
+    """Pure-numpy bilinear upsample (torch-free path)."""
+    h, w = coarse.shape
+    yi = np.linspace(0, h - 1, size)
+    xi = np.linspace(0, w - 1, size)
+    y0 = np.clip(np.floor(yi).astype(int), 0, h - 2)
+    x0 = np.clip(np.floor(xi).astype(int), 0, w - 2)
+    wy = (yi - y0)[:, None]
+    wx = (xi - x0)[None, :]
+    c00 = coarse[np.ix_(y0, x0)]
+    c01 = coarse[np.ix_(y0, x0 + 1)]
+    c10 = coarse[np.ix_(y0 + 1, x0)]
+    c11 = coarse[np.ix_(y0 + 1, x0 + 1)]
+    return (c00 * (1 - wy) * (1 - wx) + c01 * (1 - wy) * wx
+            + c10 * wy * (1 - wx) + c11 * wy * wx)
 
 
 def _grid(bbox: Bbox, n: int):
@@ -99,21 +123,35 @@ def build_dense_field(
     seed: int = 11,
 ) -> dict:
     """Full-city dense PM2.5 field + the stations-only baseline, per H3 cell."""
-    model, metrics = _get_model()
     lng_grid, lat_grid = _grid(bbox, n)
     anchors = anchors or _synth_anchors(bbox, base_pm25, k=8, seed=seed)
 
     stations = _idw(anchors, lng_grid, lat_grid)                    # sparse baseline
     land_use = _landuse(lng_grid, lat_grid, sources, seed)          # hi-res covariate
-    coarse = D._avg_pool(stations.astype(np.float32), factor)       # what a coarse net sees
-    up = D._bilinear_up(coarse, n)
+    coarse = _avg_pool_np(stations.astype(np.float32), factor)      # what a coarse net sees
+    up = _bilinear_np(coarse, n)
 
-    import torch
+    try:
+        import torch
+        from . import downscale as D
 
-    X = torch.tensor(np.stack([up, land_use * 200.0])[None], dtype=torch.float32)
-    mean, std = D.mc_downscale(model, X, k=16)
-    dense = mean[0, 0]
-    uncert = std[0, 0]
+        model, metrics = _get_model()
+        X = torch.tensor(np.stack([up, land_use * 200.0])[None], dtype=torch.float32)
+        mean, std = D.mc_downscale(model, X, k=16)
+        dense = mean[0, 0]
+        uncert = std[0, 0]
+    except ImportError:
+        # Lean deploy (no torch): covariate-modulated bilinear — honest fallback
+        # that still uses the hi-res land-use signal, with a spread-based
+        # uncertainty proxy. The CNN + MC-dropout path needs requirements-ml.
+        mod = 0.85 + 0.30 * land_use
+        dense = up * mod * (up.mean() / max((up * mod).mean(), 1e-6))  # preserve city mean
+        uncert = np.abs(dense - up) * 0.5 + 0.05 * up
+        metrics = {
+            "skill_vs_bilinear": None,
+            "note_fallback": "no-torch fallback: covariate-modulated bilinear "
+                             "(install requirements-ml for the CNN + MC-dropout uncertainty)",
+        }
 
     # Sample both rasters at each H3-cell centroid over the bbox.
     min_lng, min_lat, max_lng, max_lat = bbox

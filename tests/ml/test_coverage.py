@@ -1,5 +1,15 @@
-"""E2 — dense-coverage model tests (Sejal, Stage 2). CPU-fast; GPU run is the notebook."""
-from ml.coverage import aod_pm25, build_dense_field, downscale
+"""E2 — dense-coverage model tests (Sejal, Stage 2). CPU-fast; GPU run is the notebook.
+
+The CNN needs torch (requirements-ml). The lean stack (CI, Render) runs the
+covariate-modulated bilinear fallback, so those paths are tested torch-free.
+"""
+import importlib.util
+
+import pytest
+
+from ml.coverage import aod_pm25, build_dense_field
+
+HAS_TORCH = importlib.util.find_spec("torch") is not None
 
 
 def test_aod_pm25_recovers_physical_relation():
@@ -8,8 +18,11 @@ def test_aod_pm25_recovers_physical_relation():
     assert m.skill_vs_mean > 0
 
 
+@pytest.mark.skipif(not HAS_TORCH, reason="CNN needs torch (requirements-ml)")
 def test_downscaler_beats_bilinear():
     # The honest Validation #7 claim: the CNN adds sub-grid info a smear cannot.
+    from ml.coverage import downscale
+
     _, m = downscale.train_and_validate()
     assert m["skill_vs_bilinear"] > 0, "CNN must beat bilinear interpolation"
     assert m["rmse_cnn"] < m["rmse_bilinear"]
@@ -21,7 +34,10 @@ def test_dense_field_covers_bbox_with_uncertainty():
     cell = d["cells"][0]
     assert {"h3_cell", "pm25", "pm25_stations", "uncertainty"} <= set(cell)
     assert cell["uncertainty"] >= 0
-    assert d["validation"]["skill_vs_bilinear"] > 0
+    if HAS_TORCH:
+        assert d["validation"]["skill_vs_bilinear"] > 0
+    else:
+        assert "note_fallback" in d["validation"]  # honest label on the lean path
     # dense field carries at least as much spatial structure as the sparse baseline
     dense_spread = max(c["pm25"] for c in d["cells"]) - min(c["pm25"] for c in d["cells"])
     assert dense_spread > 0
