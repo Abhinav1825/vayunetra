@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-from fastapi import FastAPI, HTTPException, Query, Request, Depends, WebSocket, WebSocketDisconnect, Response
+from fastapi import FastAPI, HTTPException, Query, Depends, WebSocket, WebSocketDisconnect, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
@@ -523,7 +523,7 @@ def agent_query(body: AgentQueryBody, db=Depends(get_db)) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# What-if simulator (E3 — Abhinav Stage 2; stub with demo fixture)
+# What-if simulator (E3 engine, live) + E7 health/carbon quantification (Sejal)
 # ---------------------------------------------------------------------------
 
 class SimulateBody(BaseModel):
@@ -536,15 +536,20 @@ class SimulateBody(BaseModel):
 
 @app.post("/simulate", tags=["stage2"])
 def simulate(body: SimulateBody, db=Depends(get_db)) -> dict:
-    """What-if intervention simulator (E3) — live counterfactual over
-    attribution shares × forecasts (ml.simulator), fixture in DEMO_MODE."""
+    """What-if intervention simulator: live E3 counterfactual over attribution
+    shares × forecasts (ml.simulator), with E7 cited health ₹ + CO₂e layered on.
+    DEMO_MODE serves the fixture, re-run through the E7 engine so the ₹/cases/CO₂e
+    cards (and their citations) are always present and self-consistent."""
     if DEMO_MODE:
-        return ok(fixture("simulate", default={
+        from ml.impact import quantify_intervention
+        fx = fixture("simulate", default={
             "delta_aqi_by_cell": {},
+            "delta_pm25_by_cell": {},
             "people_protected": 0,
-            "pm25_tonnes_avoided": 0,
+            "pm25_tonnes_avoided": None,
             "confidence": 0,
-        }))
+        })
+        return ok(quantify_intervention(fx))
     from ml.simulator import simulate_intervention
     try:
         return ok(simulate_intervention(
@@ -557,6 +562,53 @@ def simulate(body: SimulateBody, db=Depends(get_db)) -> dict:
         return err("bad_request", str(e))
     except Exception as e:  # noqa: BLE001
         return err("simulate_error", str(e))
+
+
+@app.get("/roi", tags=["stage2"])
+def city_roi_dashboard(city: str = Query("delhi", description="City ID")) -> dict:
+    """E7 City ROI dashboard: annual PM2.5 health burden + NCAP-target savings.
+
+    Pure computation from cited factor tables (ml.impact) — deterministic, so it
+    works identically live or in DEMO_MODE with no DB dependency."""
+    from ml.impact import city_roi
+    from ml.impact import factors as impact_factors
+    pop = impact_factors.population_for(city)
+    annual = impact_factors.annual_pm25_for(city)
+    data = city_roi(city, annual_pm25=annual.value, population=pop.value)
+    data["population_source"] = pop.source
+    data["annual_pm25_source"] = annual.source
+    return ok(data)
+
+
+def _city_bbox(city_id: str):
+    """[min_lng,min_lat,max_lng,max_lat] from the city config yml, for live coverage."""
+    import yaml
+    p = FIXTURES.parent.parent / "core" / "config" / "cities" / f"{city_id}.yml"
+    if p.exists():
+        cfg = yaml.safe_load(p.read_text()) or {}
+        bb = cfg.get("bbox")
+        if isinstance(bb, list) and len(bb) == 4:
+            return tuple(float(x) for x in bb)
+    return None
+
+
+@app.get("/coverage", tags=["stage2"])
+def coverage(city: str = Query("delhi", description="City ID")) -> dict:
+    """E2 dense-coverage field: full-city per-H3-cell PM2.5 (downscaled ~1 km) +
+    the sparse stations-only baseline, for the 'stations ↔ dense 1 km' map toggle.
+    DEMO_MODE serves a precomputed fixture; live computes via ml.coverage."""
+    if DEMO_MODE:
+        data = fixture("coverage", default={})
+        picked = data.get(city) if isinstance(data, dict) else None
+        return ok(picked or {"cells": [], "city_id": city})
+    bbox = _city_bbox(city)
+    if not bbox:
+        return err("bad_request", f"unknown city bbox: {city}")
+    from ml.coverage import build_dense_field
+    try:
+        return ok(build_dense_field(city, bbox))
+    except Exception as e:  # noqa: BLE001
+        return err("coverage_error", str(e))
 
 
 # ---------------------------------------------------------------------------

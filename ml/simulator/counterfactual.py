@@ -153,9 +153,13 @@ def simulate_intervention(
     cells = _load_cells(city_id, horizon_h)
     result = apply_reductions(cells, red, target_cells)
     protected = result["people_protected"]
-    return {
+    base = {
         **result,
         "exposure_hours_reduced": protected * horizon_h,
         "intervention": {"type": intervention_type, "reductions": red, "horizon_h": horizon_h},
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }
+    # E7 (Sejal): add cited health ₹ + CO₂e on top of the physics deltas.
+    from ml.impact import quantify_intervention
+
+    return quantify_intervention(base)
