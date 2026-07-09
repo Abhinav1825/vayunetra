@@ -1,7 +1,15 @@
-"""Agent 5 - Multi-City Comparative Intelligence (Sejal)."""
+"""Agent 5 - Multi-City Comparative Intelligence (Sejal).
+
+Stage-2 (E7): each city card also carries its annual PM2.5 health burden
+(premature deaths/yr + ₹) so cities are comparable by *impact*, not just AQI —
+computed from cited long-term CRF × cited city population/PM2.5 (ml.impact).
+"""
 from __future__ import annotations
 
 from collections import Counter
+
+from ml.impact import city_roi
+from ml.impact import factors as impact_factors
 
 
 def average(rows: list[dict], key: str) -> float:
@@ -47,6 +55,10 @@ def build_comparison(cities: list[dict], aqi_rows: list[dict], forecast_rows: li
         forecast_pm25 = average(city_fc, "value") or current_pm25
         source = dominant_source(city_aqi)
         trend = trend_label(forecast_pm25, current_pm25)
+        # E7: annual health burden for this city (cited long-term CRF + population).
+        pop = impact_factors.population_for(cid)
+        annual = impact_factors.annual_pm25_for(cid)
+        roi = city_roi(cid, annual_pm25=annual.value, population=pop.value)
         cards.append({
             "city_id": cid,
             "name": city["name"],
@@ -56,12 +68,21 @@ def build_comparison(cities: list[dict], aqi_rows: list[dict], forecast_rows: li
             "dominant_source": source,
             "signature_match": "construction-winter" if source == "construction_dust" else f"{source}-signature",
             "playbook": playbook_for(source, trend),
+            "health": {
+                "annual_pm25": roi["annual_pm25"],
+                "attributable_deaths_per_year": roi["attributable_deaths_per_year"],
+                "annual_health_burden_inr": roi["annual_health_burden_inr"],
+            },
         })
     return {
         "summary": {
             "cities_compared": len(cards),
             "highest_risk_city": max(cards, key=lambda r: r["forecast_24h_pm25"])["city_id"] if cards else None,
+            "highest_burden_city": max(
+                cards, key=lambda r: r["health"]["attributable_deaths_per_year"])["city_id"] if cards else None,
             "shared_pattern": "traffic + construction dominate the Stage-1 demo snapshot",
+            "impact_basis": "annual burden via long-term CRF (WHO HRAPIE / Chen & Hoek 2020) "
+                            "× cited city population & annual PM2.5 (UN WUP 2018, IQAir 2023)",
         },
         "cities": cards,
     }

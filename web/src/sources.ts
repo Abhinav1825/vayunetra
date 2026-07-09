@@ -35,3 +35,25 @@ export function satColor(no2_sat: number): [number, number, number, number] {
   const t = Math.max(0, Math.min(1, ((no2_sat || 0) - 4e-5) / 1.6e-4));
   return [Math.round(50 + 190 * t), Math.round(120 * (1 - t)), Math.round(200 * (1 - t)), 175];
 }
+
+// CPCB PM2.5 AQI band colours (µg/m³) -> deck.gl RGBA, matching aqi.ts categories.
+// Used by the E2 dense-coverage field layer.
+const PM25_BANDS: [number, [number, number, number]][] = [
+  [30, [22, 163, 74]], // good
+  [60, [132, 204, 22]], // satisfactory
+  [90, [234, 179, 8]], // moderate
+  [120, [249, 115, 22]], // poor
+  [250, [220, 38, 38]], // very poor
+];
+export function pm25Color(pm25: number): [number, number, number, number] {
+  for (const [hi, [r, g, b]] of PM25_BANDS) if (pm25 <= hi) return [r, g, b, 205];
+  return [127, 29, 29, 205]; // severe
+}
+export const PM25_LEGEND: [string, string][] = [
+  ["≤30 Good", "#16a34a"],
+  ["31–60 Satisfactory", "#84cc16"],
+  ["61–90 Moderate", "#eab308"],
+  ["91–120 Poor", "#f97316"],
+  ["121–250 Very Poor", "#dc2626"],
+  [">250 Severe", "#7f1d1d"],
+];

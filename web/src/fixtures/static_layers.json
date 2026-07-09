@@ -1,0 +1,44 @@
+[
+  {
+    "city_id": "delhi",
+    "generated_at": "2026-06-27T09:00:00Z",
+    "emission_sources": [
+      { "id": "delhi-src-1", "city_id": "delhi", "type": "construction", "name": "Ring Road construction belt", "source_origin": "registry", "detection_confidence": 0.86, "coordinates": [77.22, 28.618], "attributes": { "inspection_radius_m": 500 } },
+      { "id": "delhi-src-2", "city_id": "delhi", "type": "industry", "name": "Okhla industrial cluster", "source_origin": "registry", "detection_confidence": 0.78, "coordinates": [77.245, 28.604], "attributes": { "inspection_radius_m": 500 } }
+    ],
+    "vulnerability": [
+      { "city_id": "delhi", "ward_id": "ward-12", "population": 18400, "vulnerable_population": 5120, "hospitals": 2, "schools": 3, "outdoor_worker_share": 0.31, "vulnerability_index": 0.82 }
+    ],
+    "roads": [
+      { "city_id": "delhi", "road_id": "delhi-road-1", "name": "Ring Road", "class": "arterial", "coordinates": [[77.175, 28.61], [77.198, 28.616], [77.228, 28.608], [77.25, 28.614]], "traffic_weight": 1.0 }
+    ]
+  },
+  {
+    "city_id": "bengaluru",
+    "generated_at": "2026-06-27T09:00:00Z",
+    "emission_sources": [
+      { "id": "bengaluru-src-1", "city_id": "bengaluru", "type": "diesel_corridor", "name": "Outer Ring Road traffic corridor", "source_origin": "registry", "detection_confidence": 0.74, "coordinates": [77.608, 12.976], "attributes": { "inspection_radius_m": 500 } },
+      { "id": "bengaluru-src-2", "city_id": "bengaluru", "type": "construction", "name": "Bellandur construction cluster", "source_origin": "registry", "detection_confidence": 0.69, "coordinates": [77.62, 12.958], "attributes": { "inspection_radius_m": 500 } }
+    ],
+    "vulnerability": [
+      { "city_id": "bengaluru", "ward_id": "ward-84", "population": 11200, "vulnerable_population": 2755, "hospitals": 2, "schools": 3, "outdoor_worker_share": 0.27, "vulnerability_index": 0.55 }
+    ],
+    "roads": [
+      { "city_id": "bengaluru", "road_id": "bengaluru-road-1", "name": "Outer Ring Road", "class": "arterial", "coordinates": [[77.555, 12.97], [77.578, 12.976], [77.608, 12.968], [77.63, 12.974]], "traffic_weight": 1.15 }
+    ]
+  },
+  {
+    "city_id": "mumbai",
+    "generated_at": "2026-06-27T09:00:00Z",
+    "emission_sources": [
+      { "id": "mumbai-src-1", "city_id": "mumbai", "type": "construction", "name": "Coastal road works", "source_origin": "registry", "detection_confidence": 0.8, "coordinates": [72.858, 19.08], "attributes": { "inspection_radius_m": 500 } },
+      { "id": "mumbai-src-2", "city_id": "mumbai", "type": "diesel_corridor", "name": "Port freight corridor", "source_origin": "registry", "detection_confidence": 0.77, "coordinates": [72.89, 19.052], "attributes": { "inspection_radius_m": 500 } }
+    ],
+    "vulnerability": [
+      { "city_id": "mumbai", "ward_id": "ward-g-north", "population": 20100, "vulnerable_population": 5282, "hospitals": 1, "schools": 4, "outdoor_worker_share": 0.29, "vulnerability_index": 0.69 }
+    ],
+    "roads": [
+      { "city_id": "mumbai", "road_id": "mumbai-road-1", "name": "Eastern Freeway", "class": "highway", "coordinates": [[72.835, 19.07], [72.858, 19.076], [72.888, 19.068], [72.91, 19.074]], "traffic_weight": 1.2 }
+    ]
+  }
+]
