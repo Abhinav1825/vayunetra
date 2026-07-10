@@ -19,6 +19,19 @@ export type EmissionSource = {
   coordinates: [number, number];
 };
 
+// The live API returns PostGIS GeoJSON (`geom.coordinates`); fixtures use a flat
+// `coordinates`. Normalize both so the overlay renders on real data too.
+type RawSource = Omit<EmissionSource, "coordinates"> & {
+  coordinates?: [number, number];
+  geom?: { coordinates?: [number, number] } | null;
+};
+
+function normalizeSources(rows: RawSource[]): EmissionSource[] {
+  return rows
+    .map((s) => ({ ...s, coordinates: s.coordinates ?? s.geom?.coordinates }))
+    .filter((s): s is EmissionSource => Array.isArray(s.coordinates) && s.coordinates.length === 2);
+}
+
 // E2 dense-coverage cell: dense (downscaled ~1 km) + sparse (stations-only) PM2.5.
 export type CoverageCell = {
   h3_cell: string;
@@ -142,8 +155,8 @@ export default function BlameMap({
   }, [city]);
 
   useEffect(() => {
-    api<{ emission_sources?: EmissionSource[] }>(`/static-layers?city=${city}`)
-      .then((d) => setSources(d.emission_sources ?? []))
+    api<{ emission_sources?: RawSource[] }>(`/static-layers?city=${city}`)
+      .then((d) => setSources(normalizeSources(d.emission_sources ?? [])))
       .catch(() => setSources([]));
   }, [city]);
 

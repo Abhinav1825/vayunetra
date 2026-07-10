@@ -217,7 +217,11 @@ export default function App() {
               </div>
               <div className="mt-1 text-[10px] text-gray-400">
                 {coverage
-                  ? `${coverage.n_stations ?? "~"} stations → ${coverage.n_cells ?? coverage.cells.length} cells · +${Math.round((coverage.validation?.skill_vs_bilinear ?? 0) * 100)}% skill vs interpolation`
+                  ? `${coverage.n_stations ?? "~"} stations → ${coverage.n_cells ?? coverage.cells.length} cells · ${
+                      typeof coverage.validation?.skill_vs_bilinear === "number"
+                        ? `+${Math.round(coverage.validation.skill_vs_bilinear * 100)}% skill vs interpolation (synthetic-field validation)`
+                        : "experimental — covariate-guided interpolation"
+                    }`
                   : "loading field…"}
               </div>
             </div>
