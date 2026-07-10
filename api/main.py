@@ -606,7 +606,46 @@ def coverage(city: str = Query("delhi", description="City ID")) -> dict:
         return err("bad_request", f"unknown city bbox: {city}")
     from ml.coverage import build_dense_field
     try:
-        return ok(build_dense_field(city, bbox))
+        # Anchor the field on REAL data: latest PM2.5 per instrumented cell and
+        # the real source registry. Without this the assembler falls back to
+        # synthetic anchors (a fabricated field) — acceptable for fixtures only.
+        from core.spatial.h3_utils import cell_to_latlng
+
+        db = _db()
+        rows = (
+            db.table("measurements").select("h3_cell,ts,value")
+            .eq("city_id", city).eq("variable", "pm25")
+            .order("ts", desc=True).limit(3000).execute().data
+        )
+        latest: dict[str, float] = {}
+        for r in rows:
+            if r.get("value") is not None:
+                latest.setdefault(r["h3_cell"], float(r["value"]))
+        anchors = []
+        for cell_id, val in latest.items():
+            try:
+                lat, lng = cell_to_latlng(cell_id)
+                anchors.append({"lat": lat, "lng": lng, "pm25": val})
+            except Exception:  # noqa: BLE001 — malformed cell id
+                continue
+        src_rows = (
+            db.table("emission_sources").select("geom,detection_confidence")
+            .eq("city_id", city).execute().data
+        )
+        sources = [
+            {"coordinates": (s.get("geom") or {}).get("coordinates"),
+             "detection_confidence": s.get("detection_confidence")}
+            for s in src_rows if (s.get("geom") or {}).get("coordinates")
+        ]
+        base = sum(latest.values()) / len(latest) if latest else 95.0
+        data = build_dense_field(
+            city, bbox,
+            anchors=anchors or None,
+            sources=sources or None,
+            base_pm25=base,
+        )
+        data["anchors_from"] = "live_measurements" if anchors else "synthetic_fallback"
+        return ok(data)
     except Exception as e:  # noqa: BLE001
         return err("coverage_error", str(e))
 
