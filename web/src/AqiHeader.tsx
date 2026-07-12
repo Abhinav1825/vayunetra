@@ -18,21 +18,32 @@ function LiveDot() {
       try {
         const ws = new WebSocket(`${base}/live${q}`);
         wsRef.current = ws;
-        ws.onopen = () => setOn(true);
-        ws.onclose = () => {
-          setOn(false);
-          if (!closed) retry = setTimeout(connect, 15_000);
+        ws.onopen = () => {
+          if (closed) {
+            ws.close(); // unmounted while connecting (StrictMode dev remount)
+            return;
+          }
+          setOn(true);
         };
-        ws.onerror = () => ws.close();
+        ws.onclose = () => {
+          if (closed) return; // no setState / retries after unmount
+          setOn(false);
+          retry = setTimeout(connect, 15_000);
+        };
+        ws.onerror = () => {
+          if (ws.readyState === WebSocket.OPEN) ws.close();
+        };
       } catch {
         setOn(false);
       }
     }
     connect();
     return () => {
+      // Never close a CONNECTING socket (browsers log a warning); let onopen do it.
       closed = true;
       clearTimeout(retry);
-      wsRef.current?.close();
+      const ws = wsRef.current;
+      if (ws && ws.readyState === WebSocket.OPEN) ws.close();
     };
   }, []);
 
