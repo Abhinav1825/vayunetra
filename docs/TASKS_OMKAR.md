@@ -28,13 +28,14 @@
 
 ---
 
-## STAGE 2 — Enhancements (only after Stage-1 DoD)
+## STAGE 2 — Enhancements (v3.3: ✅ COMPLETE + one new item)
 > Intentionally light — your Stage 1 already carried the two hero models.
-- [ ] **GNN/TFT forecast upgrade** over LightGBM — adopt **only if** it beats the baseline more. 🔴 *(Colab/Kaggle GPU)*
-- [ ] **Forecast + dispersion hooks for E3** — expose the counterfactual interface Abhinav's what-if reads (via DB/API). 🟢
-- [ ] **Attribution v2 polish** — calibrate confidence + refine SHAP for the demo. 🟡
+- [x] **GNN/TFT forecast upgrade** ✅ *(evaluated on Colab T4, identical walk-forward folds — LightGBM won 3/3 → KEPT baseline per the rule; evaluate.ipynb §7 + notebooks/colab_tft_forecast.ipynb)*
+- [x] **Forecast + dispersion hooks for E3** ✅ *(built the full engine: ml/simulator/counterfactual.py, live on /simulate — cited magnitudes, GPW population, real tonnes-avoided)*
+- [x] **Attribution v2 polish** ✅ *(hybrid GBM+SHAP, R² gate, rush-hour validation 2.30×, inventory validation 0.92 vs SAFAR)*
+- [ ] 🆕 **Agent Trace Viewer + "run pipeline live" button** *(v3.3 addition — surface `/traces` + `/agent/query` as a live multi-agent timeline panel; makes the agentic architecture visible to judges)* 🟢
 
-**Your Stage-2 "done when":** GNN tried & reported honestly (kept only if better); E3 hooks ready for Abhinav.
+**Your Stage-2 "done when":** GNN tried & reported honestly ✅; E3 hooks ready ✅; trace viewer shows the agents thinking on stage.
 
 ---
 

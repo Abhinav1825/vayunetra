@@ -1,9 +1,43 @@
-# VayuNetra — Plan of Action (v3.2)
+# VayuNetra — Plan of Action (v3.3)
 
 > **Project:** VayuNetra — AI-Powered Urban Air Quality Intelligence (PS5)
 > **Hackathon:** Economic Times AI Hackathon 2026 (2nd Edition)
 > **Team:** Omkar · Abhinav · Sejal — **2 agents each · equal volume · equal difficulty** (see §0.1)
 > **Source of truth:** [PRD.md](PRD.md) + [ARCHITECTURE.md](ARCHITECTURE.md) (v1.4). **Stage 1 + Stage 2 = the whole PRD** (coverage matrix in §12).
+
+---
+
+## ⚡ v3.3 — CURRENT STATE + RE-SCOPES (updated 2026-07-10 — READ BEFORE CONTINUING ANY WORK)
+
+**State:** Stage 1 is DONE and live (3 cities, all 6 agents, deployed on Vercel+Render) except the
+items listed below. Stage 2 is ~65% done. §2/§3 items below are annotated ✅/⏳/🔁/❌ in place.
+**Your personal checklist ([TASKS_OMKAR](TASKS_OMKAR.md) / [TASKS_ABHINAV](TASKS_ABHINAV.md) /
+[TASKS_SEJAL](TASKS_SEJAL.md)) carries the same statuses + "if you already started X" instructions — read yours first.**
+
+### 🔴 Critical path (in order)
+1. **DEMO VIDEO (≤3 min)** — the only missing *required* deliverable. Owner: **Sejal** (Omkar records screen flows). Do this before any Stage-2 code.
+2. **`OPENAQ_API_KEY` GitHub Actions secret** — hourly ingest silently fetches nothing without it (openmeteo works, openaq stale). Owner: **Abhinav/Omkar**, 1 minute.
+3. **E5 optimiser** — fully unblocked (E3 engine + What-If UI are live); the last big differentiator. Owner: **Abhinav**.
+
+### 🔁 Re-scopes (decided 2026-07-10 — reasons in §3 annotations)
+- **E1 Satellite CV:** full CNN → **"detection-lite v0"** (Earth-Engine heuristic detector: bare-soil/NDVI change for construction, thermal anomaly for burning → `emission_sources(source_origin='cv_detected')` with honest `detection_confidence`). CNN = cited roadmap. *If you already started the CNN and are >80% done, finish it; otherwise switch.*
+- **E4 anomaly detector: CUT** (it was first in the official cut order — decided now so nobody spends time on it).
+- **E2 real-data Kaggle run:** downgraded to **stretch** — the shipped method is honestly labeled ("synthetic-field validation"); real-data training is polish.
+- **E6 multimodal:** proceed **only after** detection-lite lands (it depends on detections); second in cut order.
+
+### ✅ Built beyond the original plan (DO NOT rebuild — already live on `main`)
+OSM emission-source registry w/ daily auto-refresh (replaces hand-seeded) · **GPW v4.11 population per H3 cell**
+(supersedes Sejal's WorldPop item) · attribution validated vs SAFAR/CSTEP inventories (cosine 0.92/0.88/0.79,
+`evaluate.ipynb §10`) · hybrid GBM+SHAP attribution w/ R²-gate + rush-hour validation (§8) · CQR-calibrated
+prediction intervals (§9) · E3 counterfactual engine + live `/simulate` w/ cited intervention magnitudes +
+real tonnes-avoided · heat×smog compound alerts (`/alerts/compound` + header badge) · CAQM directive corpus in
+RAG · notice PDF export · Telegram+IVR live broadcast (3 numbers) · cold-start insurance + keep-alive cron ·
+`scripts/refresh_advisories.py` (advisories auto-refresh daily).
+
+### ⚠️ Process (this is how we avoid breaking each other)
+- **Rebase onto latest `main` before continuing** — `agents/enforcement.py`, `agents/graph.py`, `api/main.py`,
+  `ml/coverage/dense_field.py`, `web/src/*` all changed on main (fixes to YOUR files are annotated in your TASKS file — do not revert them).
+- **Merge small and daily.** CI is green and guards the repo; a big unmerged drop near the deadline is our likeliest way to lose. Open PRs early — Omkar('s agent) reviews every PR the way PR #8 was audited.
 
 ---
 
@@ -81,61 +115,65 @@ Tiers: 🔴 **Hard** (deep/novel ML) · 🟡 **Medium** (engineering/integration
 > All 5 PS5 builds + orchestrator + foundation + UX + deploy + deliverables. **If only this is done, you can submit and compete.**
 
 ### 2A. Omkar — Attribution + Forecast (the AI/ML core)
-- [ ] **Connectors his models need:** CAAQMS/OpenAQ (hourly + backfill) + **Earth Engine** satellite (Sentinel-5P, MODIS/VIIRS) + **Open-Meteo** weather + seasonal calendars → `measurements`. 🟡 *(indep)*
-- [ ] **Dispersion engine** — Gaussian plume + wind-advection of satellite NO₂/AOD → physics features. 🔴 *(indep)*
-- [ ] **Agent 1 — Attribution** [MAIN] — chemical-signature priors + satellite + land-use + dispersion → gradient-boosting apportionment + confidence + **SHAP** → `attribution`. 🔴 *(indep; own data + seed)*
-- [ ] **Agent 2 — Forecast** [MAIN] — LightGBM (quantile) 24/48/72h on H3; **persistence + climatology baselines side-by-side** → `forecasts`; **backtest → skill score `1 − RMSE_model/RMSE_persistence` (the headline number).** 🔴 *(dep: seed)*
-- [ ] **His UI panels:** the **Blame Map** (Deck.gl `H3HexagonLayer` by dominant source + SHAP tooltips) + the **Forecast time-slider** (24–72h + spike alerts), plugged into Sejal's app shell. 🟡 *(dep: F4 shell; components independent)*
+- [x] **Connectors his models need** ✅ *(OpenAQ+Open-Meteo+EE live; CPCB connector ready but data.gov.in is down — external, retry only)*
+- [x] **Dispersion engine** ✅
+- [x] **Agent 1 — Attribution** [MAIN] ✅ *(hybrid GBM+SHAP live in 3 cities, R²-gated, rush-hour-validated 2.30×, inventory-validated 0.92 vs SAFAR)*
+- [x] **Agent 2 — Forecast** [MAIN] ✅ *(skill reported honestly; CQR-calibrated intervals)*
+- [x] **His UI panels** ✅ *(blame map + SHAP tooltips + forecast slider + cell-story loop)*
 
 ### 2B. Abhinav — Orchestrator + Enforcement (+ backend/platform)
-- [ ] **Agent 0 — Orchestrator** (LangGraph): typed state, topology, spike gate, `action_traces` latency stamping + `/agent/query`. 🟡 *(dep: F7)*
-- [ ] **Agent 3 — Enforcement** — exposure-weighted prioritisation scorer + RAG-cited dossier → `enforcement_recs`. 🟡 *(dep: attribution + registry via DB, RAG)*
-- [ ] **RAG subsystem** — ingest NCAP/GRAP/CPCB-SPCB + health-breakpoint corpus → embed (local `bge-small`) → `kb_chunks`; cited retrieval (serves enforcement + advisory). 🟡 *(indep)*
-- [ ] **Read-API + auth** — FastAPI serving `/cities`, `/aqi`, `/attribution`, `/forecast`, `/enforcement`, `/enforcement/{id}/dossier`, `/advisory`, `/live` from Supabase + Supabase Auth/roles. 🟡 *(dep: F3; reads tables — decoupled)*
-- [ ] **Pipelines** (GitHub Actions cron) + **deployment** (Vercel + Cloud Run + Supabase) + CI + keep-alive. 🟡 *(dep: thin slice exists — end of stage)*
-- [ ] **His UI panel:** enforcement **worklist + dossier view** (cited → "Generate Notice / PDF"). 🟡 *(dep: /enforcement)*
-- [ ] **Validation harness / `evaluate.ipynb`** — attribution vs SAFAR/TERI; forecast RMSE vs persistence+climatology (plots); enforcement CPCB/GRAP rubric; latency. 🟡 *(dep: outputs via DB)*
+- [x] **Agent 0 — Orchestrator** ✅ *(note: enforcement node now loads FULL city attribution — changed on main, don't revert)*
+- [x] **Agent 3 — Enforcement** ✅ *(now: per-source nearest-cell matching, <2% filter, real GPW pop_exposed, idempotent writes — all on main)*
+- [x] **RAG subsystem** ✅ *(14 kb_chunks incl. 3 CAQM directive docs)*
+- [x] **Read-API + auth** ✅ *(+ new: /simulate live, /roi, /coverage, /alerts/compound, notice.pdf)*
+- [x] **Pipelines + deployment** ✅ ⚠️ *one op left: add the `OPENAQ_API_KEY` GitHub secret (hourly openaq ingest silently no-ops without it)*
+- [x] **His UI panel** ✅ *(worklist + dossier + Notice PDF, cell-focused sort)*
+- [x] **Validation harness / `evaluate.ipynb`** ✅ *(now 10 sections: + TFT verdict §7, attribution safeguards §8, CQR §9, inventory validation §10)*
 
 ### 2C. Sejal — Advisory + Multi-City (+ app shell & product)
-- [ ] **Connectors:** OSM (roads, land use, industrial, hospitals/schools) + WorldPop (population) + emission-source registry → static layers / `emission_sources`. 🟡 *(indep)*
-- [ ] **Mobility feeds** (PS5-named) — GTFS transit + a time-of-day/day-of-week **traffic proxy** built from the OSM road network → mobility feature in `measurements` (consumed by Omkar's attribution + forecast via DB). 🟡 *(indep)*
-- [ ] **Agent 4 — Advisory** — health tiering (CPCB/WHO breakpoints × vulnerability) + LLM (Gemini) localisation **hi/en/kn/mr** → `advisories`; deliver via **Citizen PWA + Telegram + IVR + public display**. 🟡 *(dep: forecast + vulnerability via DB)*
-- [ ] **Agent 5 — Multi-City** — cross-city trends + before/after intervention deltas + H3 signature matching → playbook recs. 🟡 *(dep: multi-city data via DB)*
-- [ ] **App shell + integration** — React/Vite/Tailwind shell, routing, state (TanStack+Zustand), map base, WebSocket; **integrates the others' UI panels**. 🟡 *(dep: F4)*
-- [ ] **Her UI panels:** **city switcher**, **comparative tab**, **latency widget**, Citizen PWA, language toggle. 🟡
-- [ ] **DEMO_MODE wiring** in the app (one flag → offline) + **deliverables**: architecture diagram, deck, demo video, demo script (all contribute slides/metrics). 🟡/🟢
-- [ ] **Multi-city data** — add `bengaluru.yml` + `mumbai.yml` configs (city-agnostic ingestion runs them). 🟢 *(coordinated with Omkar's connectors)*
+- [x] **Connectors → emission_sources** ✅ 🔁 *(OSM registry now auto-ingests from Overpass daily; **WorldPop item superseded — GPW v4.11 population per cell is live** (`connectors/population.py`) — do NOT build WorldPop)*
+- [x] **Mobility feeds** ✅
+- [x] **Agent 4 — Advisory** ✅ *(4 languages, app+Telegram+IVR all working; advisories auto-refresh daily via `scripts/refresh_advisories.py` — don't duplicate)*
+- [x] **Agent 5 — Multi-City** ✅
+- [x] **App shell + integration** ✅
+- [x] **Her UI panels** ✅
+- [x] **DEMO_MODE wiring** ✅ + diagram ✅ + deck ✅ (v1) — ⏳ **demo video NOT recorded — THE critical-path item**
+- [x] **Multi-city data** ✅ *(3 cities fully populated: measurements/attribution/forecasts)*
+- [ ] ⏳ *(optional polish, not DoD)* ward boundary GeoJSONs (`wards 0` shows in City Intel)
 
 ### ✅ Stage 1 — Definition of Done (submittable)
-- [ ] 3 cities live, switchable · blame map w/ confidence · **forecast beats persistence (number reported)** · enforcement worklist → cited dossier → notice/PDF · advisory in **4 languages** (app+Telegram+IVR) · **DEMO_MODE** offline · deployed URL · **architecture diagram + deck + demo video** · `evaluate.ipynb` regenerates every Stage-1 metric.
+- [x] ~~everything~~ **except the demo video**: 3 cities ✅ · blame map ✅ · forecast number ✅ · worklist→dossier→PDF ✅ · 4-language advisory (app+Telegram+IVR) ✅ · DEMO_MODE ✅ · deployed URLs ✅ · diagram ✅ · deck ✅ · **demo video ❌ (record it!)** · evaluate.ipynb ✅
 → **A complete PS5 submission. You can stop here and compete.**
 
 ---
 
 ## 3. STAGE 2 — Above-PS Enhancements (the #1 push)
 
-> Strictly additive. **Cut order if short: E4 → E6 → E7-deep → GNN → (PINN never).**
+> Strictly additive. ~~Cut order if short: E4 → E6 → E7-deep → GNN → (PINN never).~~
+> **v3.3: E4 is CUT (decided 2026-07-10). GNN evaluated + honestly rejected (§ evaluate.ipynb §7). Next cut if short: E6.**
 
-### 3A. Omkar — Forecast depth (Stage 2)
-- [ ] **GNN/TFT forecast upgrade** over LightGBM — adopt only if it beats the baseline more. 🔴 *(Colab/Kaggle GPU)*
-- [ ] **Forecast + dispersion hooks for E3** — expose the counterfactual interface Abhinav's what-if consumes (via DB/API). 🟢
-- [ ] **Attribution v2 polish** — calibrate confidence + refine SHAP for the demo. 🟡
-*(Omkar's Stage 2 is intentionally light — his Stage 1 carries the two hero models.)*
+### 3A. Omkar — Forecast depth (Stage 2) — ✅ COMPLETE
+- [x] **GNN/TFT forecast upgrade** ✅ *(evaluated on Colab T4 with identical walk-forward folds — LightGBM won 3/3 horizons → KEPT the baseline per this plan's own rule; recorded in evaluate.ipynb §7 + notebooks/colab_tft_forecast.ipynb)*
+- [x] **Forecast + dispersion hooks for E3** ✅ *(went further: the full E3 engine is built — `ml/simulator/counterfactual.py`, live on `/simulate`, with cited intervention magnitudes + GPW population + real tonnes-avoided)*
+- [x] **Attribution v2 polish** ✅ *(hybrid GBM+SHAP, R² gate, calibrated confidence, SHAP tooltips)*
+- [ ] 🆕 **Agent Trace Viewer + "run pipeline live" button** *(added v3.3 — makes the multi-agent architecture visible; /traces + /agent/query already exist)* 🟢
 
-### 3B. Abhinav — Satellite-CV, optimiser & rigour (Stage 2)
-- [ ] **E1 — Satellite CV** (data + model): Sentinel-2 tiles + labels → **CNN/segmentation** → construction/kiln/burn detections → `emission_sources` (`cv_detected`); feeds his enforcement. 🔴 *(Kaggle GPU)*
-- [ ] **E3 — What-if simulator** engine (counterfactual over Omkar's forecast + dispersion, read via DB) → `/simulate`. 🔴 *(dep: forecast/dispersion outputs — mockable)*
-- [ ] **E5 — Prescriptive optimiser** (greedy/knapsack over E3) → `/optimize`, top-3 ranked packages under inspector-budget. 🔴 *(dep: E3)*
-- [ ] **E4 — Spike/anomaly detector** (STL + isolation-forest/autoencoder) → proactive enforcement queue. 🟡 *(stretch)*
-- [ ] **Quantified fairness audit** (partial corr priority vs ward income | pollution+exposure ≈ 0) + **`evaluate.ipynb` v2**. 🟡
-- [ ] **Live multi-city onboarding** (`POST /admin/cities`) → 4th city on stage. 🟡
+### 3B. Abhinav — Satellite-CV, optimiser & rigour (Stage 2) — ⚠️ READ THE RE-SCOPES
+- [ ] 🔁 **E1 — RESCOPED to "detection-lite v0"**: Earth-Engine heuristic detector (bare-soil/NDVI change → construction; thermal anomaly → burning) → `emission_sources(source_origin='cv_detected', detection_confidence=…)`. The trained CNN is now **cited roadmap**, not scope. *If your CNN is already >80% done, finish it; otherwise switch — E6 depends on detections existing at all.* 🟡
+- [x] **E3 — What-if engine** ✅ *(built by Omkar as the "hooks" item — live on /simulate. Nothing to build here; build E5 ON TOP of `ml.simulator.simulate_intervention()`.)*
+- [ ] 🔴 **E5 — Prescriptive optimiser** — **YOUR TOP PRIORITY, fully unblocked** (engine + What-If UI both live). Greedy/knapsack over `simulate_intervention()` → `/optimize` top-3 packages under inspector-hours. The last big feature differentiator.
+- [x] ❌ **E4 — CUT** (v3.3 decision, per the plan's own cut order — do not spend time here)
+- [ ] **Quantified fairness audit** + evaluate.ipynb v2 aggregation. 🟡 *(small: §§7-10 already exist — add fairness + E-feature metrics)*
+- [ ] **Live multi-city onboarding demo** — endpoint exists & proven; prepare the on-stage choreography (city YAML → POST → it appears). 🟢
+- [ ] ⚠️ **Op task:** add `OPENAQ_API_KEY` to GitHub Actions secrets (hourly ingest silently no-ops without it).
 
-### 3C. Sejal — Dense coverage, evidence & impact (Stage 2)
-- [ ] **E2 — Dense-coverage** (data + 2 models): **AOD→PM2.5 regressor** + **1km downscaling CNN** → full-city field + "stations↔dense" toggle. 🔴🔴 *(Kaggle GPU)*
-- [ ] **E6 — Multimodal evidence**: CLIP-embed Sentinel-2 patches → `kb_chunks(modality='image')`; **dossier shows the satellite patch** + PDF export. 🔴/🟡 *(dep: E1 detections)*
-- [ ] **E7 — Health & carbon** (engine + UI): cited dose-response + emission factors → ₹/cases/CO₂e **cards** + **City ROI dashboard** (₹/yr + CO₂e → NCAP funding). 🟡/🟢
-- [ ] **What-if + optimiser UI panels** (toggles, sliders, ranked package cards) + **SHAP/Fairness panels** + **detected-sources toggle**. 🟡 *(dep: /simulate, /optimize)*
-- [ ] **Deck + video v2** — add optimiser, satellite-evidence, ₹/lives/CO₂e; final dry-run. 🟢/🟡
+### 3C. Sejal — Dense coverage, evidence & impact (Stage 2) — mostly shipped in PR #8 🎉
+- [x] **E2 — Dense-coverage** ✅ *(AOD→PM2.5 + downscaling CNN + toggle shipped; on main since: lean no-torch fallback + live fields anchor on REAL measurements — rebase, don't revert)*. 🔁 *Real-data Kaggle training = **stretch**, not blocker (shipped version is honestly labeled "synthetic-field validation").*
+- [ ] 🔁 **E6 — Multimodal evidence** — **wait for Abhinav's detection-lite** (it needs detections); next in cut order if time runs out. 🔴/🟡
+- [x] **E7 — Health & carbon** ✅ *(cited factors — now incl. WHO AirQ+ + Balakrishnan/Lancet-2019 anchors — ImpactCards + ROI panel live)*
+- [x] **What-if UI + SHAP + detected-sources toggle** ✅ *(Fairness panel: blocked on Abhinav's audit — build after it)*
+- [ ] **Deck + video v2** — deck must absorb `docs/DECK_NOTES_ADDITIONS.md` (validation numbers, positioning ladder); **video v1 first — it's the Stage-1 critical path**. 🟢/🟡
+- [ ] 🆕 **Telegram two-way subscribe** *(added v3.3, post-merge: `/start` → pick city → auto-alerts; turns the demo channel into a product — judges can subscribe their own phone)* 🟡
 
 ### ✅ Stage 2 — Definition of Done
 - [ ] CV-detected sources auto-populate enforcement · "stations↔dense 1km" works · what-if **and** optimiser run live with ₹/lives/CO₂e + ranked packages · a dossier shows a real satellite patch · fairness ≈0 + ROI dashboard · all E-features in `evaluate.ipynb` + deck/video; dry-run scores 5/5.
