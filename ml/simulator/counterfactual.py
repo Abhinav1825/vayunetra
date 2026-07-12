@@ -23,12 +23,44 @@ from datetime import datetime, timezone
 from typing import Any
 
 # Named interventions -> source-share reductions (fractions of that source removed).
+# Magnitudes are literature-grounded (see INTERVENTION_CITATIONS), not invented.
 INTERVENTIONS: dict[str, dict[str, float]] = {
     "construction_halt": {"construction_dust": 0.8},
-    "traffic_restriction": {"traffic": 0.3},          # odd-even style
+    "traffic_restriction": {"traffic": 0.15},          # odd-even style (see citation)
     "industrial_shutdown": {"industrial": 0.6},
     "waste_burn_ban": {"biomass_burning": 0.7},
-    "grap_stage3": {"construction_dust": 0.8, "traffic": 0.2, "industrial": 0.3},
+    "grap_stage3": {"construction_dust": 0.8, "traffic": 0.1, "industrial": 0.3},
+}
+
+# Provenance for every magnitude — same cited-factors discipline as ml.impact.
+INTERVENTION_CITATIONS: dict[str, list[dict]] = {
+    "construction_halt": [{
+        "figure": "construction-dust source reduction", "value": 0.8, "unit": "fraction",
+        "source": "CAQM GRAP Stage III/IV: ban on construction & demolition activity",
+        "caveat": "assumes ~80% site compliance; exempted projects continue",
+    }],
+    "traffic_restriction": [{
+        "figure": "traffic source reduction", "value": 0.15, "unit": "fraction",
+        "source": "Delhi odd-even trials (Jan 2016): ~4-7% ambient PM2.5 reduction observed "
+                  "(EPIC-India / Chandra et al. analyses) ≈ 13-20% of the traffic share",
+        "caveat": "midpoint of the implied source-level range; exemptions dilute the scheme",
+    }],
+    "industrial_shutdown": [{
+        "figure": "industrial source reduction", "value": 0.6, "unit": "fraction",
+        "source": "CAQM GRAP Stage IV: closure of industries not on PNG/clean fuels",
+        "caveat": "clean-fuel industries continue operating",
+    }],
+    "waste_burn_ban": [{
+        "figure": "open-burning source reduction", "value": 0.7, "unit": "fraction",
+        "source": "SWM Rules 2016 + GRAP open-burning ban with on-the-spot fines",
+        "caveat": "assumes ~70% enforcement effectiveness",
+    }],
+    "grap_stage3": [{
+        "figure": "combined GRAP Stage III package", "value": "0.8/0.1/0.3", "unit": "per-source fractions",
+        "source": "CAQM GRAP Stage III schedule: C&D ban, BS-III petrol/BS-IV diesel LMV "
+                  "restrictions, curbs on non-clean-fuel industry",
+        "caveat": "per-source effectiveness assumptions as in the single-lever entries",
+    }],
 }
 
 POP_PER_CELL = 40_000          # metro res-8 cell heuristic (Stage-2 E2 refines with WorldPop)
@@ -156,7 +188,13 @@ def simulate_intervention(
     base = {
         **result,
         "exposure_hours_reduced": protected * horizon_h,
-        "intervention": {"type": intervention_type, "reductions": red, "horizon_h": horizon_h},
+        "intervention": {
+            "type": intervention_type,
+            "reductions": red,
+            "horizon_h": horizon_h,
+            # literature provenance for the reduction magnitudes (empty for custom reductions)
+            "citations": INTERVENTION_CITATIONS.get(intervention_type, []) if reductions is None else [],
+        },
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }
     # E7 (Sejal): add cited health ₹ + CO₂e on top of the physics deltas.
