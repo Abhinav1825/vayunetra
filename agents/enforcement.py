@@ -355,6 +355,16 @@ def run_enforcement(
         except Exception:  # noqa: BLE001 — malformed cell id -> no spatial match
             return None
 
+    # Real per-cell population (GPW v4.11) where available — the source's cell
+    # population replaces the hand-set exposure estimates.
+    pop_by_cell: dict[str, float] = {}
+    if not DEMO_MODE:
+        try:
+            from connectors.population import load_population
+            pop_by_cell = load_population(city_id)
+        except Exception:  # noqa: BLE001 — layer optional
+            pop_by_cell = {}
+
     # Match sources to cells
     recs: list[EnforcementRec] = []
     source_types_seen: set[str] = set()
@@ -362,7 +372,10 @@ def run_enforcement(
     for source in emission_sources:
         source_type = source.get("type", "other")
         attrs = source.get("attributes") or {}
-        pop_exposed = source.get("pop_exposed_estimate") or attrs.get("pop_exposed_estimate") or 5000
+        gpw = pop_by_cell.get(attrs.get("h3_cell") or "")
+        pop_exposed = round(gpw) if gpw else (
+            source.get("pop_exposed_estimate") or attrs.get("pop_exposed_estimate") or 5000
+        )
 
         # Map source type to attribution category
         cat_map = {

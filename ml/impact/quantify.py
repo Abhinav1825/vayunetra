@@ -189,5 +189,6 @@ def city_roi(
             {"figure": "WHO annual guideline", **F.Factor(
                 5.0, "µg/m³", "WHO Global Air Quality Guidelines (2021), annual PM2.5").cite()},
             {"figure": "₹ valuation", **F.VSL_INDIA_INR.cite()},
+            {"figure": "national context", **F.INDIA_ANNUAL_DEATHS_AIR_POLLUTION.cite()},
         ],
     }

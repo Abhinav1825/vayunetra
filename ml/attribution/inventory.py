@@ -67,6 +67,27 @@ CITY_INVENTORY: dict[str, InventoryAnchor] = {
 }
 
 
+# Approximate annual PM2.5 emissions (tonnes/yr) per locally-attributable
+# category, from the same published inventories as the shares above (city total
+# × sector share). Order-of-magnitude anchors for tonnes-avoided estimates —
+# EDGAR v8.1 (JRC) provides the consistent national frame these city studies
+# refine. Explicitly approximate; carried with citations, never silently.
+SECTOR_EMISSIONS_TPY: dict[str, dict] = {
+    "delhi": {
+        "tonnes": {"traffic": 27_900, "construction_dust": 14_600, "industrial": 12_600, "biomass_burning": 3_900},
+        "source": "SAFAR-Delhi Emission Inventory 2018 (~68 kt PM2.5/yr total × sector shares)",
+    },
+    "bengaluru": {
+        "tonnes": {"traffic": 9_200, "construction_dust": 4_500, "industrial": 2_800, "biomass_burning": 1_900},
+        "source": "CSTEP Bengaluru inventory (2022; ~21.5 kt PM2.5/yr total × sector shares)",
+    },
+    "mumbai": {
+        "tonnes": {"traffic": 9_000, "construction_dust": 10_300, "industrial": 16_200, "biomass_burning": 3_200},
+        "source": "Urban Emissions / NEERI-MPCB syntheses (~45 kt PM2.5/yr total × sector shares)",
+    },
+}
+
+
 def _renormalize_local(shares: dict[str, float]) -> dict[str, float]:
     """Keep only locally-attributable categories, renormalized to sum 1."""
     local = {c: max(0.0, shares.get(c, 0.0)) for c in LOCAL_CATEGORIES}

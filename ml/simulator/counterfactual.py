@@ -92,9 +92,15 @@ def apply_reductions(
     cells: list[CellState],
     reductions: dict[str, float],
     target_cells: list[str] | None = None,
+    pop_by_cell: dict[str, float] | None = None,
 ) -> dict[str, Any]:
-    """Pure counterfactual: reduced source shares -> per-cell PM2.5/AQI deltas."""
+    """Pure counterfactual: reduced source shares -> per-cell PM2.5/AQI deltas.
+
+    pop_by_cell: real per-cell population (GPW v4.11) — falls back to the
+    POP_PER_CELL heuristic for cells without a value.
+    """
     targets = set(target_cells) if target_cells else None
+    pop_by_cell = pop_by_cell or {}
     affected = [c for c in cells if targets is None or c.h3_cell in targets]
     if not affected:
         return {"delta_aqi_by_cell": {}, "delta_pm25_by_cell": {}, "people_protected": 0,
@@ -120,15 +126,16 @@ def apply_reductions(
         delta_aqi[c.h3_cell] = pm25_to_aqi(new) - pm25_to_aqi(c.pm25_forecast)
 
     protected_cells = [h for h, d in delta_aqi.items() if d <= -MEANINGFUL_AQI_DROP]
-    people = len(protected_cells) * POP_PER_CELL
+    people = round(sum(pop_by_cell.get(h, POP_PER_CELL) for h in protected_cells))
     conf = round(sum(c.confidence for c in affected) / len(affected), 3)
 
     return {
         "delta_pm25_by_cell": delta_pm25,
         "delta_aqi_by_cell": delta_aqi,
         "people_protected": people,
+        "population_source": "GPW v4.11 (CIESIN/SEDAC 2020)" if pop_by_cell else "heuristic 40k/cell",
         "exposure_hours_reduced": 0,   # filled by the wrapper (needs horizon)
-        "pm25_tonnes_avoided": None,   # needs an emission inventory — not faked
+        "pm25_tonnes_avoided": None,   # wrapper fills from the cited sectoral inventory
         "confidence": conf,
     }
 
@@ -183,8 +190,26 @@ def simulate_intervention(
             "(or pass explicit `reductions`)"
         )
     cells = _load_cells(city_id, horizon_h)
-    result = apply_reductions(cells, red, target_cells)
+    try:
+        from connectors.population import load_population
+        pop_by_cell = load_population(city_id)
+    except Exception:  # noqa: BLE001 — population layer optional
+        pop_by_cell = {}
+    result = apply_reductions(cells, red, target_cells, pop_by_cell=pop_by_cell)
     protected = result["people_protected"]
+
+    # Tonnes avoided from the cited sectoral inventory (order-of-magnitude):
+    # annual sector tonnes × source reduction × window fraction × affected share.
+    from ml.attribution.inventory import SECTOR_EMISSIONS_TPY
+    inv = SECTOR_EMISSIONS_TPY.get(city_id)
+    if inv:
+        affected_frac = (len(result["delta_aqi_by_cell"]) / len(cells)) if cells else 0.0
+        tonnes = sum(
+            inv["tonnes"].get(src, 0.0) * min(max(r, 0.0), 1.0)
+            for src, r in red.items()
+        ) * (horizon_h / 8760.0) * affected_frac
+        result["pm25_tonnes_avoided"] = round(tonnes, 2)
+        result["emissions_basis"] = inv["source"] + " — approximate, order-of-magnitude"
     base = {
         **result,
         "exposure_hours_reduced": protected * horizon_h,

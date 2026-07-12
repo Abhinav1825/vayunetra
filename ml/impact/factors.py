@@ -38,8 +38,18 @@ class Factor:
 # reduces PM2.5 for a few hours/days. Values are WHO HRAPIE recommendations.
 CRF_MORTALITY_ST = Factor(
     1.0123, "RR per 10 µg/m³",
-    "WHO HRAPIE (2013), all-cause (natural) mortality, short-term PM2.5, all ages",
+    "WHO HRAPIE (2013), all-cause (natural) mortality, short-term PM2.5, all ages — "
+    "as operationalised in WHO AirQ+",
     "95% CI 1.0045–1.0201",
+)
+
+# India-scale anchor: the burden figure PS5 itself quotes traces to this work.
+INDIA_ANNUAL_DEATHS_AIR_POLLUTION = Factor(
+    1_670_000, "premature deaths per year (India, 2017)",
+    "Balakrishnan et al., India State-Level Disease Burden Initiative — "
+    "Lancet Planetary Health 2019 (GBD 2017)",
+    "all air pollution (ambient + household); our city figures use the same "
+    "attributable-fraction methodology at city scale",
 )
 CRF_RESP_ADMISSIONS_ST = Factor(
     1.0190, "RR per 10 µg/m³",

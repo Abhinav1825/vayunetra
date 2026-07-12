@@ -1,0 +1,32 @@
+GRAP — GRADED RESPONSE ACTION PLAN FOR NCR, STAGE-WISE ACTIONS (SUMMARY)
+
+Authority: CAQM (Commission for Air Quality Management in NCR and Adjoining Areas).
+The revised GRAP is invoked on Delhi's AQI forecast (IMD/IITM), acting PRE-EMPTIVELY
+on forecasts rather than after exceedance — the same forecast-then-act philosophy
+this platform implements.
+
+Stage I — "Poor" (AQI 201-300):
+  dust control enforcement at C&D sites, mechanised sweeping and water sprinkling,
+  strict PUC enforcement, no open burning of waste/biomass (fines).
+
+Stage II — "Very Poor" (AQI 301-400):
+  intensified inspections; regulated DG-set use per the fuel directions; parking fees
+  raised to discourage private transport; augmented bus/metro services.
+
+Stage III — "Severe" (AQI 401-450):
+  BAN on construction & demolition (with exemptions for railways, metro, airports,
+  hospitals, defence and linear public projects); closure of stone crushers and
+  mining; restrictions on BS-III petrol / BS-IV diesel light motor vehicles in
+  identified districts; brick kilns not on approved fuels closed.
+
+Stage IV — "Severe+" (AQI > 450):
+  entry of truck traffic into Delhi restricted (essentials/CNG/electric exempt);
+  ban on Delhi-registered diesel MGVs/HGVs except essentials; industries not on
+  approved cleaner fuels close even if otherwise compliant; C&D ban extends to
+  linear public projects; public/private offices to 50% strength advisories;
+  schools may shift online as directed.
+
+Relationship to NCAP: NCAP is the national programme setting multi-year PM
+reduction targets (city action plans, ~40% reduction ambition by 2026 vs 2017);
+GRAP is the NCR-specific emergency-response regulation. They are complementary:
+NCAP plans, GRAP reacts — and both depend on knowing sources and forecasts.

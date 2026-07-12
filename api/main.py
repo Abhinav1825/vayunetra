@@ -430,6 +430,58 @@ def advisory_broadcast(body: dict, db=Depends(get_db)) -> dict:
     return ok(results)
 
 
+@app.get("/alerts/compound", tags=["advisory"])
+def compound_alerts(city: str = Query("delhi", description="City ID"), db=Depends(get_db)) -> dict:
+    """Heat × pollution compound-risk alert (cross-signal intelligence).
+
+    Heat amplifies pollution mortality and drives ozone formation; a plain AQI
+    misses the combination. Tiers (cited): IMD declares heatwave at ≥40°C in
+    the plains (watch from 37°C); pollution legs use CPCB PM2.5 bands.
+    """
+    if DEMO_MODE:
+        return ok({"city_id": city, "level": "watch", "tmax_next24_c": 39.1,
+                   "pm25_forecast_max": 96.0, "o3_latest": 71.2,
+                   "note": "demo fixture", "citations": []})
+
+    sdb = _db()
+    temps = (
+        sdb.table("measurements").select("ts,value").eq("city_id", city)
+        .eq("variable", "temp").order("ts", desc=True).limit(48).execute().data
+    )
+    tmax = max((float(r["value"]) for r in temps), default=None)
+    fc = (
+        sdb.table("forecasts").select("value").eq("city_id", city)
+        .eq("horizon_h", 24).execute().data
+    )
+    pm25_max = max((float(r["value"]) for r in fc if r.get("value") is not None), default=None)
+    o3 = (
+        sdb.table("measurements").select("value").eq("city_id", city)
+        .eq("variable", "o3").order("ts", desc=True).limit(1).execute().data
+    )
+    o3_latest = float(o3[0]["value"]) if o3 else None
+
+    level = "none"
+    if tmax is not None and pm25_max is not None:
+        if tmax >= 40.0 and pm25_max >= 91.0:
+            level = "alert"
+        elif tmax >= 37.0 and pm25_max >= 61.0:
+            level = "watch"
+    return ok({
+        "city_id": city,
+        "level": level,
+        "tmax_next24_c": tmax,
+        "pm25_forecast_max": pm25_max,
+        "o3_latest": o3_latest,
+        "note": "compound heat x pollution risk: heat amplifies PM mortality and drives ozone formation",
+        "citations": [
+            {"figure": "heatwave threshold", "value": 40, "unit": "degC (plains)",
+             "source": "IMD heatwave criteria (watch tier from 37 degC)"},
+            {"figure": "pollution legs", "value": "61 / 91", "unit": "ug/m3 PM2.5",
+             "source": "CPCB National AQI bands (Moderate / Poor)"},
+        ],
+    })
+
+
 # ---------------------------------------------------------------------------
 # Sejal Stage-1 static layers, mobility, comparison, and latency widgets
 # ---------------------------------------------------------------------------
