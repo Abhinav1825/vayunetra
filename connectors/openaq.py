@@ -76,7 +76,7 @@ def _get(path: str, params: dict, retries: int = 5) -> dict:
     key = os.environ.get("OPENAQ_API_KEY")
     if not key:
         raise RuntimeError("OPENAQ_API_KEY missing in .env — sign up at https://openaq.org")
-    headers = {"X-API-Key": key}
+    headers = {"X-API-Key": key.strip()}
     for attempt in range(retries):
         _throttle()
         resp = requests.get(f"{BASE}{path}", params=params, headers=headers, timeout=30)
