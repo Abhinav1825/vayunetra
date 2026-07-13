@@ -45,7 +45,7 @@
 
 ## STAGE 2 — Enhancements (v3.3 statuses — Stage-1 DoD met)
 - [x] 🔴 **E5 — Prescriptive optimiser** ✅ **BUILT & WIRED.** Greedy/knapsack calls the LIVE E3 engine to rank by ΔAQI·people per inspector-hour. Wired the `/optimize` stub in `api/main.py` for Sejal's UI.
-- [x] 🔁 **E1 — Satellite CV (Trained CNN)** ✅ **BUILT (Exceeded detection-lite v0).** We finished the full U-Net CNN (Kaggle GPU) instead of just the Earth-Engine heuristic since we were >80% done. It feeds `emission_sources(source_origin='cv_detected')`. Sejal's E6 is fully unblocked.
+- [ ] 🔁 **E1 — Satellite CV** ⚠️ **CODE-COMPLETE, NOT RUN (verified 2026-07-13):** U-Net code + GEE export + preprocessing all merged, but there are **no trained weights in the repo and `cv_detected` rows in DB = 0** — nothing feeds enforcement yet, and **Sejal's E6 is still blocked**. Remaining: run training on Kaggle, commit/host the weights, run `ml/vision/inference.py` to write detections. *(Until then the item is honestly ~70% done, not ✅.)*
 - [x] ~~**E3 — What-if engine**~~ ✅ **built by Omkar, live on `/simulate`** (cited magnitudes, GPW population, real tonnes). Nothing to build — E5 sits on top.
 - [x] ~~**E4 — Spike/anomaly detector**~~ ❌ **CUT** (v3.3 decision), but we successfully built it using IsolationForest anyway! 
 - [x] **Quantified fairness audit** + `evaluate.ipynb` v2 ✅ **BUILT.** Added the fairness partial-corr and aggregate E-feature metrics.
