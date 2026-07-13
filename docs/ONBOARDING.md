@@ -22,6 +22,7 @@ Run this exact payload against the live production API:
 ```bash
 curl -X POST "https://vayunetra-c8i8.onrender.com/admin/cities" \
      -H "Content-Type: application/json" \
+     -H "X-Admin-Key: $ADMIN_KEY" \
      -H "Authorization: Bearer <ADMIN_JWT_TOKEN>" \
      -d '{
            "city_id": "chennai",

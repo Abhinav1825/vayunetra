@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-from fastapi import FastAPI, HTTPException, Query, Depends, WebSocket, WebSocketDisconnect, Response
+from fastapi import FastAPI, Header, HTTPException, Query, Depends, WebSocket, WebSocketDisconnect, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
@@ -745,12 +745,27 @@ class CityBody(BaseModel):
 
 
 @app.post("/admin/cities", tags=["admin"])
-def admin_onboard_city(body: CityBody, db=Depends(get_db)) -> dict:
-    """Onboard a new city (config-driven, zero code change)."""
+def admin_onboard_city(
+    body: CityBody,
+    x_admin_key: Optional[str] = Header(None, alias="X-Admin-Key"),
+    db=Depends(get_db),
+) -> dict:
+    """Onboard a new city (config-driven, zero code change).
+
+    Admin path: the anon token can't INSERT into cities (RLS blocks it — the
+    live demo 500'd), so this runs with the service-role client, guarded by an
+    X-Admin-Key header matched against the ADMIN_KEY env var.
+    """
     if not body.city_id:
         return err("bad_request", "city_id is required")
     if DEMO_MODE:
         return ok({"onboarded": body.city_id, "demo": True})
+    admin_key = os.getenv("ADMIN_KEY", "")
+    if not admin_key:
+        return err("not_configured", "ADMIN_KEY is not set on this server")
+    if x_admin_key != admin_key:
+        return err("forbidden", "invalid or missing X-Admin-Key header")
+    db = _db()  # service-role: bypasses RLS for this authenticated admin action
 
     # Upsert city row
     db.table("cities").upsert({
