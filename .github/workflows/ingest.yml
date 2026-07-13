@@ -29,9 +29,14 @@ jobs:
         # --push is what actually persists rows — without it this job fetches
         # summaries and discards them (measurements went stale for 3 days).
         run: |
-          python -m connectors.openaq --city delhi --days 2 --push || true
-          python -m connectors.openaq --city bengaluru --days 2 --push || true
-          python -m connectors.openaq --city mumbai --days 2 --push || true
+          # --days 1 --max-sensors 15: OpenAQ rate-limits shared Actions IPs; keep
+          # each run small. ::warning:: makes failures visible in the run summary
+          # instead of being swallowed (openaq sat silently stale for a week).
+          python -m connectors.openaq --city delhi --days 1 --max-sensors 15 --push || echo "::warning::openaq delhi failed"
+          sleep 30
+          python -m connectors.openaq --city bengaluru --days 1 --max-sensors 15 --push || echo "::warning::openaq bengaluru failed"
+          sleep 30
+          python -m connectors.openaq --city mumbai --days 1 --max-sensors 15 --push || echo "::warning::openaq mumbai failed"
           python -m connectors.openmeteo --city delhi --push || true
           python -m connectors.openmeteo --city bengaluru --push || true
           python -m connectors.openmeteo --city mumbai --push || true
