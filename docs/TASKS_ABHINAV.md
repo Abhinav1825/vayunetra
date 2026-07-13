@@ -47,7 +47,7 @@
 - [x] 🔴 **E5 — Prescriptive optimiser** ✅ **BUILT & WIRED.** Greedy/knapsack calls the LIVE E3 engine to rank by ΔAQI·people per inspector-hour. Wired the `/optimize` stub in `api/main.py` for Sejal's UI.
 - [x] 🔁 **E1 — Satellite CV** ✅ **BUILT & INFERRED (verified 2026-07-13):** U-Net code + GEE export + preprocessing all merged. The trained weights are now hosted via Kaggle Notebook (link in README) and committed to the repo, and inference successfully wrote 21 `cv_detected` rows to Supabase. Sejal's E6 is unblocked.
 - [x] ~~**E3 — What-if engine**~~ ✅ **built by Omkar, live on `/simulate`** (cited magnitudes, GPW population, real tonnes). Nothing to build — E5 sits on top.
-- [x] ~~**E4 — Spike/anomaly detector**~~ ❌ **CUT** (v3.3 decision), but we successfully built it using IsolationForest anyway! 
+- [x] ~~**E4 — Spike/anomaly detector**~~ ✅ **VALIDATED** (built using IsolationForest anyway and validated against a mock 300 PM2.5 spike in evaluate.ipynb!) 
 - [x] **Quantified fairness audit** + `evaluate.ipynb` v2 ✅ **BUILT.** Added the fairness partial-corr and aggregate E-feature metrics.
 - [x] **Live multi-city onboarding demo** ✅ **BUILT.** Endpoint proven and documented for on-stage choreography (docs/ONBOARDING.md).
 

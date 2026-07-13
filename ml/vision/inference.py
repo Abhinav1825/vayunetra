@@ -20,8 +20,14 @@ class CVSourceDetector:
         if HAS_TORCH:
             self.device = device
             self.model = create_segmentation_model(num_classes=4)
+            if not os.path.exists(model_path):
+                print(f"Downloading model weights to {model_path} from GitHub release...")
+                os.makedirs(os.path.dirname(model_path), exist_ok=True)
+                import urllib.request
+                urllib.request.urlretrieve("https://github.com/omkarrr88/VayuNetra/releases/download/v1.0.0/e1_cv_model.pth", model_path)
+            
             if os.path.exists(model_path):
-                self.model.load_state_dict(torch.load(model_path, map_location=device))
+                self.model.load_state_dict(torch.load(model_path, map_location=device, weights_only=True))
             else:
                 print(f"Warning: Model weights not found at {model_path}. Using initialized weights.")
             
