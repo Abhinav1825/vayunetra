@@ -572,8 +572,20 @@ class OptimizeBody(BaseModel):
 
 @app.post("/optimize", tags=["stage2"])
 def optimize(body: OptimizeBody, db=Depends(get_db)) -> dict:
-    """Prescriptive intervention optimiser (E5 — Stage 2 engine, stub in Stage 1)."""
-    return ok(fixture("optimize", default={"packages": []}))
+    """Prescriptive intervention optimiser (E5 — Stage 2 engine)."""
+    if DEMO_MODE:
+        return ok(fixture("optimize", default={"packages": []}))
+    
+    from ml.simulator import optimize_interventions
+    try:
+        return ok(optimize_interventions(
+            city_id=body.city,
+            budget_inspector_hours=body.budget_inspector_hours,
+            horizon_h=body.horizon_h,
+            target_cells=body.target_cells
+        ))
+    except Exception as e:
+        return err("optimize_error", str(e))
 
 
 # ---------------------------------------------------------------------------

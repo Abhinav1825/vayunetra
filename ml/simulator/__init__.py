@@ -4,3 +4,4 @@ from .counterfactual import (
     pm25_to_aqi,
     simulate_intervention,
 )
+from .optimizer import optimize_interventions
