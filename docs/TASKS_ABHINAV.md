@@ -49,7 +49,7 @@
 - [x] ~~**E3 — What-if engine**~~ ✅ **built by Omkar, live on `/simulate`** (cited magnitudes, GPW population, real tonnes). Nothing to build — E5 sits on top.
 - [x] ~~**E4 — Spike/anomaly detector**~~ ✅ **VALIDATED** (built using IsolationForest anyway and validated against a mock 300 PM2.5 spike in evaluate.ipynb!) 
 - [x] **Quantified fairness audit** + `evaluate.ipynb` v2 ✅ **BUILT.** Added the fairness partial-corr and aggregate E-feature metrics.
-- [x] **Live multi-city onboarding demo** ✅ **BUILT.** Endpoint proven and documented for on-stage choreography (docs/ONBOARDING.md).
+- [x] **Live multi-city onboarding demo** ✅ **BUILT + LIVE-REHEARSED (2026-07-13).** Live path fixed (anon RLS 500 → service-role + X-Admin-Key guard); rehearsed end-to-end: onboard → appears → cleanup. Requires ADMIN_KEY env on Render.
 
 **Your Stage-2 "done when":** CV detections feed enforcement; what-if + optimiser run live with ranked packages; fairness ≈0 shown; onboarding demo works.
 
