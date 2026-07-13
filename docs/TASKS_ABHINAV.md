@@ -4,6 +4,17 @@
 > **Full plan:** [PLAN_OF_ACTION.md](PLAN_OF_ACTION.md) · **Specs:** [PRD.md](PRD.md) + [ARCHITECTURE.md](ARCHITECTURE.md)
 > Difficulty: 🔴 hard ML · 🟡 medium · 🟢 light.
 
+## ⚠️ READ FIRST — v3.3 status (2026-07-10)
+**Your Phase 0 + Stage 1 are DONE (verified live).** Before continuing Stage 2:
+1. **Rebase onto latest `main`** — these files of yours changed there (fixes, do NOT revert):
+   `agents/enforcement.py` (nearest-cell matching, <2% filter, real GPW pop_exposed, idempotent writes) ·
+   `agents/graph.py` (enforcement node loads FULL city attribution) ·
+   `api/main.py` (/simulate live, /roi, /coverage, /alerts/compound, notice.pdf, CORS lock) ·
+   `.github/workflows/ingest.yml` (--push fix + daily model/advisory refresh).
+2. **Re-scopes:** E1 → detection-lite · **E4 CUT** · **E5 = your top priority, fully unblocked** (see Stage 2 below).
+3. **1-minute op task:** add the `OPENAQ_API_KEY` secret (repo Settings → Actions) — hourly openaq ingest silently no-ops without it.
+4. **Merge small + daily; open PRs early** — every PR gets reviewed like PR #8 was.
+
 ## How you stay unblocked
 - You **own the two contracts** (Supabase schema F2 + API contract F3) — define them early so everyone (including you) is decoupled.
 - Your agents/models **write rows to Supabase**; the API **reads rows** — no direct calls to anyone.

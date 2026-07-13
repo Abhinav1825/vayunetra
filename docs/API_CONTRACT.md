@@ -35,8 +35,9 @@
 | GET | `/comparison` | Agent 5 multi-city trends + playbook recommendations | all | Sejal |
 | GET | `/latency?city` | latest signal-to-action widget payload | all | Sejal |
 | POST | `/agent/query` | conversational orchestrator (NL → action) | officer+ | Abhinav |
-| POST | `/simulate` | what-if intervention → ΔAQI + people/₹/CO₂e (E3,E7) | officer+ | Abhinav(engine)+Sejal(UI) |
-| POST | `/optimize` | best intervention bundle under budget → top-3 (E5) | officer+ | Abhinav(engine)+Sejal(UI) |
+| POST | `/simulate` | what-if intervention → ΔAQI + people/₹/CO₂e (E3+E7, live) | officer+ | Omkar(E3)+Sejal(E7,UI) |
+| GET | `/roi?city` | City ROI: annual health burden + NCAP savings (E7) | all | Sejal |
+| POST | `/optimize` | best intervention bundle under budget → top-3 (E5, **deferred stub**) | officer+ | Abhinav(engine)+Sejal(UI) |
 | POST | `/admin/cities` | onboard a city via config (scalability demo) | admin | Abhinav |
 | WS | `/live` | push attribution/forecast/alert updates | all | Abhinav |
 
@@ -63,11 +64,29 @@
   "persistence_value": 295, "model_version": "lgbm-v1" }
 ```
 
-**POST /simulate** (body `{ city, interventions:[{source_id, action, magnitude}] }`) → `data`
+**POST /simulate** (body `{ city, intervention_type, target_cells?, horizon_h }`) → `data`
 ```jsonc
-{ "delta_aqi_by_cell": { "883da1...": -42 },
-  "people_protected": 18000, "pm25_tonnes_avoided": 2.3,
-  "health_cost_avoided_inr": 6000000, "co2e_tonnes": 9 }
+{ "delta_aqi_by_cell": { "883da1...": -45 },
+  "delta_pm25_by_cell": { "883da1...": -31.5 },
+  "people_protected": 28400, "exposure_hours_reduced": 681600,
+  "pm25_tonnes_avoided": 2.3,
+  "cases_prevented": 0.05,           // premature deaths averted over the horizon (E7)
+  "health_cost_avoided_inr": 2560020,
+  "co2e_tonnes": 381.8,              // null when tonnes-avoided/source ratio unknown
+  "confidence": 0.81,
+  "intervention": { "type": "waste_burn_ban", "reductions": {"biomass_burning": 0.7}, "horizon_h": 24 },
+  "impact": { "method": "WHO AirQ+ log-linear CRF (short-term)",
+              "citations": [ { "figure": "...", "value": 1.0123, "unit": "RR per 10 µg/m³", "source": "WHO HRAPIE (2013)" } ] } }
+```
+
+**GET /roi?city** → `data` (E7 City ROI dashboard; deterministic from cited factors)
+```jsonc
+{ "city_id": "delhi", "annual_pm25": 92.0, "who_guideline_pm25": 5.0, "population": 20600000,
+  "attributable_deaths_per_year": 73395, "annual_health_burden_inr": 3669770000000,
+  "ncap_target_reduction_pct": 30, "deaths_avertable_per_year": 17685, "annual_savings_inr": 884260000000,
+  "narrative": "At 92 µg/m³ annual PM2.5, ~73,395 premature deaths/yr ...",
+  "citations": [ { "figure": "attributable deaths", "value": 1.08, "unit": "HR per 10 µg/m³",
+                   "source": "Chen & Hoek (2020), Environ. Int." } ] }
 ```
 
 > **Conventions:** snake_case keys · ISO-8601 UTC timestamps · GeoJSON `[lng, lat]` order ·

@@ -1,0 +1,128 @@
+{
+  "delhi": {
+    "city_id": "delhi",
+    "annual_pm25": 92.0,
+    "who_guideline_pm25": 5.0,
+    "population": 20600000,
+    "attributable_deaths_per_year": 73395,
+    "annual_health_burden_inr": 3669773986974,
+    "ncap_target_reduction_pct": 30,
+    "deaths_avertable_per_year": 18219,
+    "annual_savings_inr": 910949623762,
+    "narrative": "At 92 µg/m³ annual PM2.5, ~73,395 premature deaths/yr are attributable to pollution above the WHO guideline (₹366,977 cr/yr). A 30% NCAP-style cut would avert ~18,219 deaths/yr (₹91,095 cr/yr) — the funding case.",
+    "citations": [
+      {
+        "figure": "attributable deaths",
+        "value": 1.08,
+        "unit": "HR per 10 µg/m³",
+        "source": "Chen & Hoek (2020), Environ. Int. — meta-analysis, all-cause mortality, long-term PM2.5",
+        "caveat": "95% CI 1.06–1.09"
+      },
+      {
+        "figure": "baseline mortality",
+        "value": 7.3,
+        "unit": "deaths per 1,000 population per year",
+        "source": "World Bank / SRS — India crude death rate, ~2021"
+      },
+      {
+        "figure": "WHO annual guideline",
+        "value": 5.0,
+        "unit": "µg/m³",
+        "source": "WHO Global Air Quality Guidelines (2021), annual PM2.5"
+      },
+      {
+        "figure": "₹ valuation",
+        "value": 50000000.0,
+        "unit": "₹ per premature death (Value of a Statistical Life)",
+        "source": "Benefit transfer from OECD (2012) base VSL (USD 3.0M, 2005) via income elasticity 0.8; consistent with World Bank (2016) 'The Cost of Air Pollution'",
+        "caveat": "VSL estimates for India span ~₹3–12 crore; ₹5 crore is a conservative mid-point — treat the ₹ figure as order-of-magnitude, not precise"
+      }
+    ],
+    "population_source": "UN World Urbanization Prospects (2018) — Delhi",
+    "annual_pm25_source": "IQAir World Air Quality Report (2023) — Delhi annual PM2.5"
+  },
+  "bengaluru": {
+    "city_id": "bengaluru",
+    "annual_pm25": 35.0,
+    "who_guideline_pm25": 5.0,
+    "population": 13200000,
+    "attributable_deaths_per_year": 19866,
+    "annual_health_burden_inr": 993316262765,
+    "ncap_target_reduction_pct": 30,
+    "deaths_avertable_per_year": 6438,
+    "annual_savings_inr": 321900309308,
+    "narrative": "At 35 µg/m³ annual PM2.5, ~19,866 premature deaths/yr are attributable to pollution above the WHO guideline (₹99,332 cr/yr). A 30% NCAP-style cut would avert ~6,438 deaths/yr (₹32,190 cr/yr) — the funding case.",
+    "citations": [
+      {
+        "figure": "attributable deaths",
+        "value": 1.08,
+        "unit": "HR per 10 µg/m³",
+        "source": "Chen & Hoek (2020), Environ. Int. — meta-analysis, all-cause mortality, long-term PM2.5",
+        "caveat": "95% CI 1.06–1.09"
+      },
+      {
+        "figure": "baseline mortality",
+        "value": 7.3,
+        "unit": "deaths per 1,000 population per year",
+        "source": "World Bank / SRS — India crude death rate, ~2021"
+      },
+      {
+        "figure": "WHO annual guideline",
+        "value": 5.0,
+        "unit": "µg/m³",
+        "source": "WHO Global Air Quality Guidelines (2021), annual PM2.5"
+      },
+      {
+        "figure": "₹ valuation",
+        "value": 50000000.0,
+        "unit": "₹ per premature death (Value of a Statistical Life)",
+        "source": "Benefit transfer from OECD (2012) base VSL (USD 3.0M, 2005) via income elasticity 0.8; consistent with World Bank (2016) 'The Cost of Air Pollution'",
+        "caveat": "VSL estimates for India span ~₹3–12 crore; ₹5 crore is a conservative mid-point — treat the ₹ figure as order-of-magnitude, not precise"
+      }
+    ],
+    "population_source": "UN World Urbanization Prospects (2018) — Bengaluru",
+    "annual_pm25_source": "IQAir World Air Quality Report (2023) — Bengaluru annual PM2.5"
+  },
+  "mumbai": {
+    "city_id": "mumbai",
+    "annual_pm25": 43.0,
+    "who_guideline_pm25": 5.0,
+    "population": 21700000,
+    "attributable_deaths_per_year": 40168,
+    "annual_health_burden_inr": 2008392429096,
+    "ncap_target_reduction_pct": 30,
+    "deaths_avertable_per_year": 12342,
+    "annual_savings_inr": 617077396266,
+    "narrative": "At 43 µg/m³ annual PM2.5, ~40,168 premature deaths/yr are attributable to pollution above the WHO guideline (₹200,839 cr/yr). A 30% NCAP-style cut would avert ~12,342 deaths/yr (₹61,708 cr/yr) — the funding case.",
+    "citations": [
+      {
+        "figure": "attributable deaths",
+        "value": 1.08,
+        "unit": "HR per 10 µg/m³",
+        "source": "Chen & Hoek (2020), Environ. Int. — meta-analysis, all-cause mortality, long-term PM2.5",
+        "caveat": "95% CI 1.06–1.09"
+      },
+      {
+        "figure": "baseline mortality",
+        "value": 7.3,
+        "unit": "deaths per 1,000 population per year",
+        "source": "World Bank / SRS — India crude death rate, ~2021"
+      },
+      {
+        "figure": "WHO annual guideline",
+        "value": 5.0,
+        "unit": "µg/m³",
+        "source": "WHO Global Air Quality Guidelines (2021), annual PM2.5"
+      },
+      {
+        "figure": "₹ valuation",
+        "value": 50000000.0,
+        "unit": "₹ per premature death (Value of a Statistical Life)",
+        "source": "Benefit transfer from OECD (2012) base VSL (USD 3.0M, 2005) via income elasticity 0.8; consistent with World Bank (2016) 'The Cost of Air Pollution'",
+        "caveat": "VSL estimates for India span ~₹3–12 crore; ₹5 crore is a conservative mid-point — treat the ₹ figure as order-of-magnitude, not precise"
+      }
+    ],
+    "population_source": "UN World Urbanization Prospects (2018) — Mumbai",
+    "annual_pm25_source": "IQAir World Air Quality Report (2023) — Mumbai annual PM2.5"
+  }
+}

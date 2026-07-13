@@ -54,3 +54,11 @@ def test_target_cells_filter_and_people_protected():
 def test_honest_fields():
     r = apply_reductions([_cell("x", 80)], INTERVENTIONS["traffic_restriction"])
     assert r["pm25_tonnes_avoided"] is None  # not faked without an inventory
+
+
+def test_real_population_sums_protected_cells():
+    cells = [_cell(f"c{i}", 200, dust=0.8) for i in range(3)]
+    pop = {"c0": 4_200, "c1": 11_500, "c2": 7_300}
+    r = apply_reductions(cells, {"construction_dust": 1.0}, pop_by_cell=pop)
+    assert r["people_protected"] == 23_000  # real sums, not cells x 40k
+    assert "GPW" in r["population_source"]

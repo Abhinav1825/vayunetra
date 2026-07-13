@@ -12,6 +12,10 @@ import fxEnforcement from "./fixtures/enforcement.json";
 import fxComparison from "./fixtures/comparison.json";
 import fxLatency from "./fixtures/latency.json";
 import fxDossier from "./fixtures/dossier.json";
+import fxSimulate from "./fixtures/simulate.json";
+import fxRoi from "./fixtures/roi.json";
+import fxStatic from "./fixtures/static_layers.json";
+import fxCoverage from "./fixtures/coverage.json";
 
 const BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 // Supabase anon key — safe to expose in the browser (publishable by design).
@@ -58,6 +62,19 @@ function fixtureFor(path: string): unknown {
   if (/^\/enforcement\/\d+\/dossier$/.test(p)) return fxDossier;
   if (p === "/comparison") return fxComparison;
   if (p === "/latency") return fxLatency;
+  if (p === "/simulate") return fxSimulate;
+  if (p === "/roi") {
+    const byId = fxRoi as Record<string, unknown>;
+    return byId[city ?? "delhi"] ?? byId["delhi"];
+  }
+  if (p === "/static-layers") {
+    const rows = fxStatic as Row[];
+    return rows.find((r) => r.city_id === (city ?? "delhi")) ?? rows[0];
+  }
+  if (p === "/coverage") {
+    const byId = fxCoverage as Record<string, unknown>;
+    return byId[city ?? "delhi"] ?? byId["delhi"];
+  }
   return undefined;
 }
 
@@ -81,8 +98,11 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
     }
     return env.data;
   } catch (e) {
-    // Only silent-fallback idempotent reads; mutations must surface their error.
-    if (method === "GET") {
+    // Silent-fallback idempotent reads plus the pure /simulate compute; real
+    // mutations (e.g. advisory broadcast) must still surface their error.
+    const idempotent =
+      method === "GET" || new URL(path, "http://x").pathname === "/simulate";
+    if (idempotent) {
       const fx = fixtureFor(path);
       if (fx !== undefined) {
         notifyFallback();

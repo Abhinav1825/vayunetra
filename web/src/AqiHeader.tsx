@@ -18,21 +18,32 @@ function LiveDot() {
       try {
         const ws = new WebSocket(`${base}/live${q}`);
         wsRef.current = ws;
-        ws.onopen = () => setOn(true);
-        ws.onclose = () => {
-          setOn(false);
-          if (!closed) retry = setTimeout(connect, 15_000);
+        ws.onopen = () => {
+          if (closed) {
+            ws.close(); // unmounted while connecting (StrictMode dev remount)
+            return;
+          }
+          setOn(true);
         };
-        ws.onerror = () => ws.close();
+        ws.onclose = () => {
+          if (closed) return; // no setState / retries after unmount
+          setOn(false);
+          retry = setTimeout(connect, 15_000);
+        };
+        ws.onerror = () => {
+          if (ws.readyState === WebSocket.OPEN) ws.close();
+        };
       } catch {
         setOn(false);
       }
     }
     connect();
     return () => {
+      // Never close a CONNECTING socket (browsers log a warning); let onopen do it.
       closed = true;
       clearTimeout(retry);
-      wsRef.current?.close();
+      const ws = wsRef.current;
+      if (ws && ws.readyState === WebSocket.OPEN) ws.close();
     };
   }, []);
 
@@ -44,13 +55,17 @@ function LiveDot() {
   );
 }
 
+type Compound = { level: "none" | "watch" | "alert"; tmax_next24_c?: number | null };
+
 /** Hero AQI badge: worst-cell CPCB AQI, category color, data freshness. */
 export default function AqiHeader({ city }: { city: string }) {
   const [rows, setRows] = useState<AqiRow[] | null>(null);
+  const [compound, setCompound] = useState<Compound | null>(null);
 
   useEffect(() => {
     setRows(null);
     api<AqiRow[]>(`/aqi/current?city=${city}`).then(setRows).catch(() => setRows([]));
+    api<Compound>(`/alerts/compound?city=${city}`).then(setCompound).catch(() => setCompound(null));
   }, [city]);
 
   if (rows === null) {
@@ -87,6 +102,17 @@ export default function AqiHeader({ city }: { city: string }) {
               <span>data {agoLabel(latest)}</span>
               <LiveDot />
             </div>
+            {compound && compound.level !== "none" && (
+              <div
+                className={`mt-0.5 rounded px-1.5 py-0.5 text-[10px] font-bold ${
+                  compound.level === "alert" ? "bg-red-700 text-white" : "bg-orange-500 text-white"
+                }`}
+                title="Compound risk: heat amplifies PM mortality and drives ozone formation (IMD heatwave criteria x CPCB bands)"
+              >
+                🔥 HEAT×SMOG {compound.level.toUpperCase()}
+                {typeof compound.tmax_next24_c === "number" && ` · ${Math.round(compound.tmax_next24_c)}°C`}
+              </div>
+            )}
           </div>
         </>
       ) : (

@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-from fastapi import FastAPI, HTTPException, Query, Request, Depends, WebSocket, WebSocketDisconnect, Response
+from fastapi import FastAPI, HTTPException, Query, Depends, WebSocket, WebSocketDisconnect, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
@@ -430,6 +430,58 @@ def advisory_broadcast(body: dict, db=Depends(get_db)) -> dict:
     return ok(results)
 
 
+@app.get("/alerts/compound", tags=["advisory"])
+def compound_alerts(city: str = Query("delhi", description="City ID"), db=Depends(get_db)) -> dict:
+    """Heat × pollution compound-risk alert (cross-signal intelligence).
+
+    Heat amplifies pollution mortality and drives ozone formation; a plain AQI
+    misses the combination. Tiers (cited): IMD declares heatwave at ≥40°C in
+    the plains (watch from 37°C); pollution legs use CPCB PM2.5 bands.
+    """
+    if DEMO_MODE:
+        return ok({"city_id": city, "level": "watch", "tmax_next24_c": 39.1,
+                   "pm25_forecast_max": 96.0, "o3_latest": 71.2,
+                   "note": "demo fixture", "citations": []})
+
+    sdb = _db()
+    temps = (
+        sdb.table("measurements").select("ts,value").eq("city_id", city)
+        .eq("variable", "temp").order("ts", desc=True).limit(48).execute().data
+    )
+    tmax = max((float(r["value"]) for r in temps), default=None)
+    fc = (
+        sdb.table("forecasts").select("value").eq("city_id", city)
+        .eq("horizon_h", 24).execute().data
+    )
+    pm25_max = max((float(r["value"]) for r in fc if r.get("value") is not None), default=None)
+    o3 = (
+        sdb.table("measurements").select("value").eq("city_id", city)
+        .eq("variable", "o3").order("ts", desc=True).limit(1).execute().data
+    )
+    o3_latest = float(o3[0]["value"]) if o3 else None
+
+    level = "none"
+    if tmax is not None and pm25_max is not None:
+        if tmax >= 40.0 and pm25_max >= 91.0:
+            level = "alert"
+        elif tmax >= 37.0 and pm25_max >= 61.0:
+            level = "watch"
+    return ok({
+        "city_id": city,
+        "level": level,
+        "tmax_next24_c": tmax,
+        "pm25_forecast_max": pm25_max,
+        "o3_latest": o3_latest,
+        "note": "compound heat x pollution risk: heat amplifies PM mortality and drives ozone formation",
+        "citations": [
+            {"figure": "heatwave threshold", "value": 40, "unit": "degC (plains)",
+             "source": "IMD heatwave criteria (watch tier from 37 degC)"},
+            {"figure": "pollution legs", "value": "61 / 91", "unit": "ug/m3 PM2.5",
+             "source": "CPCB National AQI bands (Moderate / Poor)"},
+        ],
+    })
+
+
 # ---------------------------------------------------------------------------
 # Sejal Stage-1 static layers, mobility, comparison, and latency widgets
 # ---------------------------------------------------------------------------
@@ -523,7 +575,7 @@ def agent_query(body: AgentQueryBody, db=Depends(get_db)) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# What-if simulator (E3 — Abhinav Stage 2; stub with demo fixture)
+# What-if simulator (E3 engine, live) + E7 health/carbon quantification (Sejal)
 # ---------------------------------------------------------------------------
 
 class SimulateBody(BaseModel):
@@ -536,15 +588,20 @@ class SimulateBody(BaseModel):
 
 @app.post("/simulate", tags=["stage2"])
 def simulate(body: SimulateBody, db=Depends(get_db)) -> dict:
-    """What-if intervention simulator (E3) — live counterfactual over
-    attribution shares × forecasts (ml.simulator), fixture in DEMO_MODE."""
+    """What-if intervention simulator: live E3 counterfactual over attribution
+    shares × forecasts (ml.simulator), with E7 cited health ₹ + CO₂e layered on.
+    DEMO_MODE serves the fixture, re-run through the E7 engine so the ₹/cases/CO₂e
+    cards (and their citations) are always present and self-consistent."""
     if DEMO_MODE:
-        return ok(fixture("simulate", default={
+        from ml.impact import quantify_intervention
+        fx = fixture("simulate", default={
             "delta_aqi_by_cell": {},
+            "delta_pm25_by_cell": {},
             "people_protected": 0,
-            "pm25_tonnes_avoided": 0,
+            "pm25_tonnes_avoided": None,
             "confidence": 0,
-        }))
+        })
+        return ok(quantify_intervention(fx))
     from ml.simulator import simulate_intervention
     try:
         return ok(simulate_intervention(
@@ -557,6 +614,92 @@ def simulate(body: SimulateBody, db=Depends(get_db)) -> dict:
         return err("bad_request", str(e))
     except Exception as e:  # noqa: BLE001
         return err("simulate_error", str(e))
+
+
+@app.get("/roi", tags=["stage2"])
+def city_roi_dashboard(city: str = Query("delhi", description="City ID")) -> dict:
+    """E7 City ROI dashboard: annual PM2.5 health burden + NCAP-target savings.
+
+    Pure computation from cited factor tables (ml.impact) — deterministic, so it
+    works identically live or in DEMO_MODE with no DB dependency."""
+    from ml.impact import city_roi
+    from ml.impact import factors as impact_factors
+    pop = impact_factors.population_for(city)
+    annual = impact_factors.annual_pm25_for(city)
+    data = city_roi(city, annual_pm25=annual.value, population=pop.value)
+    data["population_source"] = pop.source
+    data["annual_pm25_source"] = annual.source
+    return ok(data)
+
+
+def _city_bbox(city_id: str):
+    """[min_lng,min_lat,max_lng,max_lat] from the city config yml, for live coverage."""
+    import yaml
+    p = FIXTURES.parent.parent / "core" / "config" / "cities" / f"{city_id}.yml"
+    if p.exists():
+        cfg = yaml.safe_load(p.read_text()) or {}
+        bb = cfg.get("bbox")
+        if isinstance(bb, list) and len(bb) == 4:
+            return tuple(float(x) for x in bb)
+    return None
+
+
+@app.get("/coverage", tags=["stage2"])
+def coverage(city: str = Query("delhi", description="City ID")) -> dict:
+    """E2 dense-coverage field: full-city per-H3-cell PM2.5 (downscaled ~1 km) +
+    the sparse stations-only baseline, for the 'stations ↔ dense 1 km' map toggle.
+    DEMO_MODE serves a precomputed fixture; live computes via ml.coverage."""
+    if DEMO_MODE:
+        data = fixture("coverage", default={})
+        picked = data.get(city) if isinstance(data, dict) else None
+        return ok(picked or {"cells": [], "city_id": city})
+    bbox = _city_bbox(city)
+    if not bbox:
+        return err("bad_request", f"unknown city bbox: {city}")
+    from ml.coverage import build_dense_field
+    try:
+        # Anchor the field on REAL data: latest PM2.5 per instrumented cell and
+        # the real source registry. Without this the assembler falls back to
+        # synthetic anchors (a fabricated field) — acceptable for fixtures only.
+        from core.spatial.h3_utils import cell_to_latlng
+
+        db = _db()
+        rows = (
+            db.table("measurements").select("h3_cell,ts,value")
+            .eq("city_id", city).eq("variable", "pm25")
+            .order("ts", desc=True).limit(3000).execute().data
+        )
+        latest: dict[str, float] = {}
+        for r in rows:
+            if r.get("value") is not None:
+                latest.setdefault(r["h3_cell"], float(r["value"]))
+        anchors = []
+        for cell_id, val in latest.items():
+            try:
+                lat, lng = cell_to_latlng(cell_id)
+                anchors.append({"lat": lat, "lng": lng, "pm25": val})
+            except Exception:  # noqa: BLE001 — malformed cell id
+                continue
+        src_rows = (
+            db.table("emission_sources").select("geom,detection_confidence")
+            .eq("city_id", city).execute().data
+        )
+        sources = [
+            {"coordinates": (s.get("geom") or {}).get("coordinates"),
+             "detection_confidence": s.get("detection_confidence")}
+            for s in src_rows if (s.get("geom") or {}).get("coordinates")
+        ]
+        base = sum(latest.values()) / len(latest) if latest else 95.0
+        data = build_dense_field(
+            city, bbox,
+            anchors=anchors or None,
+            sources=sources or None,
+            base_pm25=base,
+        )
+        data["anchors_from"] = "live_measurements" if anchors else "synthetic_fallback"
+        return ok(data)
+    except Exception as e:  # noqa: BLE001
+        return err("coverage_error", str(e))
 
 
 # ---------------------------------------------------------------------------

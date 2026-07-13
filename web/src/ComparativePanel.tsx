@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "./api";
+import { inr, intfmt } from "./format";
 
 type CityCard = {
   city_id: string;
@@ -10,10 +11,20 @@ type CityCard = {
   dominant_source: string;
   signature_match: string;
   playbook: string[];
+  health?: {
+    annual_pm25: number;
+    attributable_deaths_per_year: number;
+    annual_health_burden_inr: number;
+  };
 };
 
 type Comparison = {
-  summary: { cities_compared: number; highest_risk_city: string; shared_pattern: string };
+  summary: {
+    cities_compared: number;
+    highest_risk_city: string;
+    highest_burden_city?: string;
+    shared_pattern: string;
+  };
   cities: CityCard[];
 };
 
@@ -45,6 +56,16 @@ export default function ComparativePanel({ onSelectCity }: { onSelectCity: (city
               <span>{c.dominant_source.replace("_", " ")}</span>
               <span>{c.signature_match}</span>
             </div>
+            {c.health && (
+              <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-gray-600">
+                <span>~{intfmt(c.health.attributable_deaths_per_year)} deaths/yr</span>
+                <span>·</span>
+                <span>{inr(c.health.annual_health_burden_inr)}/yr</span>
+                {data?.summary.highest_burden_city === c.city_id && (
+                  <span className="rounded bg-red-100 px-1 text-red-700">highest burden</span>
+                )}
+              </div>
+            )}
             <div className="mt-2 text-xs text-gray-600">{c.playbook[0]}</div>
           </button>
         ))}

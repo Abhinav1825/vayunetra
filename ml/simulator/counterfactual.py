@@ -23,12 +23,44 @@ from datetime import datetime, timezone
 from typing import Any
 
 # Named interventions -> source-share reductions (fractions of that source removed).
+# Magnitudes are literature-grounded (see INTERVENTION_CITATIONS), not invented.
 INTERVENTIONS: dict[str, dict[str, float]] = {
     "construction_halt": {"construction_dust": 0.8},
-    "traffic_restriction": {"traffic": 0.3},          # odd-even style
+    "traffic_restriction": {"traffic": 0.15},          # odd-even style (see citation)
     "industrial_shutdown": {"industrial": 0.6},
     "waste_burn_ban": {"biomass_burning": 0.7},
-    "grap_stage3": {"construction_dust": 0.8, "traffic": 0.2, "industrial": 0.3},
+    "grap_stage3": {"construction_dust": 0.8, "traffic": 0.1, "industrial": 0.3},
+}
+
+# Provenance for every magnitude — same cited-factors discipline as ml.impact.
+INTERVENTION_CITATIONS: dict[str, list[dict]] = {
+    "construction_halt": [{
+        "figure": "construction-dust source reduction", "value": 0.8, "unit": "fraction",
+        "source": "CAQM GRAP Stage III/IV: ban on construction & demolition activity",
+        "caveat": "assumes ~80% site compliance; exempted projects continue",
+    }],
+    "traffic_restriction": [{
+        "figure": "traffic source reduction", "value": 0.15, "unit": "fraction",
+        "source": "Delhi odd-even trials (Jan 2016): ~4-7% ambient PM2.5 reduction observed "
+                  "(EPIC-India / Chandra et al. analyses) ≈ 13-20% of the traffic share",
+        "caveat": "midpoint of the implied source-level range; exemptions dilute the scheme",
+    }],
+    "industrial_shutdown": [{
+        "figure": "industrial source reduction", "value": 0.6, "unit": "fraction",
+        "source": "CAQM GRAP Stage IV: closure of industries not on PNG/clean fuels",
+        "caveat": "clean-fuel industries continue operating",
+    }],
+    "waste_burn_ban": [{
+        "figure": "open-burning source reduction", "value": 0.7, "unit": "fraction",
+        "source": "SWM Rules 2016 + GRAP open-burning ban with on-the-spot fines",
+        "caveat": "assumes ~70% enforcement effectiveness",
+    }],
+    "grap_stage3": [{
+        "figure": "combined GRAP Stage III package", "value": "0.8/0.1/0.3", "unit": "per-source fractions",
+        "source": "CAQM GRAP Stage III schedule: C&D ban, BS-III petrol/BS-IV diesel LMV "
+                  "restrictions, curbs on non-clean-fuel industry",
+        "caveat": "per-source effectiveness assumptions as in the single-lever entries",
+    }],
 }
 
 POP_PER_CELL = 40_000          # metro res-8 cell heuristic (Stage-2 E2 refines with WorldPop)
@@ -60,9 +92,15 @@ def apply_reductions(
     cells: list[CellState],
     reductions: dict[str, float],
     target_cells: list[str] | None = None,
+    pop_by_cell: dict[str, float] | None = None,
 ) -> dict[str, Any]:
-    """Pure counterfactual: reduced source shares -> per-cell PM2.5/AQI deltas."""
+    """Pure counterfactual: reduced source shares -> per-cell PM2.5/AQI deltas.
+
+    pop_by_cell: real per-cell population (GPW v4.11) — falls back to the
+    POP_PER_CELL heuristic for cells without a value.
+    """
     targets = set(target_cells) if target_cells else None
+    pop_by_cell = pop_by_cell or {}
     affected = [c for c in cells if targets is None or c.h3_cell in targets]
     if not affected:
         return {"delta_aqi_by_cell": {}, "delta_pm25_by_cell": {}, "people_protected": 0,
@@ -88,15 +126,16 @@ def apply_reductions(
         delta_aqi[c.h3_cell] = pm25_to_aqi(new) - pm25_to_aqi(c.pm25_forecast)
 
     protected_cells = [h for h, d in delta_aqi.items() if d <= -MEANINGFUL_AQI_DROP]
-    people = len(protected_cells) * POP_PER_CELL
+    people = round(sum(pop_by_cell.get(h, POP_PER_CELL) for h in protected_cells))
     conf = round(sum(c.confidence for c in affected) / len(affected), 3)
 
     return {
         "delta_pm25_by_cell": delta_pm25,
         "delta_aqi_by_cell": delta_aqi,
         "people_protected": people,
+        "population_source": "GPW v4.11 (CIESIN/SEDAC 2020)" if pop_by_cell else "heuristic 40k/cell",
         "exposure_hours_reduced": 0,   # filled by the wrapper (needs horizon)
-        "pm25_tonnes_avoided": None,   # needs an emission inventory — not faked
+        "pm25_tonnes_avoided": None,   # wrapper fills from the cited sectoral inventory
         "confidence": conf,
     }
 
@@ -151,11 +190,39 @@ def simulate_intervention(
             "(or pass explicit `reductions`)"
         )
     cells = _load_cells(city_id, horizon_h)
-    result = apply_reductions(cells, red, target_cells)
+    try:
+        from connectors.population import load_population
+        pop_by_cell = load_population(city_id)
+    except Exception:  # noqa: BLE001 — population layer optional
+        pop_by_cell = {}
+    result = apply_reductions(cells, red, target_cells, pop_by_cell=pop_by_cell)
     protected = result["people_protected"]
-    return {
+
+    # Tonnes avoided from the cited sectoral inventory (order-of-magnitude):
+    # annual sector tonnes × source reduction × window fraction × affected share.
+    from ml.attribution.inventory import SECTOR_EMISSIONS_TPY
+    inv = SECTOR_EMISSIONS_TPY.get(city_id)
+    if inv:
+        affected_frac = (len(result["delta_aqi_by_cell"]) / len(cells)) if cells else 0.0
+        tonnes = sum(
+            inv["tonnes"].get(src, 0.0) * min(max(r, 0.0), 1.0)
+            for src, r in red.items()
+        ) * (horizon_h / 8760.0) * affected_frac
+        result["pm25_tonnes_avoided"] = round(tonnes, 2)
+        result["emissions_basis"] = inv["source"] + " — approximate, order-of-magnitude"
+    base = {
         **result,
         "exposure_hours_reduced": protected * horizon_h,
-        "intervention": {"type": intervention_type, "reductions": red, "horizon_h": horizon_h},
+        "intervention": {
+            "type": intervention_type,
+            "reductions": red,
+            "horizon_h": horizon_h,
+            # literature provenance for the reduction magnitudes (empty for custom reductions)
+            "citations": INTERVENTION_CITATIONS.get(intervention_type, []) if reductions is None else [],
+        },
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }
+    # E7 (Sejal): add cited health ₹ + CO₂e on top of the physics deltas.
+    from ml.impact import quantify_intervention
+
+    return quantify_intervention(base)

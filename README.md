@@ -25,6 +25,21 @@ enforcement intelligence → citizen advisory → multi-city comparison.**
 
 *skill = 1 − RMSE_model / RMSE_baseline. We show both baselines, including the weak spots — real model, real data, no demo props.*
 
+**Attribution cross-checked against published emission inventories** (`evaluate.ipynb §10`):
+cosine similarity **0.92 vs SAFAR-Delhi (2018)** · 0.88 vs CSTEP-Bengaluru (2022) · 0.79 vs
+NEERI/Urban-Emissions Mumbai — locally-attributable categories, discrepancies explained
+(e.g. biomass ≈ 0 in July is seasonally correct; inventories are annual averages).
+What-if intervention magnitudes are literature-grounded (Delhi odd-even trials, CAQM GRAP
+schedules) — every number carries its citation in the `/simulate` response.
+
+## 🧭 Where we sit in India's air-quality stack
+CPCB sensors *measure* · SAFAR *forecasts* · **VayuNetra operates** (who's polluting this
+cell now → 72h forecast → cited enforcement notice → citizen call, in minutes) ·
+[PAVITRA](https://pavitra.org) (IIT-B/Berkeley/UW/CSTEP) *plans policy* on annual timescales.
+**Roadmap:** integrate InMAP-PAVITRA source–receptor matrices to upgrade our what-if simulator
+from linear-rollback screening to policy-grade emission→concentration physics — their science
+is our upgrade path, not our competitor.
+
 ## 📚 Docs (read in this order)
 1. [docs/PRD.md](docs/PRD.md) — product requirements (the "what" and "why")
 2. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — buildable blueprint (the "how")

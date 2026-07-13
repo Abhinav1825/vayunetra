@@ -4,13 +4,20 @@
     "883da1a3a3fffff": -18,
     "883da1b29a7ffff": -12
   },
+  "delta_pm25_by_cell": {
+    "883da1a3a1fffff": -31.5,
+    "883da1a3a3fffff": -13.2,
+    "883da1b29a7ffff": -8.4
+  },
   "people_protected": 28400,
-  "pm25_tonnes_avoided": 2.3,
   "exposure_hours_reduced": 681600,
+  "pm25_tonnes_avoided": 2.3,
   "intervention": {
-    "type": "construction_halt",
-    "description": "Halt construction at Sarai Kale Khan site + water sprinkling mandate",
-    "ward": "Ward 12 — Sarai Kale Khan"
+    "type": "waste_burn_ban",
+    "reductions": { "biomass_burning": 0.7 },
+    "horizon_h": 24,
+    "description": "Enforce crop-residue & open-waste burning ban across the upwind belt",
+    "ward": "Upwind agricultural belt + Ward 12 (Sarai Kale Khan)"
   },
   "confidence": 0.81,
   "generated_at": "2026-06-27T09:00:00Z"

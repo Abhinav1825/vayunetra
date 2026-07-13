@@ -1,0 +1,25 @@
+CAQM DIRECTIONS — APPROVED FUELS FOR INDUSTRY IN NCR (SUMMARY)
+
+Authority: Commission for Air Quality Management in NCR and Adjoining Areas (CAQM).
+Reference frame: CAQM standard list of approved fuels for NCR and the directions on
+industrial fuel switching (2022 consolidation; earlier Direction No. 47/2022 line).
+
+Key provisions:
+1. Standard fuel list: only fuels on the CAQM-approved list may be used in NCR —
+   PNG/CNG/LNG, LPG, electricity, biogas/CBG, low-sulphur diesel for DG sets within
+   permitted use, and specified biomass pellets for identified applications.
+2. Coal ban: use of coal (including low-sulphur imported coal) is prohibited across
+   NCR for industrial, domestic and miscellaneous applications, with a carve-out for
+   thermal power plants and industries using coal with emission-control per CPCB norms
+   outside the ban's scope.
+3. Fuel switching: industries in NCR industrial areas with PNG supply infrastructure
+   must operate on PNG or approved cleaner fuels; unconnected areas were given
+   switch-over timelines, after which non-compliant units face closure.
+4. GRAP linkage: under GRAP Stage IV, industries not running on approved cleaner
+   fuels must close (exemptions: milk/dairy and life-saving/medical manufacturing).
+5. DG sets: diesel generator use is regulated by capacity and emission retrofits
+   (RECD), with graded restrictions tightening through GRAP stages.
+
+Enforcement: state pollution control boards (DPCC/HSPCB/RSPCB/UPPCB) inspect and
+report compliance to CAQM; violations attract closure directions and environmental
+compensation.
