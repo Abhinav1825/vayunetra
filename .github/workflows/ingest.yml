@@ -37,6 +37,10 @@ jobs:
           python -m connectors.openaq --city bengaluru --days 1 --max-sensors 15 --push || echo "::warning::openaq bengaluru failed"
           sleep 30
           python -m connectors.openaq --city mumbai --days 1 --max-sensors 15 --push || echo "::warning::openaq mumbai failed"
+          # Direct CAAQMS path: data.gov.in is unreachable from some ISP routes but
+          # may work from Actions IPs; auto-heals whenever the route is clear.
+          # (Redundancy only — our OpenAQ stations are already provider=CPCB/CAAQMS.)
+          python -m connectors.cpcb --city delhi --push || echo "::warning::cpcb direct path unreachable"
           python -m connectors.openmeteo --city delhi --push || true
           python -m connectors.openmeteo --city bengaluru --push || true
           python -m connectors.openmeteo --city mumbai --push || true
