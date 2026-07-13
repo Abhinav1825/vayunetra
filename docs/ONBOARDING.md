@@ -8,7 +8,7 @@ To onboard a new city live on stage (e.g., adding "Chennai"), simply send a `POS
 
 ### Example using cURL
 ```bash
-curl -X POST "https://vayunetra-c8i8.onrender.com/admin/cities" \
+curl -X POST "http://localhost:8000/admin/cities" \
      -H "Content-Type: application/json" \
      -H "Authorization: Bearer <ADMIN_JWT_TOKEN>" \
      -d '{

@@ -51,3 +51,5 @@ ruff
 # --- Eval / notebooks (eval/evaluate.ipynb) ---
 matplotlib
 seaborn
+
+pingouin
