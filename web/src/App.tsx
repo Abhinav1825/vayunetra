@@ -10,6 +10,7 @@ import EnforcementPanel from "./EnforcementPanel";
 import CitizenPanel from "./CitizenPanel";
 import ComparativePanel from "./ComparativePanel";
 import CityIntelPanel from "./CityIntelPanel";
+import TraceViewer from "./TraceViewer";
 import WhatIfPanel from "./WhatIfPanel";
 import RoiPanel from "./RoiPanel";
 
@@ -230,6 +231,7 @@ export default function App() {
 
         <ForecastPanel city={active} />
         <CityIntelPanel city={active} />
+        <TraceViewer city={active} />
       </div>
 
       {/* Right rail (desktop) / second stack (mobile) */}
