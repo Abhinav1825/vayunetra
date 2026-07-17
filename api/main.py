@@ -401,15 +401,15 @@ def advisory_broadcast(body: dict, db=Depends(get_db)) -> dict:
     results: dict[str, Any] = {"advisory": {"ward_id": adv.get("ward_id"), "message": adv.get("message")}}
 
     # Telegram
-    if os.getenv("TELEGRAM_BOT_TOKEN") and os.getenv("TELEGRAM_CHAT_ID"):
+    if os.getenv("TELEGRAM_BOT_TOKEN"):
         try:
-            from channels.telegram import send_telegram_advisory
-            r = asyncio.run(send_telegram_advisory(adv))
-            results["telegram"] = {"status": "sent", "message_id": r.get("message_id")}
+            from channels.telegram import broadcast_telegram_advisory
+            r = asyncio.run(broadcast_telegram_advisory(adv, None if DEMO_MODE else _db()))
+            results["telegram"] = r
         except Exception as e:  # noqa: BLE001 — never let one channel kill the broadcast
             results["telegram"] = {"status": "error", "detail": str(e)[:200]}
     else:
-        results["telegram"] = {"status": "skipped", "detail": "TELEGRAM_BOT_TOKEN/CHAT_ID not configured"}
+        results["telegram"] = {"status": "skipped", "detail": "TELEGRAM_BOT_TOKEN not configured"}
 
     # IVR — only when explicitly requested (it rings real phones).
     # Fans out to every number in TWILIO_TO_NUMBERS (fallback: TWILIO_TO_NUMBER).
@@ -428,6 +428,26 @@ def advisory_broadcast(body: dict, db=Depends(get_db)) -> dict:
             results["ivr"] = {"status": "skipped", "detail": "Twilio not configured on this server"}
 
     return ok(results)
+
+
+@app.post("/telegram/webhook", tags=["advisory"])
+def telegram_webhook(
+    update: dict,
+    x_telegram_bot_api_secret_token: Optional[str] = Header(
+        None, alias="X-Telegram-Bot-Api-Secret-Token"
+    ),
+) -> dict:
+    """Telegram bot webhook: /start -> city picker -> advisory_subscribers."""
+    secret = os.getenv("TELEGRAM_WEBHOOK_SECRET")
+    if secret and x_telegram_bot_api_secret_token != secret:
+        return err("forbidden", "invalid Telegram webhook secret")
+    if DEMO_MODE:
+        return ok({"status": "demo_mode", "detail": "subscription writes disabled in DEMO_MODE"})
+    try:
+        from channels.telegram import handle_subscription_update
+        return ok(asyncio.run(handle_subscription_update(update, _db())))
+    except Exception as e:  # noqa: BLE001
+        return err("telegram_webhook_error", str(e))
 
 
 @app.get("/alerts/compound", tags=["advisory"])

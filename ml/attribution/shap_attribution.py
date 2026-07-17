@@ -111,6 +111,71 @@ def _fit_gbm(X: pd.DataFrame, y: pd.Series):
     return model, max(0.0, r2)
 
 
+class _LinearModel:
+    def __init__(self, cols: list[str], means: pd.Series, coef: np.ndarray):
+        self.cols = cols
+        self.means = means
+        self.coef = coef
+
+    def design(self, X: pd.DataFrame) -> np.ndarray:
+        clean = X[self.cols].fillna(self.means).fillna(0.0)
+        return np.column_stack([np.ones(len(clean)), clean.to_numpy(dtype=float)])
+
+    def predict(self, X: pd.DataFrame) -> np.ndarray:
+        return self.design(X) @ self.coef
+
+
+def _r2_np(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+    ss_res = float(np.sum((y_true - y_pred) ** 2))
+    ss_tot = float(np.sum((y_true - y_true.mean()) ** 2)) or 1.0
+    return 1.0 - ss_res / ss_tot
+
+
+def _fit_linear(X: pd.DataFrame, y: pd.Series) -> tuple[_LinearModel, float]:
+    """Numpy-only fallback for CI/lean envs when LightGBM/SHAP/sklearn break."""
+    split = int(len(X) * 0.8)
+    means = X.iloc[:split].median(numeric_only=True)
+    train_model = _LinearModel(list(X.columns), means, np.zeros(len(X.columns) + 1))
+    design = train_model.design(X.iloc[:split])
+    coef, *_ = np.linalg.lstsq(design, y.iloc[:split].to_numpy(dtype=float), rcond=None)
+    train_model.coef = coef
+    holdout = X.iloc[split:]
+    r2 = _r2_np(y.iloc[split:].to_numpy(dtype=float), train_model.predict(holdout)) if len(holdout) > 20 else 0.0
+
+    means_all = X.median(numeric_only=True)
+    model = _LinearModel(list(X.columns), means_all, np.zeros(len(X.columns) + 1))
+    coef_all, *_ = np.linalg.lstsq(model.design(X), y.to_numpy(dtype=float), rcond=None)
+    model.coef = coef_all
+    return model, max(0.0, float(r2))
+
+
+def _linear_shares(
+    model: _LinearModel, grp: pd.DataFrame, cols: list[str], observed_frac: dict[str, float]
+) -> tuple[dict[str, float], list[dict]]:
+    mass = {c: 0.0 for c in CATEGORIES}
+    per_feature: dict[str, float] = {}
+    for idx, col in enumerate(cols, start=1):
+        source = SOURCE_MARKERS.get(col)
+        if source is None or observed_frac.get(col, 1.0) < MIN_MARKER_COVERAGE:
+            continue
+        spread = float(grp[col].fillna(model.means.get(col, 0.0)).std()) or 0.0
+        contrib = abs(float(model.coef[idx])) * spread
+        per_feature[col] = contrib
+        mass[source] += contrib
+
+    total = sum(mass.values())
+    if total <= 0:
+        return {}, []
+    shares = {c: (1 - OTHER_FLOOR) * mass[c] / total for c in CATEGORIES if c != "other"}
+    shares["other"] = OTHER_FLOOR
+    drivers = [
+        {"feature": f, "source": SOURCE_MARKERS[f], "contribution": round(v, 3)}
+        for f, v in sorted(per_feature.items(), key=lambda kv: -kv[1])[:3]
+        if v > 0
+    ]
+    return {k: round(v, 4) for k, v in shares.items()}, drivers
+
+
 MIN_MARKER_COVERAGE = 0.3  # a marker must be observed in ≥30% of the window's rows
 
 
@@ -175,18 +240,24 @@ def apportion_cells(
     Returns ({h3_cell: CellApportionment}, holdout_r2). Raises ValueError when
     the city's data is too thin — callers fall back to signature priors.
     """
-    import shap
-
     X, y, cols = _feature_frame(wide)
     if len(X) < MIN_SAMPLES:
         raise ValueError(f"too few samples for GBM apportionment ({len(X)} < {MIN_SAMPLES})")
 
-    model, r2 = _fit_gbm(X, y)
+    use_linear = False
+    try:
+        import shap
+
+        model, r2 = _fit_gbm(X, y)
+        explainer = shap.TreeExplainer(model)
+    except Exception:
+        model, r2 = _fit_linear(X, y)
+        explainer = None
+        use_linear = True
     if r2 < MIN_HOLDOUT_R2:
         # SHAP from a model that can't predict out-of-sample is noise dressed
         # as ML — keep the transparent chemistry priors instead.
         raise ValueError(f"holdout R2 too low for trustworthy apportionment ({r2:.2f} < {MIN_HOLDOUT_R2})")
-    explainer = shap.TreeExplainer(model)
 
     cutoff = wide["ts"].max() - pd.Timedelta(hours=RECENT_HOURS)
     recent = wide.dropna(subset=["pm25"])
@@ -194,9 +265,12 @@ def apportion_cells(
 
     out: dict[str, CellApportionment] = {}
     for cell, grp in recent.groupby("h3_cell"):
-        shap_vals = explainer.shap_values(grp[cols])
         observed = {c: float(grp[c].notna().mean()) for c in cols if c in SOURCE_MARKERS}
-        shap_s, drivers = _shap_shares(np.asarray(shap_vals), cols, observed)
+        if use_linear:
+            shap_s, drivers = _linear_shares(model, grp, cols, observed)
+        else:
+            shap_vals = explainer.shap_values(grp[cols])
+            shap_s, drivers = _shap_shares(np.asarray(shap_vals), cols, observed)
         if not shap_s:
             continue  # no observed markers -> keep the transparent signature row
         sig_s = sig_by_cell.get(cell, {})
