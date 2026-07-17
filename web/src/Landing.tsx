@@ -346,9 +346,9 @@ export default function Landing() {
             <div>
               <p className="font-mono text-[10px] uppercase tracking-wider text-slate-600">Team</p>
               <div className="mt-2 space-y-1.5 text-slate-400">
-                <span className="block">Omkar — ML core</span>
-                <span className="block">Abhinav — agents & backend</span>
-                <span className="block">Sejal — product & reach</span>
+                <span className="block">Omkar Kadam</span>
+                <span className="block">Abhinav Prasad</span>
+                <span className="block">Sejal Kumbhar</span>
               </div>
             </div>
           </div>
