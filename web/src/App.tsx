@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
 import BlameMap, { type AttrCell, type CoverageCell, type MapMode } from "./BlameMap";
 import ForecastPanel from "./ForecastPanel";
@@ -70,24 +70,33 @@ export default function App() {
     return () => window.removeEventListener("api-fallback", on);
   }, []);
 
-  const [autoOpened, setAutoOpened] = useState<string | null>(null);
+  // A ref (always current, unlike a captured `cell`/state closure) records
+  // whether a story is already open for this city — so an async auto-open can
+  // never overwrite a selection the user made while attribution was loading.
+  const openedRef = useRef(false);
 
   useEffect(() => {
     setCell(null); // clear story on city switch
-    setAutoOpened(null);
+    openedRef.current = false; // allow one auto-open for the new city
   }, [active]);
+
+  // Any explicit selection (map click / deselect) locks out auto-open.
+  function handleSelect(c: AttrCell | null) {
+    if (c) openedRef.current = true;
+    setCell(c);
+  }
 
   // Discoverability: the whole product is behind a hexagon click, so open one
   // for the judge on first load. Prefer a model-explained (SHAP) cell so the
   // first thing seen is the full "why", else the highest-confidence cell.
   function autoOpenBest(cells: AttrCell[]) {
-    if (autoOpened === active || cell || !cells.length) return;
+    if (openedRef.current || !cells.length) return;
     const explained = cells.filter((c) => (c.evidence?.shap_drivers ?? []).length > 0);
     const pool = explained.length ? explained : cells;
     const best = [...pool].sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0))[0];
     if (best) {
+      openedRef.current = true;
       setCell(best);
-      setAutoOpened(active);
     }
   }
 
@@ -109,7 +118,7 @@ export default function App() {
           center={center}
           mode={mode}
           selected={cell?.h3_cell}
-          onSelect={setCell}
+          onSelect={handleSelect}
           onCellsLoaded={autoOpenBest}
           showSources={showSources}
           coverageCells={coverage?.cells ?? []}

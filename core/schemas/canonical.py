@@ -33,6 +33,7 @@ class Variable(str, Enum):
     rh = "rh"
     precip = "precip"
     traffic = "traffic"
+    population = "population"  # GPW v4.11 residents per H3 cell (connectors/population.py)
 
 
 class Source(str, Enum):

@@ -603,9 +603,9 @@ def comparison() -> dict:
         meas = (
             sdb.table("measurements").select("city_id,h3_cell,ts,value")
             .eq("variable", "pm25").order("ts", desc=True).limit(8000).execute().data
-        )
+        ) or []
         # dominant source per cell from attribution (highest-share category)
-        attr = sdb.table("attribution").select("city_id,h3_cell,source_category,share").execute().data
+        attr = sdb.table("attribution").select("city_id,h3_cell,source_category,share").execute().data or []
         best: dict[tuple, float] = {}
         dom_by_cell: dict[tuple, str] = {}
         for r in attr:
@@ -628,7 +628,7 @@ def comparison() -> dict:
                 "dominant_source": dom_by_cell.get(k, "unknown"),
             })
 
-        fc = sdb.table("forecasts").select("city_id,horizon_h,value").eq("horizon_h", 24).execute().data
+        fc = sdb.table("forecasts").select("city_id,horizon_h,value").eq("horizon_h", 24).execute().data or []
         forecast_rows = [
             {"city_id": r["city_id"], "horizon_h": r.get("horizon_h", 24), "value": r["value"]}
             for r in fc if r.get("value") is not None
