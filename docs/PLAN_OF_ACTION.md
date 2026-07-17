@@ -243,7 +243,7 @@ Tiers: 🔴 **Hard** (deep/novel ML) · 🟡 **Medium** (engineering/integration
 ---
 
 ## 9. Tech stack (all free-tier — ARCH §5)
-Python · FastAPI (Cloud Run) · Supabase (Postgres/PostGIS/pgvector/Auth) · Uber H3 · Google Earth Engine · Open-Meteo · LangGraph · Gemini Flash (free) + local `bge-small` · LightGBM→PyTorch (Colab/Kaggle) · React+MapLibre+Deck.gl (Vercel) · Telegram + Twilio-trial · GitHub Actions cron. **Infra cost: ₹0.**
+Python · FastAPI (Cloud Run) · Supabase (Postgres/PostGIS/pgvector/Auth) · Uber H3 · Google Earth Engine · Open-Meteo · LangGraph · local `bge-small` (LLM: Gemini Flash on roadmap — advisories are deliberately deterministic templates) · LightGBM→PyTorch (Colab/Kaggle) · React+MapLibre+Deck.gl (Vercel) · Telegram + Twilio-trial · GitHub Actions cron. **Infra cost: ₹0.**
 
 ---
 

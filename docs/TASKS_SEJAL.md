@@ -34,7 +34,7 @@ item of the whole submission. Record it before any Stage-2 code.** Also:
 ## STAGE 1 — PS5 core (must-ship)
 - [x] **Connectors** → static layers / `emission_sources`: OSM (roads, land use, industrial, hospitals/schools) + WorldPop (population) + emission-source registry. 🟡 *(indep)*
 - [x] **Mobility feeds** (PS5-named) — GTFS transit + a time-of-day/day-of-week **traffic proxy** from the OSM road network → mobility feature in `measurements` (Omkar's models consume it via DB). 🟡 *(indep)*
-- [x] **Agent 4 — Advisory** — health tiering (CPCB/WHO breakpoints × vulnerability) + LLM (Gemini) localisation into **hi/en/kn/mr** → `advisories`; deliver via **Citizen PWA + Telegram + IVR + public-display mode**. 🟡 *(dep: forecast + vulnerability via DB — mock until Window)*
+- [x] **Agent 4 — Advisory** — health tiering (CPCB/WHO breakpoints × vulnerability) + deterministic templated localisation into **hi/en/kn/mr** (safe-by-design for health text; Gemini polish = roadmap) → `advisories`; deliver via **Citizen PWA + Telegram + IVR + public-display mode**. 🟡 *(dep: forecast + vulnerability via DB — mock until Window)*
 - [x] **Agent 5 — Multi-City** — cross-city trends + before/after intervention deltas + H3 signature matching → playbook recommendations. 🟡 *(dep: multi-city data via DB)*
 - [x] **App shell + integration** — React/Vite/Tailwind shell, routing, state (TanStack Query + Zustand), map base, WebSocket; **integrate Omkar's & Abhinav's UI panels**. 🟡
 - [x] **Your UI panels** — **city switcher**, **comparative tab**, **live latency widget**, Citizen PWA, language toggle. 🟡
@@ -73,4 +73,4 @@ item of the whole submission. Record it before any Stage-2 code.** Also:
 - **E2 hard to validate** → validate AOD→PM2.5 + downscaling against **held-out stations**; report honest RMSE/skill.
 
 ## Quick stack ref
-React + TypeScript + Vite + Tailwind + **MapLibre GL + Deck.gl** (Vercel) · Gemini (i18n) · Telegram + Twilio-trial (IVR) · PyTorch (Kaggle GPU for E2) · CLIP via sentence-transformers · reads Supabase/API. **₹0.**
+React + TypeScript + Vite + Tailwind + **MapLibre GL + Deck.gl** (Vercel) · templated i18n (Gemini polish roadmap) · Telegram + Twilio-trial (IVR) · PyTorch (Kaggle GPU for E2) · CLIP via sentence-transformers · reads Supabase/API. **₹0.**
