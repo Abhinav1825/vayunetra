@@ -98,7 +98,16 @@ export default function App() {
         {/* Header overlays the map on all breakpoints */}
         <div className="absolute left-2 right-2 top-2 z-10 flex flex-wrap items-start justify-between gap-2 lg:left-4 lg:right-4 lg:top-4">
           <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200/80 bg-white/95 p-2 shadow-lg shadow-slate-900/5 backdrop-blur">
-            <a href="#/" className="flex items-center gap-1.5 px-1.5 text-sm font-extrabold tracking-tight text-slate-800">
+            <a
+              href="#/"
+              title="Back to landing page"
+              className="flex h-7 w-7 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
+                <path d="M19 12H5m6-6l-6 6 6 6" />
+              </svg>
+            </a>
+            <a href="#/" className="flex items-center gap-1.5 pr-1.5 text-sm font-extrabold tracking-tight text-slate-800">
               <span className="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-sky-500 to-blue-700 text-[13px] font-black text-white shadow-sm">
                 V
               </span>
