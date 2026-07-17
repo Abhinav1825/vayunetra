@@ -11,7 +11,7 @@ import {
 import { api } from "./api";
 import { aqiCategory, pm25ToAqi } from "./aqi";
 import { FORECAST_SKILL, SKILL_ASOF, pct } from "./metrics";
-import { Panel, SegBtn } from "./ui";
+import { EmptyState, Panel, SegBtn } from "./ui";
 
 type FC = {
   h3_cell: string;
@@ -102,14 +102,14 @@ export default function ForecastPanel({ city }: { city: string }) {
           </ResponsiveContainer>
         </div>
       )}
-      <div className="mt-0.5 flex items-center gap-3 text-[10px] text-slate-400">
+      <div className="mt-0.5 flex items-center gap-3 text-[11px] text-slate-400">
         <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3 rounded bg-blue-600" /> city avg + 80% band</span>
         <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3 rounded bg-slate-400" /> persistence</span>
       </div>
 
       {skill && (
         <div
-          className="mt-2 rounded-md bg-indigo-50 px-2 py-1 text-[10px] leading-4 text-indigo-800"
+          className="mt-2 rounded-md bg-indigo-50 px-2 py-1 text-[11px] leading-4 text-indigo-800"
           title={`Walk-forward backtest (3 folds, n=${skill.n}) on live data, ${SKILL_ASOF}. skill = 1 − RMSE_model/RMSE_baseline`}
         >
           backtested skill @{horizon}h: <b>{pct(skill.vsPersistence[horizon])}</b> vs persistence ·{" "}
@@ -136,7 +136,7 @@ export default function ForecastPanel({ city }: { city: string }) {
                     cell {cellLabel(r.h3_cell)}
                   </span>
                   <span className="flex items-center gap-1.5">
-                    <span className="font-mono text-[10px] text-slate-400">
+                    <span className="font-mono text-[11px] text-slate-400">
                       [{Math.round(r.pi_low)}–{Math.round(r.pi_high)}]
                     </span>
                     <span
@@ -152,7 +152,7 @@ export default function ForecastPanel({ city }: { city: string }) {
           </div>
         </div>
       ) : (
-        <div className="mt-2 text-xs text-gray-500">no forecast data</div>
+        <EmptyState message="No forecast available for this city yet." />
       )}
     </Panel>
   );

@@ -18,6 +18,19 @@ function fmt(ms?: number) {
   return `${m}m ${String(s).padStart(2, "0")}s`;
 }
 
+/** Human "3h ago" for the last pipeline run, so the latency isn't misread as freshness. */
+function agoLabel(iso?: string): string | null {
+  if (!iso) return null;
+  const then = new Date(iso).getTime();
+  if (!Number.isFinite(then)) return null;
+  const mins = Math.max(0, Math.round((Date.now() - then) / 60_000));
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const h = Math.floor(mins / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
+
 /** North-Star banner: end-to-end signal → action latency (target < 5 min). */
 export default function LatencyWidget({ city }: { city: string }) {
   const [trace, setTrace] = useState<Trace | null>(null);
@@ -28,18 +41,19 @@ export default function LatencyWidget({ city }: { city: string }) {
 
   const ms = trace?.total_latency_ms;
   const under5 = typeof ms === "number" && ms > 0 && ms < 5 * 60_000;
+  const ran = agoLabel(trace?.advisory_ts || trace?.signal_ts);
 
   return (
     <div
       className="rounded-lg bg-emerald-600 px-4 py-2 text-white shadow"
-      title="Multi-agent pipeline wall time: spike detected → attribution → forecast → enforcement + advisory issued. Target < 5 min."
+      title="Wall-clock of the last full multi-agent run: spike detected → attribution → forecast → enforcement + advisory issued. Runs on the pipeline schedule, not per page-load."
     >
-      <div className="text-[10px] font-semibold uppercase tracking-wider text-emerald-100">⚡ Signal → Action</div>
+      <div className="text-[11px] font-semibold uppercase tracking-wider text-emerald-100">⚡ Last pipeline run</div>
       <div className="flex items-baseline gap-2">
         <span className="text-2xl font-extrabold leading-tight">{fmt(ms)}</span>
-        {under5 && <span className="rounded bg-white/20 px-1.5 py-0.5 text-[10px] font-semibold">&lt; 5 min target ✓</span>}
+        {under5 && <span className="rounded bg-white/20 px-1.5 py-0.5 text-[11px] font-semibold">signal→action &lt; 5 min ✓</span>}
       </div>
-      <div className="text-[9px] text-emerald-200">agent pipeline: detect → decide → issue</div>
+      <div className="text-[11px] text-emerald-200">detect → decide → issue{ran ? ` · ran ${ran}` : ""}</div>
     </div>
   );
 }

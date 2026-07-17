@@ -11,7 +11,9 @@ Run:
 from __future__ import annotations
 
 import base64
+import hmac
 import json
+import logging
 import os
 import time
 import asyncio
@@ -22,13 +24,32 @@ from typing import Any, Optional
 from fastapi import FastAPI, Header, HTTPException, Query, Depends, WebSocket, WebSocketDisconnect, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 import core.env  # noqa: F401  (loads .env)
 from core.schemas import err, ok
 
 DEMO_MODE = os.getenv("DEMO_MODE", "true").lower() == "true"
 FIXTURES = Path(__file__).resolve().parent.parent / "demo" / "fixtures"
+
+logging.basicConfig(
+    level=os.getenv("LOG_LEVEL", "info").upper(),
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
+logger = logging.getLogger("vayunetra.api")
+
+
+def _server_error(code: str, exc: Exception, user_message: str) -> dict:
+    """Log the real exception server-side; return only a generic message to the
+    client. Never leak stack traces or internal state (missing env keys, DB
+    errors) into an API response or a demo screen."""
+    logger.error("%s: %s", code, exc, exc_info=True)
+    return err(code, user_message)
+
+
+# Shared validated city field — lowercase id, bounded length, no injection chars.
+# Not a hard 3-city whitelist, so /admin/cities onboarding keeps working.
+_CITY = Field("delhi", min_length=1, max_length=40, pattern=r"^[a-z][a-z0-9_-]*$")
 
 app = FastAPI(
     title="VayuNetra API",
@@ -145,7 +166,6 @@ def cities(db=Depends(get_db)) -> dict:
 @app.get("/aqi/current", tags=["data"])
 def aqi_current(
     city: str = Query(..., description="City ID, e.g. 'delhi'"),
-    bbox: Optional[str] = Query(None, description="Bounding box: lon_min,lat_min,lon_max,lat_max"),
     db=Depends(get_db)
 ) -> dict:
     """Latest per-cell AQI measurements for a city."""
@@ -296,7 +316,7 @@ def enforcement_dossier(rec_id: int, db=Depends(get_db)) -> dict:
         dossier = build_dossier(rec_id)
         return ok(dossier)
     except Exception as e:
-        return err("dossier_error", str(e))
+        return _server_error("dossier_error", e, "Failed to build evidence dossier")
 
 
 @app.get("/enforcement/{rec_id}/notice.pdf", tags=["enforcement"])
@@ -317,19 +337,18 @@ def enforcement_notice_pdf(rec_id: int, db=Depends(get_db)) -> Response:
     )
 
 
+class StatusBody(BaseModel):
+    status: str = Field(..., pattern=r"^(proposed|approved|dispatched|dismissed)$")
+
+
 @app.post("/enforcement/{rec_id}/status", tags=["enforcement"])
-def enforcement_update_status(rec_id: int, body: dict, db=Depends(get_db)) -> dict:
+def enforcement_update_status(rec_id: int, body: StatusBody, db=Depends(get_db)) -> dict:
     """Update enforcement rec status (approved / dispatched / dismissed)."""
-    new_status = body.get("status")
-    valid_statuses = {"proposed", "approved", "dispatched", "dismissed"}
-    if new_status not in valid_statuses:
-        return err("bad_request", f"status must be one of {valid_statuses}")
-
     if DEMO_MODE:
-        return ok({"rec_id": rec_id, "status": new_status, "demo": True})
+        return ok({"rec_id": rec_id, "status": body.status, "demo": True})
 
-    db.table("enforcement_recs").update({"status": new_status}).eq("id", rec_id).execute()
-    return ok({"rec_id": rec_id, "status": new_status})
+    db.table("enforcement_recs").update({"status": body.status}).eq("id", rec_id).execute()
+    return ok({"rec_id": rec_id, "status": body.status})
 
 
 # ---------------------------------------------------------------------------
@@ -372,14 +391,19 @@ _BROADCAST_WINDOW_S = 300
 _last_broadcast: dict[str, float] = {}
 
 
+class BroadcastBody(BaseModel):
+    city: str = _CITY
+    ivr: bool = False
+
+
 @app.post("/advisory/broadcast", tags=["advisory"])
-def advisory_broadcast(body: dict, db=Depends(get_db)) -> dict:
+def advisory_broadcast(body: BroadcastBody, db=Depends(get_db)) -> dict:
     """Push the latest advisory through the live channels (Telegram + optional IVR).
 
     Demo-facing: lets the UI trigger a real multi-channel delivery on stage.
     Rate-limited server-side; each channel reports ok / skipped(reason) / error.
     """
-    city = body.get("city", "delhi")
+    city = body.city
     now = time.time()
     if now - _last_broadcast.get(city, 0.0) < _BROADCAST_WINDOW_S:
         wait = int(_BROADCAST_WINDOW_S - (now - _last_broadcast[city]))
@@ -407,13 +431,14 @@ def advisory_broadcast(body: dict, db=Depends(get_db)) -> dict:
             r = asyncio.run(broadcast_telegram_advisory(adv, None if DEMO_MODE else _db()))
             results["telegram"] = r
         except Exception as e:  # noqa: BLE001 — never let one channel kill the broadcast
-            results["telegram"] = {"status": "error", "detail": str(e)[:200]}
+            logger.error("telegram broadcast failed: %s", e, exc_info=True)
+            results["telegram"] = {"status": "error", "detail": "Telegram send failed"}
     else:
         results["telegram"] = {"status": "skipped", "detail": "TELEGRAM_BOT_TOKEN not configured"}
 
     # IVR — only when explicitly requested (it rings real phones).
     # Fans out to every number in TWILIO_TO_NUMBERS (fallback: TWILIO_TO_NUMBER).
-    if body.get("ivr"):
+    if body.ivr:
         if os.getenv("TWILIO_ACCOUNT_SID") and os.getenv("TWILIO_PHONE_NUMBER") and (
             os.getenv("TWILIO_TO_NUMBERS") or os.getenv("TWILIO_TO_NUMBER")
         ):
@@ -423,7 +448,8 @@ def advisory_broadcast(body: dict, db=Depends(get_db)) -> dict:
                 sent = sum(1 for c in calls if c["status"] != "error")
                 results["ivr"] = {"status": f"calling {sent}/{len(calls)} numbers", "calls": calls}
             except Exception as e:  # noqa: BLE001
-                results["ivr"] = {"status": "error", "detail": str(e)[:200]}
+                logger.error("ivr broadcast failed: %s", e, exc_info=True)
+                results["ivr"] = {"status": "error", "detail": "IVR call failed"}
         else:
             results["ivr"] = {"status": "skipped", "detail": "Twilio not configured on this server"}
 
@@ -447,7 +473,7 @@ def telegram_webhook(
         from channels.telegram import handle_subscription_update
         return ok(asyncio.run(handle_subscription_update(update, _db())))
     except Exception as e:  # noqa: BLE001
-        return err("telegram_webhook_error", str(e))
+        return _server_error("telegram_webhook_error", e, "Failed to process update")
 
 
 @app.get("/alerts/compound", tags=["advisory"])
@@ -560,8 +586,56 @@ def mobility(city: str = Query(..., description="City ID")) -> dict:
 
 @app.get("/comparison", tags=["data"])
 def comparison() -> dict:
-    """Agent 5 multi-city comparison: trends, signatures, and playbook recommendations."""
-    return ok(fixture("comparison", default={"summary": {}, "cities": []}))
+    """Agent 5 multi-city comparison: trends, signatures, and playbook recommendations.
+
+    Live mode runs the real ``build_comparison`` over current measurements +
+    attribution + forecasts so the cards are consistent with the rest of the app
+    (was previously always the demo fixture, even live)."""
+    if DEMO_MODE:
+        return ok(fixture("comparison", default={"summary": {}, "cities": []}))
+    try:
+        from agents.multicity import build_comparison
+
+        sdb = _db()
+        cities = sdb.table("cities").select("city_id,name").execute().data or []
+
+        # latest pm25 per cell per city
+        meas = (
+            sdb.table("measurements").select("city_id,h3_cell,ts,value")
+            .eq("variable", "pm25").order("ts", desc=True).limit(8000).execute().data
+        )
+        # dominant source per cell from attribution (highest-share category)
+        attr = sdb.table("attribution").select("city_id,h3_cell,source_category,share").execute().data
+        best: dict[tuple, float] = {}
+        dom_by_cell: dict[tuple, str] = {}
+        for r in attr:
+            k = (r["city_id"], r["h3_cell"])
+            s = float(r.get("share") or 0)
+            if s > best.get(k, -1.0):
+                best[k] = s
+                dom_by_cell[k] = r["source_category"]
+
+        seen: set[tuple] = set()
+        aqi_rows: list[dict] = []
+        for r in meas:
+            k = (r["city_id"], r["h3_cell"])
+            if k in seen:
+                continue
+            seen.add(k)
+            aqi_rows.append({
+                "city_id": r["city_id"],
+                "pm25": r["value"],
+                "dominant_source": dom_by_cell.get(k, "unknown"),
+            })
+
+        fc = sdb.table("forecasts").select("city_id,horizon_h,value").eq("horizon_h", 24).execute().data
+        forecast_rows = [
+            {"city_id": r["city_id"], "horizon_h": r.get("horizon_h", 24), "value": r["value"]}
+            for r in fc if r.get("value") is not None
+        ]
+        return ok(build_comparison(cities, aqi_rows, forecast_rows))
+    except Exception as e:  # noqa: BLE001
+        return _server_error("comparison_error", e, "Failed to build multi-city comparison")
 
 
 @app.get("/latency", tags=["system"])
@@ -584,9 +658,9 @@ def latency_widget(city: Optional[str] = Query(None, description="City ID")) -> 
 # ---------------------------------------------------------------------------
 
 class AgentQueryBody(BaseModel):
-    city: str = "delhi"
-    query: str = ""
-    focus_cells: Optional[list[str]] = None
+    city: str = _CITY
+    query: str = Field("", max_length=2000)
+    focus_cells: Optional[list[str]] = Field(None, max_length=2000)
 
 
 @app.post("/agent/query", tags=["agent"])
@@ -615,7 +689,7 @@ def agent_query(body: AgentQueryBody, db=Depends(get_db)) -> dict:
             "latency_ms": result.get("latency_ms") or elapsed_ms,
         })
     except Exception as e:
-        return err("agent_error", str(e))
+        return _server_error("agent_error", e, "Agent pipeline failed to complete")
 
 
 # ---------------------------------------------------------------------------
@@ -623,11 +697,11 @@ def agent_query(body: AgentQueryBody, db=Depends(get_db)) -> dict:
 # ---------------------------------------------------------------------------
 
 class SimulateBody(BaseModel):
-    city: str = "delhi"
-    intervention_type: str = "construction_halt"
-    target_cells: Optional[list[str]] = None
-    target_source_ids: Optional[list[int]] = None
-    horizon_h: int = 24
+    city: str = _CITY
+    intervention_type: str = Field("construction_halt", min_length=1, max_length=60)
+    target_cells: Optional[list[str]] = Field(None, max_length=2000)
+    target_source_ids: Optional[list[int]] = Field(None, max_length=2000)
+    horizon_h: int = Field(24, ge=1, le=72)
 
 
 @app.post("/simulate", tags=["stage2"])
@@ -655,9 +729,9 @@ def simulate(body: SimulateBody, db=Depends(get_db)) -> dict:
             horizon_h=body.horizon_h,
         ))
     except ValueError as e:
-        return err("bad_request", str(e))
+        return err("bad_request", str(e))  # our own validation messages — safe to surface
     except Exception as e:  # noqa: BLE001
-        return err("simulate_error", str(e))
+        return _server_error("simulate_error", e, "Simulation failed")
 
 
 @app.get("/roi", tags=["stage2"])
@@ -743,7 +817,7 @@ def coverage(city: str = Query("delhi", description="City ID")) -> dict:
         data["anchors_from"] = "live_measurements" if anchors else "synthetic_fallback"
         return ok(data)
     except Exception as e:  # noqa: BLE001
-        return err("coverage_error", str(e))
+        return _server_error("coverage_error", e, "Failed to compute coverage field")
 
 
 # ---------------------------------------------------------------------------
@@ -751,10 +825,10 @@ def coverage(city: str = Query("delhi", description="City ID")) -> dict:
 # ---------------------------------------------------------------------------
 
 class OptimizeBody(BaseModel):
-    city: str = "delhi"
-    budget_inspector_hours: int = 20
-    target_cells: Optional[list[str]] = None
-    horizon_h: int = 24
+    city: str = _CITY
+    budget_inspector_hours: int = Field(20, gt=0, le=1000)
+    target_cells: Optional[list[str]] = Field(None, max_length=2000)
+    horizon_h: int = Field(24, ge=1, le=72)
 
 
 @app.post("/optimize", tags=["stage2"])
@@ -772,7 +846,7 @@ def optimize(body: OptimizeBody, db=Depends(get_db)) -> dict:
             target_cells=body.target_cells
         ))
     except Exception as e:
-        return err("optimize_error", str(e))
+        return _server_error("optimize_error", e, "Optimiser failed")
 
 
 # ---------------------------------------------------------------------------
@@ -807,7 +881,7 @@ def admin_onboard_city(
     admin_key = os.getenv("ADMIN_KEY", "")
     if not admin_key:
         return err("not_configured", "ADMIN_KEY is not set on this server")
-    if x_admin_key != admin_key:
+    if not hmac.compare_digest(x_admin_key or "", admin_key):
         return err("forbidden", "invalid or missing X-Admin-Key header")
     db = _db()  # service-role: bypasses RLS for this authenticated admin action
 

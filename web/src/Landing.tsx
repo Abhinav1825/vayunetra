@@ -320,7 +320,7 @@ export default function Landing() {
         <div className="mx-auto flex max-w-6xl flex-col gap-8 px-6 py-10 sm:flex-row sm:justify-between">
           <div>
             <div className="flex items-center gap-2 text-[14px] font-bold text-white">
-              <span className="flex h-5 w-5 items-center justify-center rounded bg-sky-500 text-[10px] font-black">V</span>
+              <span className="flex h-5 w-5 items-center justify-center rounded bg-sky-500 text-[11px] font-black">V</span>
               VayuNetra
             </div>
             <p className="mt-2 max-w-xs text-[12px] leading-relaxed text-slate-500">
@@ -329,7 +329,7 @@ export default function Landing() {
           </div>
           <div className="grid grid-cols-2 gap-10 text-[13px] sm:grid-cols-3">
             <div>
-              <p className="font-mono text-[10px] uppercase tracking-wider text-slate-600">Product</p>
+              <p className="font-mono text-[11px] uppercase tracking-wider text-slate-600">Product</p>
               <div className="mt-2 space-y-1.5 text-slate-400">
                 <a href="#/console" className="block transition-colors hover:text-white">Console</a>
                 <a href="#how" className="block transition-colors hover:text-white">How it works</a>
@@ -337,14 +337,14 @@ export default function Landing() {
               </div>
             </div>
             <div>
-              <p className="font-mono text-[10px] uppercase tracking-wider text-slate-600">Resources</p>
+              <p className="font-mono text-[11px] uppercase tracking-wider text-slate-600">Resources</p>
               <div className="mt-2 space-y-1.5 text-slate-400">
                 <a href="https://github.com/omkarrr88/VayuNetra" target="_blank" rel="noreferrer" className="block transition-colors hover:text-white">GitHub</a>
                 <a href="https://vayunetra-c8i8.onrender.com/health" target="_blank" rel="noreferrer" className="block transition-colors hover:text-white">API status</a>
               </div>
             </div>
             <div>
-              <p className="font-mono text-[10px] uppercase tracking-wider text-slate-600">Team</p>
+              <p className="font-mono text-[11px] uppercase tracking-wider text-slate-600">Team</p>
               <div className="mt-2 space-y-1.5 text-slate-400">
                 <span className="block">Omkar Kadam</span>
                 <span className="block">Abhinav Prasad</span>

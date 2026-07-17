@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import "maplibre-gl/dist/maplibre-gl.css";
 import BlameMap, { type AttrCell, type CoverageCell, type MapMode } from "./BlameMap";
 import ForecastPanel from "./ForecastPanel";
 import { SOURCE_COLORS, PM25_LEGEND } from "./sources";
@@ -69,7 +70,26 @@ export default function App() {
     return () => window.removeEventListener("api-fallback", on);
   }, []);
 
-  useEffect(() => setCell(null), [active]); // clear story on city switch
+  const [autoOpened, setAutoOpened] = useState<string | null>(null);
+
+  useEffect(() => {
+    setCell(null); // clear story on city switch
+    setAutoOpened(null);
+  }, [active]);
+
+  // Discoverability: the whole product is behind a hexagon click, so open one
+  // for the judge on first load. Prefer a model-explained (SHAP) cell so the
+  // first thing seen is the full "why", else the highest-confidence cell.
+  function autoOpenBest(cells: AttrCell[]) {
+    if (autoOpened === active || cell || !cells.length) return;
+    const explained = cells.filter((c) => (c.evidence?.shap_drivers ?? []).length > 0);
+    const pool = explained.length ? explained : cells;
+    const best = [...pool].sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0))[0];
+    if (best) {
+      setCell(best);
+      setAutoOpened(active);
+    }
+  }
 
   useEffect(() => {
     api<typeof coverage>(`/coverage?city=${active}`)
@@ -90,6 +110,7 @@ export default function App() {
           mode={mode}
           selected={cell?.h3_cell}
           onSelect={setCell}
+          onCellsLoaded={autoOpenBest}
           showSources={showSources}
           coverageCells={coverage?.cells ?? []}
           coverageKind={coverageKind}
@@ -101,7 +122,8 @@ export default function App() {
             <a
               href="#/"
               title="Back to landing page"
-              className="flex h-7 w-7 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+              aria-label="Back to landing page"
+              className="flex h-7 w-7 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
                 <path d="M19 12H5m6-6l-6 6 6 6" />
@@ -151,13 +173,13 @@ export default function App() {
             <button className="underline" onClick={() => window.location.reload()}>
               retry
             </button>
-            <button className="ml-2 text-amber-500" onClick={() => setFallback(false)}>
+            <button aria-label="Dismiss notice" className="ml-2 text-amber-500" onClick={() => setFallback(false)}>
               ✕
             </button>
           </div>
         )}
 
-        <div className="absolute bottom-1 right-2 z-10 text-[9px] text-gray-500 lg:hidden">scroll for panels ↓</div>
+        <div className="absolute bottom-1 right-2 z-10 text-[11px] text-gray-500 lg:hidden">scroll for panels ↓</div>
       </div>
 
       {/* Left rail (desktop) / first stack (mobile) */}
@@ -201,7 +223,7 @@ export default function App() {
                   <span>{k.replace("_", " ")}</span>
                 </div>
               ))}
-              <div className="pt-1 text-[10px] text-gray-400">tip: click a hexagon for its full story</div>
+              <div className="pt-1 text-[11px] text-gray-400">tip: click a hexagon for its full story</div>
             </div>
           )}
           {mode === "satellite" && (
@@ -224,7 +246,7 @@ export default function App() {
                   </div>
                 ))}
               </div>
-              <div className="mt-1 text-[10px] text-gray-400">
+              <div className="mt-1 text-[11px] text-gray-400">
                 {coverage
                   ? `${coverage.n_stations ?? "~"} stations → ${coverage.n_cells ?? coverage.cells.length} cells · ${
                       typeof coverage.validation?.skill_vs_bilinear === "number"

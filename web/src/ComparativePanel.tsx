@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Bar, BarChart, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { api } from "./api";
 import { inr, intfmt } from "./format";
-import { Panel } from "./ui";
+import { EmptyState, Panel } from "./ui";
 
 type CityCard = {
   city_id: string;
@@ -32,20 +32,30 @@ type Comparison = {
 
 export default function ComparativePanel({ onSelectCity }: { onSelectCity: (city: string) => void }) {
   const [data, setData] = useState<Comparison | null>(null);
+  const [failed, setFailed] = useState(false);
 
-  useEffect(() => {
-    api<Comparison>("/comparison").then(setData).catch(() => setData(null));
-  }, []);
+  function load() {
+    setFailed(false);
+    api<Comparison>("/comparison").then(setData).catch(() => setFailed(true));
+  }
+  useEffect(load, []);
 
   const chart = (data?.cities ?? []).map((c) => ({
     name: c.name,
-    now: Math.round(c.current_pm25),
+    "avg now": Math.round(c.current_pm25),
     "+24h": Math.round(c.forecast_24h_pm25),
   }));
 
   return (
     <Panel title="Multi-City Compare" tag="A5">
-      <div className="text-xs text-gray-600">{data?.summary.shared_pattern ?? "Comparison unavailable"}</div>
+      {failed && !data ? (
+        <EmptyState message="Couldn't load the multi-city comparison." tone="error" onRetry={load} />
+      ) : (
+        <>
+      <div className="text-xs text-gray-600">
+        {data?.summary.shared_pattern ?? "Loading city comparison…"}
+        <span className="ml-1 text-slate-400">· city-average PM2.5</span>
+      </div>
 
       {chart.length > 0 && (
         <div className="mt-2 h-32">
@@ -60,7 +70,7 @@ export default function ComparativePanel({ onSelectCity }: { onSelectCity: (city
                 cursor={{ fill: "#f1f5f9" }}
               />
               <Legend wrapperStyle={{ fontSize: 10 }} iconSize={8} />
-              <Bar dataKey="now" fill="#64748b" radius={[3, 3, 0, 0]} maxBarSize={26} />
+              <Bar dataKey="avg now" fill="#64748b" radius={[3, 3, 0, 0]} maxBarSize={26} />
               <Bar dataKey="+24h" fill="#2563eb" radius={[3, 3, 0, 0]} maxBarSize={26} />
             </BarChart>
           </ResponsiveContainer>
@@ -77,7 +87,7 @@ export default function ComparativePanel({ onSelectCity }: { onSelectCity: (city
             <div className="flex items-center justify-between">
               <span className="font-semibold text-slate-800">{c.name}</span>
               <span
-                className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
+                className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${
                   c.trend === "deteriorating" ? "bg-red-50 text-red-600" : "bg-emerald-50 text-emerald-600"
                 }`}
               >
@@ -86,7 +96,7 @@ export default function ComparativePanel({ onSelectCity }: { onSelectCity: (city
             </div>
             <div className="mt-1 grid grid-cols-2 gap-x-2 gap-y-0.5 text-xs text-gray-600">
               <span>
-                now <b className="text-slate-800">{Math.round(c.current_pm25)}</b> µg/m³
+                avg <b className="text-slate-800">{Math.round(c.current_pm25)}</b> µg/m³
               </span>
               <span>
                 +24h <b className="text-slate-800">{Math.round(c.forecast_24h_pm25)}</b> µg/m³
@@ -108,6 +118,8 @@ export default function ComparativePanel({ onSelectCity }: { onSelectCity: (city
           </button>
         ))}
       </div>
+        </>
+      )}
     </Panel>
   );
 }

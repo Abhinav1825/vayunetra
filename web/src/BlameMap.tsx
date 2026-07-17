@@ -50,6 +50,8 @@ export type AttrCell = {
     pm10_pm25_ratio?: number;
     shap_drivers?: ShapDriver[];
     model_r2?: number;
+    top_signals?: string[];
+    shrunk_toward?: string;
     [k: string]: unknown;
   };
 };
@@ -115,6 +117,7 @@ export default function BlameMap({
   mode,
   selected,
   onSelect,
+  onCellsLoaded,
   showSources = false,
   coverageCells = [],
   coverageKind = "dense",
@@ -124,6 +127,7 @@ export default function BlameMap({
   mode: MapMode;
   selected?: string | null;
   onSelect?: (cell: AttrCell | null) => void;
+  onCellsLoaded?: (cells: AttrCell[]) => void;
   showSources?: boolean;
   coverageCells?: CoverageCell[];
   coverageKind?: "stations" | "dense";
@@ -134,13 +138,21 @@ export default function BlameMap({
   const [cells, setCells] = useState<AttrCell[]>([]);
   const [sources, setSources] = useState<EmissionSource[]>([]);
 
+  const [mapError, setMapError] = useState(false);
+
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
-    const map = new maplibregl.Map({ container: containerRef.current, style: BASEMAP, center, zoom: ZOOM });
-    const overlay = new MapboxOverlay({ interleaved: false, layers: [] });
-    map.addControl(overlay);
-    mapRef.current = map;
-    overlayRef.current = overlay;
+    try {
+      const map = new maplibregl.Map({ container: containerRef.current, style: BASEMAP, center, zoom: ZOOM });
+      const overlay = new MapboxOverlay({ interleaved: false, layers: [] });
+      map.addControl(overlay);
+      map.on("error", () => {}); // tile fetch failures shouldn't spam the console
+      mapRef.current = map;
+      overlayRef.current = overlay;
+    } catch {
+      // WebGL unavailable (headless VM, blocked GPU) — panels still work.
+      setMapError(true);
+    }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -151,8 +163,13 @@ export default function BlameMap({
   }, [center]);
 
   useEffect(() => {
-    api<AttrCell[]>(`/attribution?city=${city}`).then(setCells).catch(() => setCells([]));
-  }, [city]);
+    api<AttrCell[]>(`/attribution?city=${city}`)
+      .then((c) => {
+        setCells(c);
+        onCellsLoaded?.(c);
+      })
+      .catch(() => setCells([]));
+  }, [city]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     api<{ emission_sources?: RawSource[] }>(`/static-layers?city=${city}`)
@@ -236,5 +253,14 @@ export default function BlameMap({
     });
   }, [cells, mode, selected, onSelect, showSources, sources, coverageCells, coverageKind]);
 
-  return <div ref={containerRef} className="h-full w-full" />;
+  return (
+    <div className="relative h-full w-full">
+      <div ref={containerRef} className="h-full w-full" />
+      {mapError && (
+        <div className="absolute inset-0 flex items-center justify-center bg-slate-100 p-6 text-center text-sm text-slate-500">
+          Map view unavailable on this device — the analysis panels still work.
+        </div>
+      )}
+    </div>
+  );
 }

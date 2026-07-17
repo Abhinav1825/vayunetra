@@ -168,7 +168,7 @@ export default function WhatIfPanel({ city }: { city: string }) {
         <div className="flex items-center justify-between gap-2">
           <div>
             <div className="font-semibold">
-              Optimizer packages <span className="text-[10px] font-normal text-gray-400">E5</span>
+              Optimizer packages <span className="text-[11px] font-normal text-gray-400">E5</span>
             </div>
             <div className="text-xs text-gray-600">Ranked actions under the inspector-hour budget.</div>
           </div>
@@ -209,14 +209,14 @@ export default function WhatIfPanel({ city }: { city: string }) {
               <div key={`${idx}-${pkg.description ?? pkg.interventions.map(interventionLabel).join("-")}`} className="rounded-md border border-slate-200 bg-slate-50 p-2">
                 <div className="flex items-start justify-between gap-2">
                   <div className="text-xs font-semibold text-slate-800">Package #{idx + 1}</div>
-                  <div className="text-[10px] text-slate-500">
+                  <div className="text-[11px] text-slate-500">
                     score <b className="text-slate-700">{packageScore(pkg).toFixed(0)}</b>
                   </div>
                 </div>
                 {pkg.description && <div className="mt-1 text-xs text-slate-600">{pkg.description}</div>}
                 <div className="mt-1 flex flex-wrap gap-1">
                   {pkg.interventions.map((item, itemIdx) => (
-                    <span key={`${itemIdx}-${interventionLabel(item)}`} className="rounded bg-white px-1.5 py-0.5 text-[10px] text-slate-700 ring-1 ring-slate-200">
+                    <span key={`${itemIdx}-${interventionLabel(item)}`} className="rounded bg-white px-1.5 py-0.5 text-[11px] text-slate-700 ring-1 ring-slate-200">
                       {interventionLabel(item)}
                     </span>
                   ))}

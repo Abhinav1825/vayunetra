@@ -30,7 +30,7 @@ export default function CityIntelPanel({ city }: { city: string }) {
         <div className={`grid gap-2 text-xs ${stats.length === 3 ? "grid-cols-3" : "grid-cols-2"}`}>
           {stats.map(([label, value]) => (
             <div key={label} className="rounded-md bg-slate-50 p-2 ring-1 ring-slate-100">
-              <div className="text-[10px] text-slate-500">{label}</div>
+              <div className="text-[11px] text-slate-500">{label}</div>
               <div className="text-sm font-bold text-slate-800">{value}</div>
             </div>
           ))}
@@ -40,7 +40,7 @@ export default function CityIntelPanel({ city }: { city: string }) {
       )}
       {(layers?.emission_sources.length ?? 0) > 0 && (
         <div className="mt-2 space-y-1 text-xs text-gray-600">
-          <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">top registered sources</div>
+          <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">top registered sources</div>
           {layers!.emission_sources.slice(0, 2).map((s) => (
             <div key={s.id} className="flex justify-between gap-2">
               <span className="truncate">{s.name}</span>

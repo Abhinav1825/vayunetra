@@ -125,7 +125,7 @@ export default function EnforcementPanel({ city, focusCell }: { city: string; fo
       tag="A3"
       right={
         focusCell ? (
-          <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">
+          <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[11px] font-medium text-blue-700">
             nearest to selected cell first
           </span>
         ) : undefined
@@ -150,10 +150,10 @@ export default function EnforcementPanel({ city, focusCell }: { city: string; fo
                 <span className="font-medium">Priority {Math.round(r.priority_score * 100)}</span>
                 <span className="flex items-center gap-1.5 text-xs text-gray-500">
                   {focusCell && r.h3_cell === focusCell && (
-                    <span className="rounded bg-blue-600 px-1 py-0.5 text-[9px] font-semibold text-white">📍 this cell</span>
+                    <span className="rounded bg-blue-600 px-1 py-0.5 text-[11px] font-semibold text-white">📍 this cell</span>
                   )}
                   {focusCell && r.h3_cell !== focusCell && typeof r.km === "number" && (
-                    <span className="text-[10px] text-gray-400">~{r.km < 1 ? "<1" : Math.round(r.km)} km</span>
+                    <span className="text-[11px] text-gray-400">~{r.km < 1 ? "<1" : Math.round(r.km)} km</span>
                   )}
                   rubric {r.rubric_score?.total ?? "--"}/10
                 </span>
@@ -190,7 +190,7 @@ export default function EnforcementPanel({ city, focusCell }: { city: string; fo
                         const patch = normalizePatch(dossier.satellite_patch);
                         return patch ? (
                           <div className="mb-2 rounded border border-sky-100 bg-white p-1.5">
-                            <div className="text-[10px] font-semibold uppercase tracking-wide text-sky-700">
+                            <div className="text-[11px] font-semibold uppercase tracking-wide text-sky-700">
                               Satellite evidence
                             </div>
                             {patch.image_ref && (
@@ -201,7 +201,7 @@ export default function EnforcementPanel({ city, focusCell }: { city: string; fo
                               />
                             )}
                             <div className="mt-1 text-xs font-semibold text-slate-800">{patch.title ?? "Sentinel-2 patch"}</div>
-                            <div className="text-[10px] leading-4 text-slate-500">
+                            <div className="text-[11px] leading-4 text-slate-500">
                               {patch.metadata?.source_type?.replace(/_/g, " ") ?? "detected source"}
                               {typeof patch.metadata?.detection_confidence === "number" &&
                                 ` · ${Math.round(patch.metadata.detection_confidence * 100)}% detection confidence`}
@@ -209,7 +209,7 @@ export default function EnforcementPanel({ city, focusCell }: { city: string; fo
                           </div>
                         ) : null;
                       })()}
-                      <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                      <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                         Regulatory citations (RAG)
                       </div>
                       {dedupeCitations(dossier.citations ?? []).length ? (
@@ -219,12 +219,12 @@ export default function EnforcementPanel({ city, focusCell }: { city: string; fo
                               <div className="flex items-center justify-between gap-2">
                                 <span className="text-xs font-semibold text-slate-800">{c.rule ? prettyRule(c.rule) : "Regulation"}</span>
                                 {typeof c.similarity === "number" && (
-                                  <span className="shrink-0 rounded bg-emerald-100 px-1 text-[9px] text-emerald-700">
+                                  <span className="shrink-0 rounded bg-emerald-100 px-1 text-[11px] text-emerald-700">
                                     match {Math.round(c.similarity * 100)}%
                                   </span>
                                 )}
                               </div>
-                              {c.excerpt && <div className="mt-0.5 text-[10px] leading-4 text-slate-500">{cleanExcerpt(c.excerpt)}</div>}
+                              {c.excerpt && <div className="mt-0.5 text-[11px] leading-4 text-slate-500">{cleanExcerpt(c.excerpt)}</div>}
                             </div>
                           ))}
                         </div>

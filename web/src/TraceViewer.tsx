@@ -31,7 +31,7 @@ function Timeline({ steps }: { steps: TraceStep[] }) {
             <span className="w-4 text-center text-gray-300">{i === steps.length - 1 ? "└" : "├"}</span>
             <span className="w-32 shrink-0">{NODE_LABELS[s.node] ?? s.node}</span>
             <span className="font-mono text-gray-500">+{(dt / 1000).toFixed(1)}s</span>
-            {i > 0 && <span className="font-mono text-[10px] text-gray-400">({(prev / 1000).toFixed(1)}s step)</span>}
+            {i > 0 && <span className="font-mono text-[11px] text-gray-400">({(prev / 1000).toFixed(1)}s step)</span>}
           </div>
         );
       })}
@@ -82,13 +82,13 @@ export default function TraceViewer({ city }: { city: string }) {
       tag="A0"
       right={
         latency != null && latency > 0 ? (
-          <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">
+          <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[11px] font-semibold text-emerald-700">
             {(latency / 1000).toFixed(1)}s end-to-end
           </span>
         ) : undefined
       }
     >
-      <div className="text-[10px] text-gray-400">last multi-agent run · detect → decide → issue</div>
+      <div className="text-[11px] text-gray-400">last multi-agent run · detect → decide → issue</div>
       <Timeline steps={steps} />
       <button
         onClick={runLive}
@@ -97,7 +97,7 @@ export default function TraceViewer({ city }: { city: string }) {
       >
         {running ? "Agents running…" : "▶ Run agents live"}
       </button>
-      {err && <div className="mt-1 text-[10px] text-red-600">{err}</div>}
+      {err && <div className="mt-1 text-[11px] text-red-600">{err}</div>}
     </Panel>
   );
 }

@@ -1,9 +1,20 @@
-import React, { useEffect, useState } from "react";
+import React, { lazy, Suspense, useEffect, useState } from "react";
 import ReactDOM from "react-dom/client";
-import App from "./App";
 import Landing from "./Landing";
+import ErrorBoundary from "./ErrorBoundary";
 import "./index.css";
-import "maplibre-gl/dist/maplibre-gl.css";
+
+// The console pulls in MapLibre + Deck.gl + Recharts (~1.5 MB). Landing needs
+// none of it, so the console is code-split out and only fetched at #/console.
+const App = lazy(() => import("./App"));
+
+function ConsoleFallback() {
+  return (
+    <div className="flex h-full w-full items-center justify-center bg-slate-100 text-sm text-slate-500">
+      <span className="animate-pulse">Loading console…</span>
+    </div>
+  );
+}
 
 /** Hash router: "#/console" → ops console, anything else → landing page. */
 function Root() {
@@ -13,11 +24,20 @@ function Root() {
     window.addEventListener("hashchange", on);
     return () => window.removeEventListener("hashchange", on);
   }, []);
-  return hash.startsWith("#/console") ? <App /> : <Landing />;
+  if (hash.startsWith("#/console")) {
+    return (
+      <Suspense fallback={<ConsoleFallback />}>
+        <App />
+      </Suspense>
+    );
+  }
+  return <Landing />;
 }
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <Root />
+    <ErrorBoundary>
+      <Root />
+    </ErrorBoundary>
   </React.StrictMode>,
 );

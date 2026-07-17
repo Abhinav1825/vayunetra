@@ -5,7 +5,7 @@ import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 
 import { api } from "./api";
 import { Citations, type Citation } from "./ImpactCards";
 import { inr, intfmt } from "./format";
-import { Panel } from "./ui";
+import { EmptyState, Panel } from "./ui";
 
 type Roi = {
   city_id: string;
@@ -28,7 +28,7 @@ function Big({ label, value, tone }: { label: string; value: string; tone: "bad"
       : "border-emerald-100 bg-emerald-50 text-emerald-700";
   return (
     <div className={`rounded-md border p-2 ${cls}`}>
-      <div className="text-[10px] uppercase tracking-wide text-gray-500">{label}</div>
+      <div className="text-[11px] uppercase tracking-wide text-gray-500">{label}</div>
       <div className="text-lg font-semibold leading-tight">{value}</div>
     </div>
   );
@@ -36,14 +36,24 @@ function Big({ label, value, tone }: { label: string; value: string; tone: "bad"
 
 export default function RoiPanel({ city }: { city: string }) {
   const [d, setD] = useState<Roi | null>(null);
+  const [failed, setFailed] = useState(false);
 
-  useEffect(() => {
-    api<Roi>(`/roi?city=${city}`)
-      .then(setD)
-      .catch(() => setD(null));
-  }, [city]);
+  function load() {
+    setFailed(false);
+    api<Roi>(`/roi?city=${city}`).then(setD).catch(() => setFailed(true));
+  }
+  useEffect(load, [city]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!d) return <Panel title="City ROI">City ROI unavailable</Panel>;
+  if (!d)
+    return (
+      <Panel title="City ROI — the funding case" tag="E7">
+        {failed ? (
+          <EmptyState message="Couldn't load the ROI figures." tone="error" onRetry={load} />
+        ) : (
+          <div className="h-24 animate-pulse rounded-md bg-slate-100" />
+        )}
+      </Panel>
+    );
 
   const chart = [
     { name: "burden / yr", cr: Math.round(d.annual_health_burden_inr / 1e7), fill: "#dc2626" },

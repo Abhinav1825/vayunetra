@@ -23,7 +23,7 @@ export function Panel({
           <div className="flex items-baseline gap-1.5">
             <span className="whitespace-nowrap text-[13px] font-bold tracking-tight text-slate-800">{title}</span>
             {tag && (
-              <span className="whitespace-nowrap rounded bg-slate-100 px-1 py-px text-[9px] font-semibold uppercase tracking-wider text-slate-400">
+              <span className="whitespace-nowrap rounded bg-slate-100 px-1 py-px text-[11px] font-semibold uppercase tracking-wider text-slate-400">
                 {tag}
               </span>
             )}
@@ -32,6 +32,31 @@ export function Panel({
         </div>
       )}
       {children}
+    </div>
+  );
+}
+
+/** Consistent empty/error state — an icon, a one-line reason, an optional retry. */
+export function EmptyState({
+  message,
+  onRetry,
+  tone = "muted",
+}: {
+  message: string;
+  onRetry?: () => void;
+  tone?: "muted" | "error";
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-1.5 rounded-lg bg-slate-50 px-3 py-5 text-center">
+      <span className={`text-lg ${tone === "error" ? "text-amber-500" : "text-slate-300"}`} aria-hidden="true">
+        {tone === "error" ? "⚠" : "○"}
+      </span>
+      <span className="text-xs text-slate-500">{message}</span>
+      {onRetry && (
+        <button onClick={onRetry} className="mt-0.5 rounded-md bg-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-300">
+          Retry
+        </button>
+      )}
     </div>
   );
 }
