@@ -24,7 +24,7 @@ flowchart LR
 
 ## Pitch Deck Draft
 
-Concrete artifact: `docs/STAGE1_PITCH_DECK.html`
+Concrete artifact: `docs/PITCH_DECK.html`
 
 1. Problem: cities can measure air, but cannot act fast enough.
 2. VayuNetra: attribution -> forecast -> enforcement -> citizen advisory.
