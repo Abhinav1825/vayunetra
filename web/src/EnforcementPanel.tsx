@@ -28,14 +28,33 @@ function cellKm(a: string, b: string): number | null {
 
 type Citation = { rule?: string; url?: string; excerpt?: string; similarity?: number };
 
+type SatellitePatch = {
+  title?: string;
+  image_ref?: string;
+  source_url?: string;
+  excerpt?: string;
+  similarity?: number;
+  metadata?: {
+    detection_confidence?: number;
+    source_type?: string;
+  };
+};
+
 type Dossier = {
   rec_id: number;
   rationale?: string;
   contribution_pct?: number;
   pop_exposed?: number;
   citations?: Citation[];
+  satellite_patch?: string | SatellitePatch | null;
   suggested_notice_text?: string;
 };
+
+function normalizePatch(patch: Dossier["satellite_patch"]): SatellitePatch | null {
+  if (!patch) return null;
+  if (typeof patch === "string") return { title: "Sentinel-2 patch", image_ref: patch };
+  return patch;
+}
 
 export default function EnforcementPanel({ city, focusCell }: { city: string; focusCell?: string | null }) {
   const [rows, setRows] = useState<Rec[] | null>(null);
@@ -144,6 +163,29 @@ export default function EnforcementPanel({ city, focusCell }: { city: string; fo
                     <div className="h-12 animate-pulse rounded bg-slate-100" />
                   ) : (
                     <>
+                      {(() => {
+                        const patch = normalizePatch(dossier.satellite_patch);
+                        return patch ? (
+                          <div className="mb-2 rounded border border-sky-100 bg-white p-1.5">
+                            <div className="text-[10px] font-semibold uppercase tracking-wide text-sky-700">
+                              Satellite evidence
+                            </div>
+                            {patch.image_ref && (
+                              <img
+                                src={patch.image_ref}
+                                alt={patch.title ?? "Sentinel-2 satellite patch"}
+                                className="mt-1 aspect-[3/2] w-full rounded object-cover ring-1 ring-slate-200"
+                              />
+                            )}
+                            <div className="mt-1 text-xs font-semibold text-slate-800">{patch.title ?? "Sentinel-2 patch"}</div>
+                            <div className="text-[10px] leading-4 text-slate-500">
+                              {patch.metadata?.source_type?.replace(/_/g, " ") ?? "detected source"}
+                              {typeof patch.metadata?.detection_confidence === "number" &&
+                                ` · ${Math.round(patch.metadata.detection_confidence * 100)}% detection confidence`}
+                            </div>
+                          </div>
+                        ) : null;
+                      })()}
                       <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
                         Regulatory citations (RAG)
                       </div>
