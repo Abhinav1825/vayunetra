@@ -27,6 +27,31 @@ import numpy as np
 FEATURES = ["aod", "blh_km", "rh", "temp_c", "wind_ms", "winter"]
 
 
+class _NumpyAodModel:
+    """Lean fallback when LightGBM/sklearn wheels are unavailable."""
+
+    def __init__(self, coef: np.ndarray):
+        self.coef = coef
+
+    @staticmethod
+    def design(X: np.ndarray) -> np.ndarray:
+        aod, blh_km, rh, temp_c, wind_ms, winter = X.T
+        dry_aod = aod * np.sqrt(1.0 - np.clip(rh, 0, 0.95))
+        surface_column = dry_aod / np.clip(blh_km, 0.2, None)
+        return np.column_stack([
+            np.ones(len(X)),
+            surface_column,
+            winter,
+            temp_c,
+            wind_ms,
+            rh,
+            aod,
+        ])
+
+    def predict(self, X: np.ndarray) -> np.ndarray:
+        return self.design(X) @ self.coef
+
+
 @dataclass
 class Metrics:
     rmse: float
@@ -68,14 +93,19 @@ def synth_pairs(n: int = 4000, seed: int = 42) -> tuple[np.ndarray, np.ndarray]:
 
 def train(X: np.ndarray, y: np.ndarray):
     """Fit the AOD→PM2.5 regressor (LightGBM; CPU, no CUDA)."""
-    from lightgbm import LGBMRegressor
+    try:
+        from lightgbm import LGBMRegressor
 
-    model = LGBMRegressor(
-        n_estimators=300, num_leaves=31, learning_rate=0.05,
-        subsample=0.8, colsample_bytree=0.8, min_child_samples=20, verbosity=-1,
-    )
-    model.fit(X, y)
-    return model
+        model = LGBMRegressor(
+            n_estimators=300, num_leaves=31, learning_rate=0.05,
+            subsample=0.8, colsample_bytree=0.8, min_child_samples=20, verbosity=-1,
+        )
+        model.fit(X, y)
+        return model
+    except Exception:
+        design = _NumpyAodModel.design(X)
+        coef, *_ = np.linalg.lstsq(design, y, rcond=None)
+        return _NumpyAodModel(coef)
 
 
 def predict(model, X: np.ndarray) -> np.ndarray:
@@ -83,13 +113,14 @@ def predict(model, X: np.ndarray) -> np.ndarray:
 
 
 def evaluate(model, X: np.ndarray, y: np.ndarray) -> Metrics:
-    from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
-
     pred = predict(model, X)
-    rmse = float(np.sqrt(mean_squared_error(y, pred)))
-    rmse_mean = float(np.sqrt(mean_squared_error(y, np.full_like(y, y.mean()))))
+    rmse = float(np.sqrt(np.mean((y - pred) ** 2)))
+    mae = float(np.mean(np.abs(y - pred)))
+    rmse_mean = float(np.sqrt(np.mean((y - np.full_like(y, y.mean())) ** 2)))
+    ss_res = float(np.sum((y - pred) ** 2))
+    ss_tot = float(np.sum((y - y.mean()) ** 2)) or 1.0
     return Metrics(
-        rmse=rmse, mae=float(mean_absolute_error(y, pred)), r2=float(r2_score(y, pred)),
+        rmse=rmse, mae=mae, r2=1.0 - ss_res / ss_tot,
         skill_vs_mean=1.0 - rmse / rmse_mean if rmse_mean else 0.0, n=len(y),
     )
 

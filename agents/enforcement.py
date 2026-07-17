@@ -456,6 +456,7 @@ def build_dossier(rec_id: int, city_id: str = "delhi") -> dict:
     In live mode, queries enforcement_recs + RAG for a full cited packet.
     """
     from rag.retrieve import retrieve_for_enforcement
+    from rag.multimodal import find_image_patch
 
     if DEMO_MODE:
         # Use fixture enforcement data to build a rich dossier
@@ -476,6 +477,16 @@ def build_dossier(rec_id: int, city_id: str = "delhi") -> dict:
         cat = "construction_dust"
         chunks = retrieve_for_enforcement(cat, city_id, top_k=5)
         full_citations = [c.as_citation() for c in chunks]
+        demo_source = {
+            "id": rec.get("source_id") or rec_id,
+            "city_id": rec.get("city_id", city_id),
+            "name": (rec.get("evidence") or {}).get("source_name") or "Demo CV-detected source",
+            "type": (rec.get("evidence") or {}).get("source_type") or "construction",
+            "source_origin": "cv_detected",
+            "detection_confidence": 0.86,
+            "attributes": {},
+        }
+        satellite_patch = find_image_patch(type("_NoDb", (), {"table": lambda *_: _NoRows()})(), rec, demo_source)
 
         return {
             "rec_id": rec_id,
@@ -486,8 +497,8 @@ def build_dossier(rec_id: int, city_id: str = "delhi") -> dict:
             "rubric_score": rec.get("rubric_score", {}),
             "status": rec.get("status", "proposed"),
             "citations": full_citations,
-            "satellite_patch": None,  # Sejal E6 fills this in Stage 2
-            "suggested_notice_text": _build_notice_text(rec, full_citations),
+            "satellite_patch": satellite_patch,
+            "suggested_notice_text": _build_notice_text(rec, full_citations, satellite_patch),
             "generated_at": datetime.now(timezone.utc).isoformat(),
         }
 
@@ -498,9 +509,21 @@ def build_dossier(rec_id: int, city_id: str = "delhi") -> dict:
     if not rows:
         return {"rec_id": rec_id, "error": "not_found"}
     rec = rows[0]
+    source = None
+    if rec.get("source_id"):
+        src_rows = (
+            db.table("emission_sources")
+            .select("id,city_id,geom,type,name,source_origin,detection_confidence,attributes")
+            .eq("id", rec["source_id"])
+            .limit(1)
+            .execute()
+            .data
+        )
+        source = src_rows[0] if src_rows else None
     source_category = "construction_dust"  # TODO: derive from source registry join
     chunks = retrieve_for_enforcement(source_category, city_id, top_k=5)
     full_citations = [c.as_citation() for c in chunks]
+    satellite_patch = find_image_patch(db, rec, source)
     return {
         "rec_id": rec_id,
         "city_id": rec["city_id"],
@@ -510,13 +533,27 @@ def build_dossier(rec_id: int, city_id: str = "delhi") -> dict:
         "rubric_score": rec.get("rubric_score", {}),
         "status": rec.get("status", "proposed"),
         "citations": full_citations,
-        "satellite_patch": None,
-        "suggested_notice_text": _build_notice_text(rec, full_citations),
+        "satellite_patch": satellite_patch,
+        "suggested_notice_text": _build_notice_text(rec, full_citations, satellite_patch),
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }
 
 
-def _build_notice_text(rec: dict, citations: list[dict]) -> str:
+class _NoRows:
+    def select(self, *_args, **_kwargs):
+        return self
+
+    def eq(self, *_args, **_kwargs):
+        return self
+
+    def limit(self, *_args, **_kwargs):
+        return self
+
+    def execute(self):
+        return type("_Resp", (), {"data": []})()
+
+
+def _build_notice_text(rec: dict, citations: list[dict], satellite_patch: dict | None = None) -> str:
     """Generate a draft enforcement notice.
 
     Structured as `TITLE`, `Label: value` metadata, then `HEADING:`-delimited
@@ -528,6 +565,16 @@ def _build_notice_text(rec: dict, citations: list[dict]) -> str:
     rationale = rec.get("rationale", "Pollution violation detected.")
     rules = [c.get("rule", "") for c in citations[:3] if c.get("rule")]
     reg = "\n".join(f"- {r}" for r in rules) or "- As per applicable CPCB / GRAP dust-control norms."
+    visual = ""
+    if satellite_patch:
+        meta = satellite_patch.get("metadata") or {}
+        visual = (
+            "\n"
+            "SATELLITE EVIDENCE:\n"
+            f"Sentinel-2 patch: {satellite_patch.get('title', 'visual evidence')}\n"
+            f"Detection confidence: {meta.get('detection_confidence', 'n/a')}\n"
+            f"Image reference: {satellite_patch.get('image_ref', '')}\n"
+        )
     ref = f"VN-ENF-{str(rec.get('id', '0000')).zfill(4)}"
     date = datetime.now(timezone.utc).strftime("%d %B %Y")
     return (
@@ -548,6 +595,7 @@ def _build_notice_text(rec: dict, citations: list[dict]) -> str:
         "\n"
         "APPLICABLE REGULATIONS:\n"
         f"{reg}\n"
+        f"{visual}"
         "\n"
         "REQUIRED ACTION:\n"
         "Immediate site inspection and compliance within 24 hours. Non-compliance "
