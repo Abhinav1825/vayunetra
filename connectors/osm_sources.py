@@ -193,7 +193,9 @@ def push_to_supabase(city_id: str, rows: list[dict]) -> None:
 
     db = client()
     db.table("enforcement_recs").delete().eq("city_id", city_id).execute()
-    db.table("emission_sources").delete().eq("city_id", city_id).execute()
+    # Replace ONLY OSM-origin rows: the daily refresh was wiping Abhinav's E1
+    # cv_detected rows (and any registry rows) along with its own.
+    db.table("emission_sources").delete().eq("city_id", city_id).eq("source_origin", "osm").execute()
     try:
         db.table("emission_sources").insert(rows).execute()
     except Exception:  # noqa: BLE001 — PostGIS/GeoJSON casting can differ per setup
