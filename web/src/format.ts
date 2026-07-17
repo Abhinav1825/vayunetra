@@ -24,3 +24,38 @@ export function num(n: number | null | undefined, digits = 1, dash = "—"): str
   if (n == null || !Number.isFinite(n)) return dash;
   return n.toFixed(digits);
 }
+
+const ACRONYMS = ["GRAP", "CPCB", "CAQM", "SWM", "NCAP", "PUC", "CTO", "OCEMS", "AQI", "PM2.5", "PM10"];
+
+/** Turn a SHOUTING kb-chunk title into a readable rule name, keeping known acronyms. */
+export function prettyRule(raw: string): string {
+  let s = raw.replace(/\s*[—–-]\s*full text\.?\s*$/i, "").trim();
+  if (s.length > 6 && s === s.toUpperCase()) {
+    s = s.toLowerCase().replace(/\b[a-z]/g, (c) => c.toUpperCase());
+    for (const a of ACRONYMS) {
+      s = s.replace(new RegExp(`\\b${a[0]}${a.slice(1).toLowerCase()}\\b`, "g"), a);
+    }
+  }
+  return s;
+}
+
+/**
+ * Clean a stored enforcement rationale for display: the "Regulatory basis:"
+ * tail is built from kb-chunk titles, which can repeat (two chunks of the same
+ * document) and arrive in ALL CAPS with "— FULL TEXT" suffixes.
+ */
+export function cleanRationale(text: string): string {
+  const m = text.match(/^([\s\S]*?)\s*Regulatory basis:\s*([\s\S]+?)\.?\s*$/);
+  if (!m) return text;
+  const rules: string[] = [];
+  const seen = new Set<string>();
+  for (const part of m[2].split(";")) {
+    const rule = prettyRule(part);
+    const key = rule.toLowerCase();
+    if (rule && !seen.has(key)) {
+      seen.add(key);
+      rules.push(rule);
+    }
+  }
+  return rules.length ? `${m[1].trim()} Regulatory basis: ${rules.join("; ")}.` : m[1].trim();
+}

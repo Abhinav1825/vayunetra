@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { api, API_BASE, API_TOKEN } from "./api";
 import { agoLabel, aqiCategory, pm25ToAqi } from "./aqi";
 
@@ -87,56 +87,68 @@ export default function AqiHeader({ city }: { city: string }) {
   const cat = aqi !== null ? aqiCategory(aqi) : null;
   const latest = rows.map((r) => r.ts).filter(Boolean).sort().pop();
 
+  const chips: ReactNode[] = [];
+  if (compound && compound.level !== "none") {
+    chips.push(
+      <span
+        key="heat"
+        className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold text-white ${
+          compound.level === "alert" ? "bg-red-700" : "bg-orange-500"
+        }`}
+        title="Compound risk: heat amplifies PM mortality and drives ozone formation (IMD heatwave criteria x CPCB bands)"
+      >
+        🔥 Heat×Smog {compound.level}
+        {typeof compound.tmax_next24_c === "number" && ` · ${Math.round(compound.tmax_next24_c)}°C`}
+      </span>,
+    );
+  }
+  if (compound?.grap) {
+    chips.push(
+      <span
+        key="grap"
+        className="rounded-md bg-purple-700 px-1.5 py-0.5 text-[10px] font-bold text-white"
+        title={`Forecast-triggered graded response: 24h forecast AQI ${compound.grap.trigger_aqi ?? "--"} enters the CAQM GRAP Stage ${GRAP_ROMAN[compound.grap.stage]} band (statutory in Delhi-NCR; advisory playbook elsewhere) — a day before observed AQI would trigger it`}
+      >
+        ⚖️ GRAP Stage {GRAP_ROMAN[compound.grap.stage]} · from forecast
+      </span>,
+    );
+  }
+  if (compound?.dust_traffic && compound.dust_traffic.count > 0) {
+    chips.push(
+      <span
+        key="dust"
+        className="rounded-md bg-amber-600 px-1.5 py-0.5 text-[10px] font-bold text-white"
+        title="Cells where construction dust AND traffic are both major contributors (attribution shares ≥25% each) — traffic resuspends construction dust, so these corridors escalate fastest"
+      >
+        🚧 Dust×Traffic · {compound.dust_traffic.count} cell{compound.dust_traffic.count > 1 ? "s" : ""}
+      </span>,
+    );
+  }
+
   return (
-    <div className="flex items-center gap-3 rounded-lg bg-white/95 px-3 py-2 shadow">
+    <div className="max-w-xs rounded-xl border border-slate-200/80 bg-white/95 px-3 py-2 shadow-lg shadow-slate-900/5 backdrop-blur">
       {aqi !== null && cat ? (
         <>
-          <div
-            className="flex h-12 min-w-16 flex-col items-center justify-center rounded-md px-2"
-            style={{ background: cat.color, color: cat.text }}
-          >
-            <span className="text-xl font-extrabold leading-none">{aqi}</span>
-            <span className="text-[9px] font-semibold uppercase tracking-wide">AQI</span>
+          <div className="flex items-center gap-3">
+            <div
+              className="flex h-12 min-w-16 flex-col items-center justify-center rounded-lg px-2"
+              style={{ background: cat.color, color: cat.text }}
+            >
+              <span className="text-xl font-extrabold leading-none">{aqi}</span>
+              <span className="text-[9px] font-semibold uppercase tracking-wide">AQI</span>
+            </div>
+            <div className="text-xs">
+              <div className="text-sm font-bold" style={{ color: cat.color }}>
+                {cat.label}
+              </div>
+              <div className="text-gray-500">worst cell · PM2.5 {Math.round(worst!)} µg/m³</div>
+              <div className="flex items-center gap-2 text-gray-400">
+                <span>data {agoLabel(latest)}</span>
+                <LiveDot />
+              </div>
+            </div>
           </div>
-          <div className="text-xs">
-            <div className="text-sm font-bold" style={{ color: cat.color }}>
-              {cat.label}
-            </div>
-            <div className="text-gray-500">
-              worst cell · PM2.5 {Math.round(worst!)} µg/m³
-            </div>
-            <div className="flex items-center gap-2 text-gray-400">
-              <span>data {agoLabel(latest)}</span>
-              <LiveDot />
-            </div>
-            {compound && compound.level !== "none" && (
-              <div
-                className={`mt-0.5 rounded px-1.5 py-0.5 text-[10px] font-bold ${
-                  compound.level === "alert" ? "bg-red-700 text-white" : "bg-orange-500 text-white"
-                }`}
-                title="Compound risk: heat amplifies PM mortality and drives ozone formation (IMD heatwave criteria x CPCB bands)"
-              >
-                🔥 HEAT×SMOG {compound.level.toUpperCase()}
-                {typeof compound.tmax_next24_c === "number" && ` · ${Math.round(compound.tmax_next24_c)}°C`}
-              </div>
-            )}
-            {compound?.grap && (
-              <div
-                className="mt-0.5 rounded bg-purple-700 px-1.5 py-0.5 text-[10px] font-bold text-white"
-                title={`Forecast-triggered graded response: 24h forecast AQI ${compound.grap.trigger_aqi ?? "--"} enters the CAQM GRAP Stage ${GRAP_ROMAN[compound.grap.stage]} band (statutory in Delhi-NCR; advisory playbook elsewhere) — a day before observed AQI would trigger it`}
-              >
-                ⚖️ GRAP STAGE {GRAP_ROMAN[compound.grap.stage]} · forecast-triggered
-              </div>
-            )}
-            {compound?.dust_traffic && compound.dust_traffic.count > 0 && (
-              <div
-                className="mt-0.5 rounded bg-amber-600 px-1.5 py-0.5 text-[10px] font-bold text-white"
-                title="Cells where construction dust AND traffic are both major contributors (attribution shares ≥25% each) — traffic resuspends construction dust, so these corridors escalate fastest"
-              >
-                🚧 DUST×TRAFFIC · {compound.dust_traffic.count} cell{compound.dust_traffic.count > 1 ? "s" : ""}
-              </div>
-            )}
-          </div>
+          {chips.length > 0 && <div className="mt-1.5 flex flex-wrap gap-1">{chips}</div>}
         </>
       ) : (
         <div className="text-xs text-gray-500">no AQI data</div>

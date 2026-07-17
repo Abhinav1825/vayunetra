@@ -14,13 +14,12 @@ Owner: Abhinav.
 from __future__ import annotations
 
 import json
-import math
 import os
-import time
+import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 
 import core.env  # noqa: F401
 
@@ -252,11 +251,38 @@ def _generate_rationale(
             "Enforce PUC certificate checks; restrict pre-BS-IV vehicles during peak hours."
         )
 
-    if citations:
-        cited_rules = "; ".join(c.get("rule", "") for c in citations[:2])
-        rationale_parts.append(f"Regulatory basis: {cited_rules}.")
+    rules = _pretty_rules([c.get("rule", "") for c in citations or []])
+    if rules:
+        rationale_parts.append(f"Regulatory basis: {'; '.join(rules)}.")
 
     return " ".join(rationale_parts)
+
+
+_RULE_ACRONYMS = ("GRAP", "CPCB", "CAQM", "SWM", "NCAP", "PUC", "CTO", "OCEMS", "AQI")
+
+
+def _pretty_rules(raw: list[str], limit: int = 2) -> list[str]:
+    """Readable, deduped rule names from kb-chunk titles.
+
+    Chunk titles arrive SHOUTING with a "— FULL TEXT" suffix, and two chunks of
+    the same document produce the same title twice — both leaked into stored
+    rationales before this cleanup.
+    """
+    out: list[str] = []
+    seen: set[str] = set()
+    for r in raw:
+        rule = re.sub(r"\s*[—–-]\s*full text\.?\s*$", "", (r or "").strip(), flags=re.IGNORECASE)
+        if len(rule) > 6 and rule.isupper():
+            rule = rule.title()
+            for a in _RULE_ACRONYMS:
+                rule = re.sub(rf"\b{a.title()}\b", a, rule)
+        key = rule.lower()
+        if rule and key not in seen:
+            seen.add(key)
+            out.append(rule)
+        if len(out) >= limit:
+            break
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -367,7 +393,6 @@ def run_enforcement(
 
     # Match sources to cells
     recs: list[EnforcementRec] = []
-    source_types_seen: set[str] = set()
 
     for source in emission_sources:
         source_type = source.get("type", "other")
@@ -523,7 +548,9 @@ def build_dossier(rec_id: int, city_id: str = "delhi") -> dict:
     source_category = "construction_dust"  # TODO: derive from source registry join
     chunks = retrieve_for_enforcement(source_category, city_id, top_k=5)
     full_citations = [c.as_citation() for c in chunks]
-    satellite_patch = find_image_patch(db, rec, source)
+    # Live dossiers may only show REAL ingested image evidence — never a
+    # generated placeholder dressed up as satellite imagery.
+    satellite_patch = find_image_patch(db, rec, source, allow_placeholder=False)
     return {
         "rec_id": rec_id,
         "city_id": rec["city_id"],

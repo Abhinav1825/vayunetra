@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { cellToLatLng } from "h3-js";
 import { api, downloadFile } from "./api";
+import { cleanRationale, prettyRule } from "./format";
+import { Panel } from "./ui";
 
 type Rec = {
   id: number;
@@ -56,6 +58,25 @@ function normalizePatch(patch: Dossier["satellite_patch"]): SatellitePatch | nul
   return patch;
 }
 
+/** kb-chunk excerpts carry raw document scaffolding (===== rules, ALL-CAPS headers). */
+function cleanExcerpt(text: string): string {
+  const s = text.replace(/[=_*\-]{4,}/g, " ").replace(/\s+/g, " ").trim();
+  return s.length > 180 ? `${s.slice(0, 180)}…` : s;
+}
+
+/** Several chunks of one document retrieve as near-identical citations — show each rule once. */
+function dedupeCitations(citations: Citation[]): Citation[] {
+  const seen = new Set<string>();
+  return citations
+    .filter((c) => {
+      const key = `${prettyRule(c.rule ?? "")}|${cleanExcerpt(c.excerpt ?? "").slice(0, 60)}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .slice(0, 3);
+}
+
 export default function EnforcementPanel({ city, focusCell }: { city: string; focusCell?: string | null }) {
   const [rows, setRows] = useState<Rec[] | null>(null);
   const [open, setOpen] = useState<number | null>(null);
@@ -99,15 +120,17 @@ export default function EnforcementPanel({ city, focusCell }: { city: string; fo
   }
 
   return (
-    <div className="rounded-lg bg-white/95 p-3 text-sm shadow">
-      <div className="flex items-center justify-between">
-        <div className="font-semibold">Enforcement Worklist</div>
-        {focusCell && (
+    <Panel
+      title="Enforcement Worklist"
+      tag="A3"
+      right={
+        focusCell ? (
           <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">
             nearest to selected cell first
           </span>
-        )}
-      </div>
+        ) : undefined
+      }
+    >
       {ordered === null ? (
         <div className="mt-2 space-y-2">
           {[0, 1, 2].map((i) => (
@@ -119,8 +142,8 @@ export default function EnforcementPanel({ city, focusCell }: { city: string; fo
           {ordered.map((r: Rec & { km?: number | null }) => (
             <div
               key={r.id}
-              className={`rounded-md border p-2 ${
-                focusCell && r.h3_cell === focusCell ? "border-blue-400 bg-blue-50/50" : "border-gray-200"
+              className={`rounded-lg border p-2.5 transition-colors ${
+                focusCell && r.h3_cell === focusCell ? "border-blue-400 bg-blue-50/50" : "border-slate-200 hover:border-slate-300"
               }`}
             >
               <div className="flex items-center justify-between gap-2">
@@ -135,7 +158,7 @@ export default function EnforcementPanel({ city, focusCell }: { city: string; fo
                   rubric {r.rubric_score?.total ?? "--"}/10
                 </span>
               </div>
-              <div className="mt-1 text-xs text-gray-700">{r.rationale}</div>
+              <div className="mt-1 text-xs leading-5 text-gray-700">{cleanRationale(r.rationale)}</div>
               <div className="mt-1 text-xs text-gray-500">
                 {Math.round(r.contribution * 100)}% contribution · {r.pop_exposed.toLocaleString()} exposed
               </div>
@@ -189,19 +212,19 @@ export default function EnforcementPanel({ city, focusCell }: { city: string; fo
                       <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
                         Regulatory citations (RAG)
                       </div>
-                      {(dossier.citations ?? []).length ? (
+                      {dedupeCitations(dossier.citations ?? []).length ? (
                         <div className="mt-1 space-y-1.5">
-                          {dossier.citations!.map((c, i) => (
+                          {dedupeCitations(dossier.citations ?? []).map((c, i) => (
                             <div key={i} className="rounded border border-slate-200 bg-white p-1.5">
                               <div className="flex items-center justify-between gap-2">
-                                <span className="text-xs font-semibold text-slate-800">{c.rule ?? "Regulation"}</span>
+                                <span className="text-xs font-semibold text-slate-800">{c.rule ? prettyRule(c.rule) : "Regulation"}</span>
                                 {typeof c.similarity === "number" && (
                                   <span className="shrink-0 rounded bg-emerald-100 px-1 text-[9px] text-emerald-700">
                                     match {Math.round(c.similarity * 100)}%
                                   </span>
                                 )}
                               </div>
-                              {c.excerpt && <div className="mt-0.5 text-[10px] leading-4 text-slate-500">{c.excerpt}</div>}
+                              {c.excerpt && <div className="mt-0.5 text-[10px] leading-4 text-slate-500">{cleanExcerpt(c.excerpt)}</div>}
                             </div>
                           ))}
                         </div>
@@ -217,6 +240,6 @@ export default function EnforcementPanel({ city, focusCell }: { city: string; fo
           {ordered.length === 0 && <div className="text-xs text-gray-500">No active recommendations</div>}
         </div>
       )}
-    </div>
+    </Panel>
   );
 }

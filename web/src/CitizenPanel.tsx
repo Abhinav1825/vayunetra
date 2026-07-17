@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "./api";
+import { Panel, SegBtn } from "./ui";
 
 type Advisory = {
   ward_id: string;
@@ -59,27 +60,28 @@ export default function CitizenPanel({ city, languages }: { city: string; langua
   const channels = Array.from(new Set((rows ?? []).map((r) => r.channel)));
 
   return (
-    <div className="rounded-lg bg-white/95 p-3 text-sm shadow">
-      <div className="flex items-center justify-between gap-2">
-        <div className="font-semibold">Citizen Advisory</div>
-        <select className="rounded border px-2 py-1 text-xs" value={lang} onChange={(e) => setLang(e.target.value)}>
+    <Panel
+      title="Citizen Advisory"
+      tag="A4"
+      right={
+        <select
+          className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-medium text-slate-700"
+          value={lang}
+          onChange={(e) => setLang(e.target.value)}
+        >
           {choices.map((l) => (
             <option key={l} value={l}>
               {LABELS[l] ?? l}
             </option>
           ))}
         </select>
-      </div>
-
-      <div className="mt-2 flex flex-wrap gap-1">
+      }
+    >
+      <div className="flex flex-wrap gap-1">
         {(channels.length ? channels : ["pwa", "telegram", "ivr", "display"]).map((c) => (
-          <button
-            key={c}
-            onClick={() => setChannel(c)}
-            className={`rounded px-2 py-1 text-xs ${channel === c ? "bg-emerald-600 text-white" : "bg-gray-200 text-gray-700"}`}
-          >
+          <SegBtn key={c} active={channel === c} onClick={() => setChannel(c)}>
             {c}
-          </button>
+          </SegBtn>
         ))}
       </div>
 
@@ -138,6 +140,6 @@ export default function CitizenPanel({ city, languages }: { city: string; langua
           </div>
         )}
       </div>
-    </div>
+    </Panel>
   );
 }

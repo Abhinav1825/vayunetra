@@ -54,12 +54,10 @@ def patch_ref_from_source(source: dict[str, Any]) -> str | None:
 
 
 def placeholder_patch_data_uri(source: dict[str, Any]) -> str:
-    """Last-resort visual marker for demos when only detection metadata exists."""
+    """Demo-only illustrative marker — clearly labeled: NOT satellite imagery."""
     coords = source_coordinates(source) or [77.22, 28.61]
-    name = (source.get("name") or f"cv source {source.get('id', '')}")[:38]
-    kind = (source.get("type") or "cv_detected").replace("_", " ")
-    conf = source.get("detection_confidence")
-    conf_txt = f"{round(float(conf) * 100)}%" if conf is not None else "n/a"
+    name = (source.get("name") or f"source {source.get('id', '')}")[:38]
+    kind = (source.get("type") or "source").replace("_", " ")
     svg = f"""<svg xmlns="http://www.w3.org/2000/svg" width="360" height="240" viewBox="0 0 360 240">
 <defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#6b7f59"/><stop offset=".45" stop-color="#c9b37a"/><stop offset="1" stop-color="#4f6d7a"/></linearGradient></defs>
 <rect width="360" height="240" fill="url(#g)"/>
@@ -67,19 +65,20 @@ def placeholder_patch_data_uri(source: dict[str, Any]) -> str:
 <path d="M20 38 L338 208 M-18 86 L287 242 M86 -12 L360 142" stroke="#e8dfc4" stroke-width="5" opacity=".45"/>
 <rect x="128" y="66" width="104" height="70" fill="#d7c58c" opacity=".82"/>
 <rect x="143" y="79" width="74" height="44" fill="#9d7b4c" opacity=".78"/>
-<circle cx="180" cy="101" r="64" fill="none" stroke="#ef4444" stroke-width="5"/>
 <rect x="14" y="156" width="332" height="70" rx="6" fill="rgba(15,23,42,.78)"/>
-<text x="26" y="180" fill="#fff" font-family="Arial" font-size="16" font-weight="700">Sentinel-2 detected source patch</text>
-<text x="26" y="201" fill="#dbeafe" font-family="Arial" font-size="12">{name} · {kind} · confidence {conf_txt}</text>
-<text x="26" y="218" fill="#d1d5db" font-family="Arial" font-size="11">{coords[1]:.4f}, {coords[0]:.4f}</text>
+<text x="26" y="180" fill="#fff" font-family="Arial" font-size="16" font-weight="700">Illustrative site marker (not satellite imagery)</text>
+<text x="26" y="201" fill="#dbeafe" font-family="Arial" font-size="12">{name} · {kind}</text>
+<text x="26" y="218" fill="#d1d5db" font-family="Arial" font-size="11">{coords[1]:.4f}, {coords[0]:.4f} · Sentinel-2 patch pending ingest</text>
 </svg>"""
     return "data:image/svg+xml;base64," + base64.b64encode(svg.encode("utf-8")).decode("ascii")
 
 
 def image_chunk_from_source(source: dict[str, Any], allow_placeholder: bool = False) -> dict[str, Any] | None:
     image_ref = patch_ref_from_source(source)
+    placeholder_used = False
     if not image_ref and allow_placeholder:
         image_ref = placeholder_patch_data_uri(source)
+        placeholder_used = True
     if not image_ref:
         return None
 
@@ -87,24 +86,40 @@ def image_chunk_from_source(source: dict[str, Any], allow_placeholder: bool = Fa
     source_id = source.get("id")
     city_id = source.get("city_id")
     name = source.get("name") or f"Detected source {source_id}"
-    kind = source.get("type") or "cv_detected"
+    kind = (source.get("type") or "cv_detected").replace("_", " ")
+    origin = source.get("source_origin")
     confidence = source.get("detection_confidence")
-    chunk_text = (
-        f"Sentinel-2 image patch for {name}. CV-detected {kind.replace('_', ' ')} source "
-        f"in {city_id}; detection confidence {confidence}."
-    )
+
+    # Only a real image of a CV-detected source may claim to be Sentinel-2
+    # evidence — an OSM registry site with a drawn marker must say exactly that.
+    if placeholder_used or origin != "cv_detected":
+        title = f"Site marker - {name}"
+        source_url = "VayuNetra source registry (illustrative marker)"
+        chunk_text = (
+            f"Illustrative location marker for {name} ({kind}, {origin or 'registry'} origin) "
+            f"in {city_id}. No Sentinel-2 evidence patch ingested yet."
+        )
+    else:
+        title = f"Sentinel-2 patch - {name}"
+        source_url = "Sentinel-2 / VayuNetra CV detection"
+        chunk_text = (
+            f"Sentinel-2 image patch for {name}. CV-detected {kind} source "
+            f"in {city_id}; detection confidence {confidence}."
+        )
+
     metadata = {
         "source_id": source_id,
         "city_id": city_id,
-        "source_type": kind,
-        "source_origin": source.get("source_origin"),
+        "source_type": source.get("type") or "cv_detected",
+        "source_origin": origin,
         "detection_confidence": confidence,
         "coordinates": coords,
+        "placeholder": placeholder_used,
     }
     return {
         "doc_id": f"sentinel2-source-{source_id}",
-        "title": f"Sentinel-2 patch - {name}",
-        "source_url": "Sentinel-2 / VayuNetra CV detection",
+        "title": title,
+        "source_url": source_url,
         "modality": "image",
         "chunk_text": chunk_text,
         "image_ref": image_ref,
@@ -118,8 +133,17 @@ def _metadata(row: dict[str, Any]) -> dict[str, Any]:
     return meta if isinstance(meta, dict) else {}
 
 
-def find_image_patch(db: Any, rec: dict[str, Any], source: dict[str, Any] | None = None) -> dict[str, Any] | None:
-    """Return the best image evidence row for an enforcement recommendation."""
+def find_image_patch(
+    db: Any,
+    rec: dict[str, Any],
+    source: dict[str, Any] | None = None,
+    allow_placeholder: bool = True,
+) -> dict[str, Any] | None:
+    """Best image evidence row for an enforcement recommendation.
+
+    ``allow_placeholder=False`` (the live path) returns only real ingested
+    image chunks — a dossier must never show generated imagery as evidence.
+    """
     source_id = rec.get("source_id")
     city_id = rec.get("city_id")
     rows = (
@@ -152,7 +176,7 @@ def find_image_patch(db: Any, rec: dict[str, Any], source: dict[str, Any] | None
             "metadata": meta,
         }
 
-    if source:
+    if source and allow_placeholder:
         chunk = image_chunk_from_source(source, allow_placeholder=True)
         if chunk:
             return {

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { api } from "./api";
 import ImpactCards, { type ImpactData } from "./ImpactCards";
+import { Panel, SegBtn } from "./ui";
 
 type SimResult = ImpactData & {
   delta_aqi_by_cell?: Record<string, number>;
@@ -100,11 +101,8 @@ export default function WhatIfPanel({ city }: { city: string }) {
   const bestDelta = deltas.length ? Math.min(...deltas) : 0;
 
   return (
-    <div className="rounded-lg bg-white/95 p-3 text-sm shadow">
-      <div className="font-semibold">
-        What-if Simulator <span className="text-[10px] font-normal text-gray-400">E3 + E7</span>
-      </div>
-      <div className="mt-1 text-xs text-gray-600">
+    <Panel title="What-if Simulator" tag="E3 + E7">
+      <div className="text-xs text-gray-600">
         Counterfactual over attribution × forecast, with cited health &amp; carbon impact.
       </div>
 
@@ -112,7 +110,7 @@ export default function WhatIfPanel({ city }: { city: string }) {
         <label className="block text-xs">
           <span className="text-gray-500">Intervention</span>
           <select
-            className="mt-1 w-full rounded border px-2 py-1 text-sm"
+            className="mt-1 w-full rounded-md border border-slate-200 bg-slate-50 px-2 py-1.5 text-sm font-medium text-slate-700"
             value={type}
             onChange={(e) => setType(e.target.value)}
           >
@@ -126,19 +124,15 @@ export default function WhatIfPanel({ city }: { city: string }) {
         <div className="flex items-center gap-2 text-xs">
           <span className="text-gray-500">Horizon</span>
           {[24, 48, 72].map((h) => (
-            <button
-              key={h}
-              onClick={() => setHorizon(h)}
-              className={`rounded px-2 py-1 ${horizon === h ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-700"}`}
-            >
+            <SegBtn key={h} active={horizon === h} onClick={() => setHorizon(h)}>
               +{h}h
-            </button>
+            </SegBtn>
           ))}
         </div>
         <button
           onClick={run}
           disabled={loading}
-          className="w-full rounded bg-blue-600 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+          className="w-full rounded-md bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
         >
           {loading ? "Simulating…" : "Run simulation"}
         </button>
@@ -242,6 +236,6 @@ export default function WhatIfPanel({ city }: { city: string }) {
           opt && <div className="mt-2 text-xs text-slate-500">No feasible package returned for this budget.</div>
         )}
       </div>
-    </div>
+    </Panel>
   );
 }

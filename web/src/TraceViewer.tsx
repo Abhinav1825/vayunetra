@@ -3,6 +3,7 @@
 // plus a button that runs the whole pipeline live on stage.
 import { useCallback, useEffect, useState } from "react";
 import { api } from "./api";
+import { Panel } from "./ui";
 
 type TraceStep = { node: string; ts: string; meta?: Record<string, unknown> };
 type TraceRow = { city_id: string; total_latency_ms?: number; trace?: TraceStep[]; signal_ts?: string };
@@ -76,25 +77,27 @@ export default function TraceViewer({ city }: { city: string }) {
   }
 
   return (
-    <div className="rounded-lg bg-white/95 p-3 text-sm shadow">
-      <div className="flex items-center justify-between">
-        <div className="font-semibold">Agent Pipeline</div>
-        {latency != null && latency > 0 && (
+    <Panel
+      title="Agent Pipeline"
+      tag="A0"
+      right={
+        latency != null && latency > 0 ? (
           <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">
             {(latency / 1000).toFixed(1)}s end-to-end
           </span>
-        )}
-      </div>
-      <div className="mt-1 text-[10px] text-gray-400">last multi-agent run · detect → decide → issue</div>
+        ) : undefined
+      }
+    >
+      <div className="text-[10px] text-gray-400">last multi-agent run · detect → decide → issue</div>
       <Timeline steps={steps} />
       <button
         onClick={runLive}
         disabled={running}
-        className="mt-2 w-full rounded bg-slate-800 px-2 py-1.5 text-xs font-semibold text-white hover:bg-slate-900 disabled:opacity-50"
+        className="mt-2 w-full rounded-md bg-slate-800 px-2 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-slate-900 disabled:opacity-50"
       >
         {running ? "Agents running…" : "▶ Run agents live"}
       </button>
       {err && <div className="mt-1 text-[10px] text-red-600">{err}</div>}
-    </div>
+    </Panel>
   );
 }

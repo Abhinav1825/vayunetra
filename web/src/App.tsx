@@ -13,6 +13,7 @@ import CityIntelPanel from "./CityIntelPanel";
 import TraceViewer from "./TraceViewer";
 import WhatIfPanel from "./WhatIfPanel";
 import RoiPanel from "./RoiPanel";
+import { Panel, SegBtn } from "./ui";
 
 type LngLat = [number, number];
 type GeoPoint = { coordinates: [number, number] };
@@ -96,10 +97,15 @@ export default function App() {
 
         {/* Header overlays the map on all breakpoints */}
         <div className="absolute left-2 right-2 top-2 z-10 flex flex-wrap items-start justify-between gap-2 lg:left-4 lg:right-4 lg:top-4">
-          <div className="flex flex-wrap items-center gap-2 rounded-lg bg-white/95 p-2 shadow">
-            <div className="px-2 text-sm font-semibold">VayuNetra</div>
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200/80 bg-white/95 p-2 shadow-lg shadow-slate-900/5 backdrop-blur">
+            <a href="#/" className="flex items-center gap-1.5 px-1.5 text-sm font-extrabold tracking-tight text-slate-800">
+              <span className="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-sky-500 to-blue-700 text-[13px] font-black text-white shadow-sm">
+                V
+              </span>
+              VayuNetra
+            </a>
             <select
-              className="rounded border px-2 py-1 text-sm"
+              className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
               value={active}
               onChange={(e) => setActive(e.target.value)}
             >
@@ -110,15 +116,19 @@ export default function App() {
                 </option>
               ))}
             </select>
-            {TABS.map((t) => (
-              <button
-                key={t}
-                onClick={() => setTab(t)}
-                className={`rounded px-3 py-1 text-sm ${tab === t ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-700"}`}
-              >
-                {TAB_LABEL[t]}
-              </button>
-            ))}
+            <div className="flex rounded-lg bg-slate-100 p-0.5">
+              {TABS.map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setTab(t)}
+                  className={`rounded-md px-3 py-1 text-sm font-medium transition-colors ${
+                    tab === t ? "bg-blue-600 text-white shadow-sm" : "text-slate-600 hover:bg-slate-200"
+                  }`}
+                >
+                  {TAB_LABEL[t]}
+                </button>
+              ))}
+            </div>
           </div>
           <div className="flex flex-wrap items-start gap-2">
             <AqiHeader city={active} />
@@ -151,27 +161,20 @@ export default function App() {
             onAct={() => setTab("action")} // keep the cell focused — enforcement sorts by it
           />
         )}
-        <div className="rounded-lg bg-white/95 p-3 text-sm shadow">
-          <div className="font-semibold">Map Layers</div>
-          <div className="mt-2 flex gap-1">
+        <Panel title="Map Layers">
+          <div className="flex gap-1">
             {(["blame", "satellite", "coverage"] as MapMode[]).map((m) => (
-              <button
-                key={m}
-                onClick={() => setMode(m)}
-                className={`flex-1 rounded px-2 py-1 text-xs ${
-                  mode === m ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-700"
-                }`}
-              >
+              <SegBtn key={m} active={mode === m} onClick={() => setMode(m)} className="flex-1">
                 {m === "blame" ? "Sources" : m === "satellite" ? "Sat NO2" : "PM2.5"}
-              </button>
+              </SegBtn>
             ))}
           </div>
 
           {/* Independent overlay (not part of the blame/satellite radio) */}
           <button
             onClick={() => setShowSources((v) => !v)}
-            className={`mt-2 flex w-full items-center justify-between rounded px-2 py-1 text-xs ${
-              showSources ? "bg-slate-800 text-white" : "bg-gray-200 text-gray-700"
+            className={`mt-2 flex w-full items-center justify-between rounded-md px-2 py-1 text-xs font-medium transition-colors ${
+              showSources ? "bg-slate-800 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
             }`}
           >
             <span className="flex items-center gap-1.5">
@@ -199,13 +202,9 @@ export default function App() {
             <div className="mt-3 text-xs">
               <div className="flex gap-1">
                 {(["stations", "dense"] as const).map((k) => (
-                  <button
-                    key={k}
-                    onClick={() => setCoverageKind(k)}
-                    className={`flex-1 rounded px-2 py-1 ${coverageKind === k ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-700"}`}
-                  >
+                  <SegBtn key={k} active={coverageKind === k} onClick={() => setCoverageKind(k)} className="flex-1">
                     {k === "stations" ? "Stations only" : "Dense 1km"}
-                  </button>
+                  </SegBtn>
                 ))}
               </div>
               <div className="mt-2 space-y-1">
@@ -227,7 +226,7 @@ export default function App() {
               </div>
             </div>
           )}
-        </div>
+        </Panel>
 
         <ForecastPanel city={active} />
         <CityIntelPanel city={active} />
