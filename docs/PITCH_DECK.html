@@ -12,58 +12,267 @@
     p, li { font-size: clamp(21px, 2.2vw, 34px); line-height: 1.35; color: #d1d5db; max-width: 1100px; }
     .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; margin-top: 28px; }
     .card { border: 1px solid #475569; border-radius: 8px; padding: 22px; background: #1f2937; }
+    .card b { color: #f9fafb; }
     .metric { font-size: clamp(36px, 6vw, 76px); color: #38bdf8; font-weight: 800; }
     .accent { color: #86efac; }
     .warn { color: #fca5a5; }
     .cite { font-size: clamp(13px, 1.2vw, 16px); color: #94a3b8; margin-top: 10px; }
     .tag { display: inline-block; font-size: 15px; color: #0f172a; background: #86efac; border-radius: 6px; padding: 2px 10px; margin-left: 12px; vertical-align: middle; }
+    .sub { font-size: clamp(15px, 1.5vw, 22px); color: #94a3b8; }
+    table { border-collapse: collapse; margin-top: 24px; width: 100%; max-width: 1150px; }
+    th, td { text-align: left; padding: 12px 16px; border-bottom: 1px solid #334155; font-size: clamp(15px, 1.6vw, 24px); color: #d1d5db; }
+    th { color: #38bdf8; font-size: clamp(13px, 1.3vw, 18px); text-transform: uppercase; letter-spacing: 0.06em; }
+    td b { color: #f9fafb; }
+    .diagram { margin-top: 12px; }
+    .diagram svg { width: 100%; height: auto; max-height: 82vh; border-radius: 12px; }
   </style>
 </head>
 <body>
-  <section><h1>VayuNetra</h1><p>We do not just measure air. We trace it, predict it, and act on it.</p></section>
-  <section><h2>The Gap</h2><p>Indian cities have air-quality data, but the operational loop from signal to source-attributed action is still too slow.</p></section>
-  <section><h2>Stage 1 Product</h2><div class="grid"><div class="card">Blame map</div><div class="card">24/48/72h forecast</div><div class="card">Enforcement worklist</div><div class="card">Citizen advisory</div><div class="card">Multi-city compare</div></div></section>
-  <section><h2>Sejal Lane</h2><p>OSM + GPW v4.11 static layers, mobility proxy, Agent 4 advisory, Agent 5 multi-city intelligence, and the integrated console shell.</p></section>
-  <section><h2>India Stack Position</h2><p>CPCB/CAAQMS <b>measures</b>. SAFAR <b>forecasts</b>. VayuNetra <b>operates</b>: blame this cell now, forecast 72h risk, generate a cited notice, and broadcast a citizen advisory in minutes. PAVITRA/InMAP remains the policy-grade annual planning roadmap, not the competitor.</p></section>
-  <section><h2>Validated Honestly</h2><div class="grid"><div class="card"><div class="metric">0.92</div>cosine vs SAFAR Delhi inventory</div><div class="card"><div class="metric">2.30x</div>traffic SHAP lift in IST rush hours</div><div class="card"><div class="metric">75-80%</div>CQR interval coverage after audit</div></div><p>Forecasts beat persistence across all three cities. TFT was trained on GPU and rejected because the lean stack won.</p></section>
-  <section><h2>E1 Evidence Story</h2><p>Satellite CV detections land as <code>cv_detected</code> emission sources. E6 indexes Sentinel-2 patches in <code>kb_chunks(modality='image')</code>, so an enforcement dossier can cite both the visual source evidence and the CAQM/CPCB rule.</p></section>
-  <section><h2>Data Spine</h2><p>All outputs land in Supabase tables and are served through the shared API envelope. No panel calls a teammate directly.</p></section>
-  <section><h2>Citizen Protection</h2><p>Advisories are generated for English, Hindi, Kannada, and Marathi across PWA, Telegram, IVR, and public-display modes.</p></section>
-  <section><h2>Multi-City Proof</h2><div class="grid"><div class="card">Delhi: construction dust</div><div class="card">Bengaluru: traffic corridor</div><div class="card">Mumbai: coastal works + freight</div></div></section>
-  <section><h2>Live Stage 1 Counts</h2><div class="grid"><div class="card"><div class="metric">60</div>OSM registry sources (daily auto-refresh)</div><div class="card"><div class="metric">216</div>mobility rows</div><div class="card"><div class="metric">144</div>advisories</div></div></section>
-  <section><h2>Credibility Layer</h2><p>People protected uses GPW v4.11 population per H3 cell. Tonnes avoided are grounded in SAFAR/CSTEP/Urban-Emissions inventories. Health impact uses WHO HRAPIE as operationalised in AirQ+, with the national 1.67M-deaths context anchored to Balakrishnan et al. 2019.</p></section>
-  <section><h2>Demo Safety</h2><p>DEMO_MODE keeps the full scored flow offline and deterministic. Live Supabase rows are available for the integration window.</p></section>
 
+  <!-- 1 · TITLE -->
   <section>
-    <h1>Stage 2 — Above the Problem Statement</h1>
-    <p>Stage 1 traces, predicts, and acts. Stage 2 answers the two questions judges ask next:
-      <span class="accent">"what is it worth?"</span> and <span class="accent">"where you have no station?"</span></p>
+    <h1>VayuNetra</h1>
+    <p>We do not just measure air. We <b class="accent">trace</b> it, <b class="accent">predict</b> it, and <b class="accent">act</b> on it — in minutes, across three Indian cities, on ₹0 infrastructure.</p>
+    <p class="cite">ET AI Hackathon 2026 · PS-5: AI-Powered Urban Air Quality Intelligence for Smart City Intervention<br/>
+      Live: vayunetra-aqi.vercel.app · API: vayunetra-c8i8.onrender.com · Open source</p>
   </section>
 
+  <!-- 2 · PROBLEM -->
   <section>
-    <h2>What Stage 2 adds <span class="tag">Sejal lane</span></h2>
+    <h2>The problem is not missing data. It is a missing loop.</h2>
     <div class="grid">
-      <div class="card"><b>E7</b> — health &amp; carbon in ₹ / lives / CO₂e, every figure cited</div>
-      <div class="card"><b>What-if</b> — intervention → ΔAQI + impact, live</div>
-      <div class="card"><b>E2</b> — 40 stations → a full-city 1 km field</div>
-      <div class="card"><b>Explainability</b> — SHAP drivers + detected-source overlay</div>
+      <div class="card"><div class="metric warn">1.67M</div>deaths in India attributable to air pollution in one year</div>
+      <div class="card"><div class="metric warn">73,395</div>estimated premature deaths per year in Delhi alone</div>
+      <div class="card"><div class="metric warn">days</div>from a pollution signal to a source-attributed field action today</div>
+    </div>
+    <p style="margin-top:28px">CAAQMS stations measure. SAFAR forecasts. But the operational questions — <i>who is to blame in this square kilometre, right now, and what do we do about it</i> — still take days of manual work, unattributed to sources.</p>
+    <p class="cite">Balakrishnan et al., Lancet Planetary Health 2019 (2017 GBD estimate) · Delhi figure: Chen &amp; Hoek (2020) long-term CRF at Delhi's cited annual mean, UN WUP population — full derivation in evaluate.ipynb</p>
+  </section>
+
+  <!-- 3 · SOLUTION -->
+  <section>
+    <h2>VayuNetra closes the loop</h2>
+    <div class="grid">
+      <div class="card"><b>1 · Trace</b><br/>per-km² source blame — SHAP-explained, inventory-validated</div>
+      <div class="card"><b>2 · Predict</b><br/>24/48/72h hyperlocal forecast with calibrated uncertainty</div>
+      <div class="card"><b>3 · Act</b><br/>cited enforcement worklist, evidence dossier, one-click Notice PDF</div>
+      <div class="card"><b>4 · Protect</b><br/>advisories in 4 languages over PWA, Telegram, IVR calls &amp; public displays</div>
+    </div>
+    <p style="margin-top:28px">Signal to cited action: measured live at <b class="accent">0.8–9.7 seconds</b> end-to-end through the multi-agent graph — against a north-star of five minutes and a status quo of days.</p>
+  </section>
+
+  <!-- 4 · ARCHITECTURE -->
+  <section>
+    <h2 style="margin-bottom:8px">Architecture <span class="tag">two seams, six agents</span></h2>
+    <div class="diagram">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" font-family="Inter, Segoe UI, Arial, sans-serif">
+        <defs>
+          <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#38bdf8"/>
+          </marker>
+        </defs>
+        <rect width="1280" height="720" fill="#0f172a"/>
+        <text x="640" y="42" text-anchor="middle" fill="#f9fafb" font-size="26" font-weight="800">VayuNetra — signal to city action in minutes</text>
+        <text x="640" y="66" text-anchor="middle" fill="#94a3b8" font-size="14">Every box decouples through two seams: the Supabase schema and the API contract. Spatial unit everywhere: Uber H3 res-8 (~1 km hexagons).</text>
+        <rect x="30" y="96" width="220" height="470" rx="10" fill="#1f2937" stroke="#475569"/>
+        <text x="140" y="124" text-anchor="middle" fill="#38bdf8" font-size="16" font-weight="800">DATA (free + open)</text>
+        <g fill="#d1d5db" font-size="13">
+          <rect x="46" y="140" width="188" height="52" rx="6" fill="#111827" stroke="#334155"/>
+          <text x="140" y="161" text-anchor="middle" fill="#f9fafb" font-weight="700">CAAQMS ground grid</text>
+          <text x="140" y="179" text-anchor="middle">CPCB via OpenAQ · 6 pollutants</text>
+          <rect x="46" y="200" width="188" height="52" rx="6" fill="#111827" stroke="#334155"/>
+          <text x="140" y="221" text-anchor="middle" fill="#f9fafb" font-weight="700">Weather + boundary layer</text>
+          <text x="140" y="239" text-anchor="middle">Open-Meteo · ERA5 archive</text>
+          <rect x="46" y="260" width="188" height="52" rx="6" fill="#111827" stroke="#334155"/>
+          <text x="140" y="281" text-anchor="middle" fill="#f9fafb" font-weight="700">Satellites (Earth Engine)</text>
+          <text x="140" y="299" text-anchor="middle">Sentinel-5P NO₂ · S2 · FIRMS fire</text>
+          <rect x="46" y="320" width="188" height="52" rx="6" fill="#111827" stroke="#334155"/>
+          <text x="140" y="341" text-anchor="middle" fill="#f9fafb" font-weight="700">Emission-source registry</text>
+          <text x="140" y="359" text-anchor="middle">OSM Overpass · daily refresh</text>
+          <rect x="46" y="380" width="188" height="52" rx="6" fill="#111827" stroke="#334155"/>
+          <text x="140" y="401" text-anchor="middle" fill="#f9fafb" font-weight="700">Population per cell</text>
+          <text x="140" y="419" text-anchor="middle">GPW v4.11 (CIESIN/SEDAC)</text>
+          <rect x="46" y="440" width="188" height="52" rx="6" fill="#111827" stroke="#334155"/>
+          <text x="140" y="461" text-anchor="middle" fill="#f9fafb" font-weight="700">Mobility proxy</text>
+          <text x="140" y="479" text-anchor="middle">GTFS + road-network time-of-day</text>
+          <text x="140" y="530" text-anchor="middle" fill="#94a3b8" font-size="12">hourly + daily ingest crons</text>
+          <text x="140" y="548" text-anchor="middle" fill="#94a3b8" font-size="12">(GitHub Actions, keyless where possible)</text>
+        </g>
+        <rect x="290" y="96" width="200" height="470" rx="10" fill="#1f2937" stroke="#86efac" stroke-width="2"/>
+        <text x="390" y="124" text-anchor="middle" fill="#86efac" font-size="16" font-weight="800">SEAM #1 · SCHEMA</text>
+        <g fill="#d1d5db" font-size="13">
+          <text x="390" y="152" text-anchor="middle" fill="#f9fafb" font-size="15" font-weight="700">Supabase Postgres</text>
+          <text x="390" y="170" text-anchor="middle" fill="#94a3b8" font-size="12">PostGIS · pgvector · RLS</text>
+          <rect x="306" y="186" width="168" height="30" rx="6" fill="#111827" stroke="#334155"/><text x="390" y="206" text-anchor="middle">measurements</text>
+          <rect x="306" y="222" width="168" height="30" rx="6" fill="#111827" stroke="#334155"/><text x="390" y="242" text-anchor="middle">attribution</text>
+          <rect x="306" y="258" width="168" height="30" rx="6" fill="#111827" stroke="#334155"/><text x="390" y="278" text-anchor="middle">forecasts</text>
+          <rect x="306" y="294" width="168" height="30" rx="6" fill="#111827" stroke="#334155"/><text x="390" y="314" text-anchor="middle">emission_sources</text>
+          <rect x="306" y="330" width="168" height="30" rx="6" fill="#111827" stroke="#334155"/><text x="390" y="350" text-anchor="middle">enforcement_recs</text>
+          <rect x="306" y="366" width="168" height="30" rx="6" fill="#111827" stroke="#334155"/><text x="390" y="386" text-anchor="middle">advisories</text>
+          <rect x="306" y="402" width="168" height="30" rx="6" fill="#111827" stroke="#334155"/><text x="390" y="422" text-anchor="middle">kb_chunks (text+image)</text>
+          <rect x="306" y="438" width="168" height="30" rx="6" fill="#111827" stroke="#334155"/><text x="390" y="458" text-anchor="middle">action_traces</text>
+          <text x="390" y="500" text-anchor="middle" fill="#94a3b8" font-size="12">models WRITE rows,</text>
+          <text x="390" y="518" text-anchor="middle" fill="#94a3b8" font-size="12">API READS rows —</text>
+          <text x="390" y="536" text-anchor="middle" fill="#94a3b8" font-size="12">no one calls a teammate directly</text>
+        </g>
+        <rect x="530" y="96" width="330" height="470" rx="10" fill="#1f2937" stroke="#475569"/>
+        <text x="695" y="124" text-anchor="middle" fill="#38bdf8" font-size="16" font-weight="800">AGENT GRAPH (LangGraph)</text>
+        <g fill="#d1d5db" font-size="13">
+          <rect x="550" y="140" width="290" height="34" rx="6" fill="#111827" stroke="#38bdf8"/>
+          <text x="695" y="162" text-anchor="middle" fill="#f9fafb" font-weight="700">A0 Orchestrator · per-node latency traces</text>
+          <rect x="550" y="184" width="140" height="52" rx="6" fill="#111827" stroke="#334155"/>
+          <text x="620" y="205" text-anchor="middle" fill="#f9fafb" font-weight="700">A1 Attribution</text>
+          <text x="620" y="223" text-anchor="middle" font-size="12">GBM + SHAP hybrid</text>
+          <rect x="700" y="184" width="140" height="52" rx="6" fill="#111827" stroke="#334155"/>
+          <text x="770" y="205" text-anchor="middle" fill="#f9fafb" font-weight="700">A2 Forecast</text>
+          <text x="770" y="223" text-anchor="middle" font-size="12">quantile + CQR calib.</text>
+          <rect x="550" y="246" width="290" height="30" rx="6" fill="#111827" stroke="#f59e0b"/>
+          <text x="695" y="266" text-anchor="middle" fill="#fbbf24" font-weight="700">spike gate (anomaly check on the forecast)</text>
+          <rect x="550" y="286" width="140" height="52" rx="6" fill="#111827" stroke="#334155"/>
+          <text x="620" y="307" text-anchor="middle" fill="#f9fafb" font-weight="700">A3 Enforcement</text>
+          <text x="620" y="325" text-anchor="middle" font-size="12">RAG-cited worklist</text>
+          <rect x="700" y="286" width="140" height="52" rx="6" fill="#111827" stroke="#334155"/>
+          <text x="770" y="307" text-anchor="middle" fill="#f9fafb" font-weight="700">A4 Advisory</text>
+          <text x="770" y="325" text-anchor="middle" font-size="12">4 languages, templated</text>
+          <rect x="550" y="348" width="290" height="30" rx="6" fill="#111827" stroke="#334155"/>
+          <text x="695" y="368" text-anchor="middle" fill="#f9fafb" font-weight="700">A5 Multi-City — cross-city playbooks</text>
+          <text x="695" y="404" text-anchor="middle" fill="#94a3b8" font-size="12" font-weight="700">SUPPORTING MODELS</text>
+          <rect x="550" y="414" width="290" height="94" rx="6" fill="#111827" stroke="#334155"/>
+          <text x="695" y="434" text-anchor="middle" font-size="12">E1 satellite CV (U-Net) · E2 dense 1 km field</text>
+          <text x="695" y="452" text-anchor="middle" font-size="12">E3 what-if counterfactual · E5 optimiser</text>
+          <text x="695" y="470" text-anchor="middle" font-size="12">E7 health ₹ / lives / CO₂e · GRAP stage trigger</text>
+          <text x="695" y="488" text-anchor="middle" font-size="12">RAG over NCAP / GRAP / CPCB corpus</text>
+          <text x="695" y="536" text-anchor="middle" fill="#94a3b8" font-size="12">every claim cited, gated, or labeled heuristic</text>
+        </g>
+        <rect x="900" y="96" width="130" height="470" rx="10" fill="#1f2937" stroke="#86efac" stroke-width="2"/>
+        <text x="965" y="124" text-anchor="middle" fill="#86efac" font-size="15" font-weight="800">SEAM #2 · API</text>
+        <g fill="#d1d5db" font-size="12">
+          <text x="965" y="152" text-anchor="middle" fill="#f9fafb" font-size="14" font-weight="700">FastAPI</text>
+          <text x="965" y="170" text-anchor="middle" fill="#94a3b8">Render · ₹0</text>
+          <text x="965" y="200" text-anchor="middle">one envelope:</text>
+          <text x="965" y="218" text-anchor="middle" fill="#f9fafb">{success, data,</text>
+          <text x="965" y="236" text-anchor="middle" fill="#f9fafb">error, meta}</text>
+          <text x="965" y="272" text-anchor="middle">20+ endpoints</text>
+          <text x="965" y="290" text-anchor="middle">WebSocket /live</text>
+          <text x="965" y="308" text-anchor="middle">Notice PDF</text>
+          <text x="965" y="326" text-anchor="middle">/simulate · /optimize</text>
+          <text x="965" y="344" text-anchor="middle">/admin/cities</text>
+          <text x="965" y="380" text-anchor="middle" fill="#94a3b8">RLS + anon JWT</text>
+          <text x="965" y="398" text-anchor="middle" fill="#94a3b8">service-role only</text>
+          <text x="965" y="416" text-anchor="middle" fill="#94a3b8">server-side</text>
+          <text x="965" y="452" text-anchor="middle" fill="#fbbf24">DEMO_MODE:</text>
+          <text x="965" y="470" text-anchor="middle" fill="#fbbf24">full flow offline</text>
+          <text x="965" y="488" text-anchor="middle" fill="#fbbf24">from fixtures</text>
+        </g>
+        <rect x="1070" y="96" width="180" height="470" rx="10" fill="#1f2937" stroke="#475569"/>
+        <text x="1160" y="124" text-anchor="middle" fill="#38bdf8" font-size="16" font-weight="800">EXPERIENCE</text>
+        <g fill="#d1d5db" font-size="12">
+          <rect x="1084" y="140" width="152" height="120" rx="6" fill="#111827" stroke="#334155"/>
+          <text x="1160" y="160" text-anchor="middle" fill="#f9fafb" font-size="13" font-weight="700">Ops console (Vercel)</text>
+          <text x="1160" y="180" text-anchor="middle">blame map · forecast</text>
+          <text x="1160" y="198" text-anchor="middle">worklist + dossier</text>
+          <text x="1160" y="216" text-anchor="middle">what-if + optimiser</text>
+          <text x="1160" y="234" text-anchor="middle">ROI · agent trace</text>
+          <text x="1160" y="252" text-anchor="middle">3-city switcher</text>
+          <rect x="1084" y="272" width="152" height="104" rx="6" fill="#111827" stroke="#334155"/>
+          <text x="1160" y="292" text-anchor="middle" fill="#f9fafb" font-size="13" font-weight="700">Citizen channels</text>
+          <text x="1160" y="312" text-anchor="middle">PWA · Telegram bot</text>
+          <text x="1160" y="330" text-anchor="middle">IVR voice calls</text>
+          <text x="1160" y="348" text-anchor="middle">public display mode</text>
+          <text x="1160" y="366" text-anchor="middle">en · hi · kn · mr</text>
+          <rect x="1084" y="392" width="152" height="86" rx="6" fill="#111827" stroke="#334155"/>
+          <text x="1160" y="412" text-anchor="middle" fill="#f9fafb" font-size="13" font-weight="700">Officer artefacts</text>
+          <text x="1160" y="432" text-anchor="middle">evidence dossier</text>
+          <text x="1160" y="450" text-anchor="middle">cited Notice PDF</text>
+          <text x="1160" y="468" text-anchor="middle">audit status trail</text>
+        </g>
+        <line x1="252" y1="330" x2="288" y2="330" stroke="#38bdf8" stroke-width="3" marker-end="url(#arr)"/>
+        <line x1="492" y1="260" x2="528" y2="260" stroke="#38bdf8" stroke-width="3" marker-end="url(#arr)"/>
+        <line x1="528" y1="400" x2="492" y2="400" stroke="#38bdf8" stroke-width="3" marker-end="url(#arr)"/>
+        <text x="510" y="248" text-anchor="middle" fill="#94a3b8" font-size="11">read</text>
+        <text x="510" y="420" text-anchor="middle" fill="#94a3b8" font-size="11">write</text>
+        <line x1="862" y1="330" x2="898" y2="330" stroke="#38bdf8" stroke-width="3" marker-end="url(#arr)"/>
+        <line x1="1032" y1="330" x2="1068" y2="330" stroke="#38bdf8" stroke-width="3" marker-end="url(#arr)"/>
+        <rect x="30" y="592" width="1220" height="94" rx="10" fill="#1f2937" stroke="#475569"/>
+        <text x="640" y="622" text-anchor="middle" fill="#38bdf8" font-size="14" font-weight="800">OPERATIONS — 100% free tier, ₹0</text>
+        <text x="640" y="646" text-anchor="middle" fill="#d1d5db" font-size="13">GitHub Actions: hourly ingest · daily model + registry + advisory refresh · keep-alive pings — signal to cited action measured live in seconds, not days</text>
+        <text x="640" y="670" text-anchor="middle" fill="#94a3b8" font-size="12">New city = one YAML config (bbox, languages) or one POST /admin/cities call — every layer above is city-agnostic</text>
+      </svg>
     </div>
   </section>
 
+  <!-- 5 · POSITION -->
   <section>
-    <h2>E7 — The Business-Impact number</h2>
-    <p>Cited WHO/CPCB dose-response × emission factors turn every ΔPM2.5 into money, lives, and carbon.</p>
+    <h2>The first "operate" layer in the India air stack</h2>
+    <p>CPCB/CAAQMS <b>measures</b>. SAFAR <b>forecasts</b>. VayuNetra <b>operates</b>: blame this cell now, forecast 72h risk, generate a cited notice, and broadcast a citizen advisory — in minutes. PAVITRA/InMAP remains the policy-grade annual planning layer; its source–receptor physics is our roadmap integration, not our competitor.</p>
+    <div class="grid">
+      <div class="card sub">measure<br/><b style="font-size:26px;color:#f9fafb">CPCB · CAAQMS</b></div>
+      <div class="card sub">forecast<br/><b style="font-size:26px;color:#f9fafb">SAFAR</b></div>
+      <div class="card" style="border-color:#86efac"><span class="sub">operate</span><br/><b style="font-size:26px" class="accent">VayuNetra</b></div>
+      <div class="card sub">plan (annual)<br/><b style="font-size:26px;color:#f9fafb">PAVITRA · InMAP</b></div>
+    </div>
+  </section>
+
+  <!-- 6 · INNOVATION -->
+  <section>
+    <h2>Innovation <span class="tag">judged 25%</span></h2>
+    <div class="grid">
+      <div class="card"><b>Hybrid per-km² attribution</b><br/>GBM + SHAP blended with chemical-signature priors — and it abstains: no ML blame without out-of-sample skill (R² gate), no blame from unobserved markers (coverage mask)</div>
+      <div class="card"><b>Forecast-triggered GRAP</b><br/>our 24h forecast maps straight onto the statutory CAQM GRAP stage bands — the graded response fires a day <i>before</i> observed AQI would trigger it</div>
+      <div class="card"><b>Multi-agent operational loop</b><br/>six agents on one graph with a spike gate and per-node latency stamps — the full signal-to-action chain is audited, replayable, and demoed live</div>
+      <div class="card"><b>Prescriptive, not just predictive</b><br/>cited counterfactual what-if + an optimiser that ranks intervention packages by ΔAQI × people protected per inspector-hour</div>
+    </div>
+    <p class="cite">Also: compound multi-hazard alerts (heat×smog by IMD × CPCB criteria; dust×traffic co-occurrence from live attribution) · multimodal RAG dossiers (regulation text + Sentinel-2 evidence)</p>
+  </section>
+
+  <!-- 7 · METRICS -->
+  <section>
+    <h2>Every number is checked <span class="tag">tech excellence 20%</span></h2>
+    <table>
+      <tr><th>Claim</th><th>Result</th><th>How it was checked</th></tr>
+      <tr><td>Attribution matches official inventories</td><td><b>cosine 0.92 / 0.88 / 0.79</b></td><td>vs SAFAR-Delhi 2018, CSTEP-Bengaluru 2022, Urban-Emissions Mumbai</td></tr>
+      <tr><td>Attribution behaves physically</td><td><b>2.30× traffic SHAP</b> in rush hours</td><td>IST rush vs off-peak, weather controlled</td></tr>
+      <tr><td>Forecast beats real baselines</td><td><b>+4–8% Delhi · +9–30% Bengaluru/Mumbai</b></td><td>walk-forward vs persistence &amp; climatology</td></tr>
+      <tr><td>Uncertainty is honest</td><td>raw 48–63% → <b>75–80% coverage</b></td><td>CQR recalibration audit (nominal 80%)</td></tr>
+      <tr><td>Model choice was earned</td><td><b>TFT trained on GPU — and rejected</b></td><td>LightGBM won 3 of 3 cities on held-out skill</td></tr>
+      <tr><td>The loop is fast</td><td><b>0.8–9.7 s</b> signal → cited action</td><td>live per-node traces (target &lt; 5 min)</td></tr>
+      <tr><td>It holds together</td><td><b>116 automated tests</b> + full offline mode</td><td>CI on every push; DEMO_MODE runs the whole flow from fixtures</td></tr>
+    </table>
+    <p class="cite">All reproducible from evaluate.ipynb §§1–10 in the repo — including the failures (raw interval under-coverage, the rejected TFT).</p>
+  </section>
+
+  <!-- 8 · PRODUCT -->
+  <section>
+    <h2>Live today, three cities</h2>
+    <div class="grid">
+      <div class="card"><b>Blame map</b> — H3 hexagons with source shares + SHAP "why" tooltips; satellite-NO₂ and dense-coverage layers</div>
+      <div class="card"><b>Forecast</b> — 24/48/72h per cell with calibrated bands and honest skill badges</div>
+      <div class="card"><b>Enforcement</b> — prioritised worklist → evidence dossier → cited draft Notice PDF, officer-in-the-loop</div>
+      <div class="card"><b>Citizen</b> — advisories in en/hi/kn/mr over PWA, Telegram bot, IVR voice calls, public display</div>
+    </div>
+    <div class="grid">
+      <div class="card"><div class="metric">60</div>registry sources, auto-refreshed daily from OSM</div>
+      <div class="card"><div class="metric">216</div>mobility feature rows feeding the models</div>
+      <div class="card"><div class="metric">144</div>advisories generated across cities &amp; languages</div>
+    </div>
+  </section>
+
+  <!-- 9 · E7 BUSINESS IMPACT -->
+  <section>
+    <h2>Business impact, in rupees <span class="tag">judged 25%</span></h2>
+    <p>Cited WHO/CPCB dose–response × emission factors turn every ΔPM2.5 into money, lives, and carbon:</p>
     <div class="grid">
       <div class="card"><div class="metric">₹2.56M</div>health cost avoided — one stubble-burn ban, 24 h</div>
       <div class="card"><div class="metric">382 t</div>CO₂e co-benefit (biomass co-emission ratio)</div>
-      <div class="card"><div class="metric">28,400</div>people protected</div>
+      <div class="card"><div class="metric">28,400</div>people protected (real GPW population per cell)</div>
     </div>
     <p class="cite">Sources: WHO HRAPIE (2013) short-term PM2.5 mortality · India SRS crude death rate ·
-      Andreae (2019) biomass emission factors. No invented constants.</p>
+      Andreae (2019) biomass emission factors. No invented constants — CO₂e returns null when it cannot be defensibly computed.</p>
   </section>
 
+  <!-- 10 · ROI -->
   <section>
-    <h2>City ROI — the funding case</h2>
+    <h2>City ROI — the NCAP funding case</h2>
     <p>Delhi, at its cited annual mean, above the WHO guideline:</p>
     <div class="grid">
       <div class="card"><div class="metric warn">73,395</div>premature deaths / year</div>
@@ -74,15 +283,16 @@
       VSL is uncertain and shown with its caveat — the ₹ figure is order-of-magnitude, and honest about it.</p>
   </section>
 
+  <!-- 11 · WHAT-IF -->
   <section>
-    <h2>What-if simulator</h2>
-    <p>Pick an intervention, pick a horizon, run the counterfactual over attribution × forecast — and read the
-      ΔAQI, people protected, ₹, and CO₂e cards, each with its citations. Prescriptive, not just predictive.</p>
-    <p class="cite">Engine: E3 counterfactual (physics + ML) with E7 impact layered on. Serves <code>/simulate</code>.</p>
+    <h2>What-if simulator + optimiser</h2>
+    <p>Pick an intervention — odd-even, C&amp;D ban, a full GRAP Stage III package — and run the counterfactual over attribution × forecast. Read the ΔAQI, people protected, ₹, and CO₂e cards, each with its citations. Then let the optimiser rank whole packages by impact per inspector-hour, live behind <code>/optimize</code>.</p>
+    <p class="cite">Intervention magnitudes are literature-cited (Delhi odd-even ≈4–7% ambient; CAQM GRAP stage schedules) — not invented sliders. Engine: E3 counterfactual with dispersion coupling + E7 impact layered on.</p>
   </section>
 
+  <!-- 12 · E2 -->
   <section>
-    <h2>E2 — Dense coverage: 40 stations → 1 km everywhere</h2>
+    <h2>E2 — 40 stations → 1 km everywhere</h2>
     <div class="grid">
       <div class="card"><div class="metric">R² 0.97</div>AOD→PM2.5 regressor (held-out)</div>
       <div class="card"><div class="metric">+55%</div>downscaling skill vs plain interpolation</div>
@@ -90,24 +300,59 @@
     </div>
     <p>A learned super-resolution CNN fuses the sparse field with a high-resolution land-use covariate to recover
       detail a smear cannot. One map toggle: <span class="accent">stations-only ↔ dense 1 km</span>.</p>
-    <p class="cite">Skill is measured against bilinear interpolation on held-out fields; real held-out-station RMSE
-      trains on Kaggle with Earth-Engine AOD × CPCB. Positive skill only when the model truly adds sub-grid signal.</p>
+    <p class="cite">Skill measured against bilinear interpolation on held-out synthetic fields, and labeled exactly that;
+      real held-out-station training on Kaggle GPU with Earth-Engine AOD × CPCB is the stated next step.</p>
   </section>
 
+  <!-- 13 · HONESTY -->
   <section>
-    <h2>Explainable &amp; honest by construction</h2>
+    <h2>Honest by construction</h2>
     <div class="grid">
-      <div class="card">SHAP drivers per cell — <i>why</i> a source was blamed, in µg/m³, with model R²</div>
-      <div class="card">Detected-source overlay on the map (registry today, CV-detected drops in on the same shape)</div>
-      <div class="card">CO₂e returns <span class="warn">null</span> when it cannot be defensibly computed — never faked</div>
+      <div class="card">Attribution <b>abstains</b> — no skill, no blame: cities failing the R² gate fall back to cited signature priors, and marker-less cells shrink to the city mean</div>
+      <div class="card">SHAP drivers per cell show <i>why</i> a source was blamed, in µg/m³, with the model's own R² on display</div>
+      <div class="card">Enforcement never over-claims — category-level citations, &lt;2% contributors never enter the worklist, notices are drafts for officer review</div>
+      <div class="card">Nothing fabricated reaches production — impact figures return <span class="warn">null</span> over faked constants, and demo fixtures are labeled as fixtures</div>
     </div>
   </section>
 
+  <!-- 14 · SCALABILITY + SECURITY -->
+  <section>
+    <h2>Scales by config, secured by rows <span class="tag">scalability 15%</span></h2>
+    <div class="grid">
+      <div class="card"><b>New city = one YAML</b> — or one authenticated <code>POST /admin/cities</code> call; ingestion, models, agents, and UI are all city-agnostic. Delhi, Bengaluru, Mumbai run today.</div>
+      <div class="card"><b>₹0 → paid path</b> — Vercel + Render + Supabase + GitHub Actions free tiers now; the same two-seam architecture scales horizontally with paid tiers, no redesign</div>
+      <div class="card"><b>Row-level security</b> — public data readable via anon JWT under RLS; every write path is service-role, server-side only; admin ops behind a key header</div>
+      <div class="card"><b>Audit trail</b> — per-node agent traces + enforcement status history make every recommendation reviewable and defensible after the fact</div>
+    </div>
+  </section>
+
+  <!-- 15 · ROADMAP -->
+  <section>
+    <h2>Roadmap — depth we already scoped</h2>
+    <div class="grid">
+      <div class="card"><b>Physics upgrade</b> — plug PAVITRA/InMAP source–receptor matrices under the what-if engine for policy-grade counterfactuals</div>
+      <div class="card"><b>Evidence everywhere</b> — restore satellite CV detections at scale so every dossier carries its Sentinel-2 patch (schema, API, and UI already shipped)</div>
+      <div class="card"><b>LLM polish, safely</b> — Gemini rewriting over the deterministic advisory templates, with the health facts locked</div>
+      <div class="card"><b>Edge + citizens</b> — mobile citizen-report CV, more languages, and GRAP auto-escalation hooks into the worklist</div>
+    </div>
+  </section>
+
+  <!-- 16 · TEAM -->
+  <section>
+    <h2>Team of three, three lanes, two seams</h2>
+    <div class="grid">
+      <div class="card"><b>Omkar</b><br/><span class="sub">AI/ML core</span><br/>source attribution · forecasting · counterfactual simulator · validation notebooks</div>
+      <div class="card"><b>Abhinav</b><br/><span class="sub">Agents + backend</span><br/>orchestrator graph · enforcement + RAG · API + deploys · satellite CV</div>
+      <div class="card"><b>Sejal</b><br/><span class="sub">Product + reach</span><br/>console frontend · advisory + multi-city · citizen channels · impact models &amp; deck</div>
+    </div>
+    <p class="cite">The two seams (schema + API contract) meant three people built in parallel for weeks with no blocking — the architecture is also the team process.</p>
+  </section>
+
+  <!-- 17 · CLOSE -->
   <section>
     <h2>Close</h2>
-    <p class="accent">Stage 1 makes the loop fast. Stage 2 makes it <b>defensible and fundable</b> —
-      a cited rupee-and-lives case, and a 1 km map where there used to be forty dots.</p>
-    <p class="cite">The E5 optimiser now runs live behind /optimize (ranked packages per inspector-hour); E6 satellite-patch evidence lands as soon as detections are restored — its schema, API, and UI slots are ready.</p>
+    <p class="accent" style="font-size:clamp(26px,3vw,44px)">India's air stack can measure and forecast.<br/>VayuNetra makes it <b>operate</b> — traced, predicted, cited, and delivered to the people breathing it.<br/>In minutes. In four languages. For ₹0.</p>
+    <p class="cite">vayunetra-aqi.vercel.app · vayunetra-c8i8.onrender.com · full validation trail in the repo</p>
   </section>
 </body>
 </html>

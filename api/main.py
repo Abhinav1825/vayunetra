@@ -458,10 +458,18 @@ def compound_alerts(city: str = Query("delhi", description="City ID"), db=Depend
     misses the combination. Tiers (cited): IMD declares heatwave at ≥40°C in
     the plains (watch from 37°C); pollution legs use CPCB PM2.5 bands.
     """
+    from core.grap import (CO_OCCURRENCE_CITATION, GRAP_CITATION, dust_traffic_cells,
+                           forecast_grap)
+
     if DEMO_MODE:
+        demo_hits = dust_traffic_cells([{"h3_cell": "883da11429fffff",
+                                         "shares": {"construction_dust": 0.38, "traffic": 0.32}}])
         return ok({"city_id": city, "level": "watch", "tmax_next24_c": 39.1,
                    "pm25_forecast_max": 96.0, "o3_latest": 71.2,
-                   "note": "demo fixture", "citations": []})
+                   "grap": forecast_grap(96.0),
+                   "dust_traffic": {"count": len(demo_hits), "cells": demo_hits},
+                   "note": "demo fixture",
+                   "citations": [GRAP_CITATION, CO_OCCURRENCE_CITATION]})
 
     sdb = _db()
     temps = (
@@ -486,18 +494,34 @@ def compound_alerts(city: str = Query("delhi", description="City ID"), db=Depend
             level = "alert"
         elif tmax >= 37.0 and pm25_max >= 61.0:
             level = "watch"
+
+    # Dust×traffic co-occurrence: real attribution rows only (no rows -> no flag).
+    attr = (
+        sdb.table("attribution").select("h3_cell,source_category,share")
+        .eq("city_id", city).execute().data
+    )
+    cells: dict[str, dict] = {}
+    for r in attr:
+        cells.setdefault(r["h3_cell"], {"h3_cell": r["h3_cell"], "shares": {}})[
+            "shares"][r["source_category"]] = r["share"]
+    hits = dust_traffic_cells(list(cells.values()))
+
     return ok({
         "city_id": city,
         "level": level,
         "tmax_next24_c": tmax,
         "pm25_forecast_max": pm25_max,
         "o3_latest": o3_latest,
+        "grap": forecast_grap(pm25_max),
+        "dust_traffic": {"count": len(hits), "cells": hits[:5]},
         "note": "compound heat x pollution risk: heat amplifies PM mortality and drives ozone formation",
         "citations": [
             {"figure": "heatwave threshold", "value": 40, "unit": "degC (plains)",
              "source": "IMD heatwave criteria (watch tier from 37 degC)"},
             {"figure": "pollution legs", "value": "61 / 91", "unit": "ug/m3 PM2.5",
              "source": "CPCB National AQI bands (Moderate / Poor)"},
+            GRAP_CITATION,
+            CO_OCCURRENCE_CITATION,
         ],
     })
 

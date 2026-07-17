@@ -55,7 +55,14 @@ function LiveDot() {
   );
 }
 
-type Compound = { level: "none" | "watch" | "alert"; tmax_next24_c?: number | null };
+type Compound = {
+  level: "none" | "watch" | "alert";
+  tmax_next24_c?: number | null;
+  grap?: { stage: number; label: string; trigger_aqi?: number } | null;
+  dust_traffic?: { count: number } | null;
+};
+
+const GRAP_ROMAN = ["", "I", "II", "III", "IV"];
 
 /** Hero AQI badge: worst-cell CPCB AQI, category color, data freshness. */
 export default function AqiHeader({ city }: { city: string }) {
@@ -111,6 +118,22 @@ export default function AqiHeader({ city }: { city: string }) {
               >
                 🔥 HEAT×SMOG {compound.level.toUpperCase()}
                 {typeof compound.tmax_next24_c === "number" && ` · ${Math.round(compound.tmax_next24_c)}°C`}
+              </div>
+            )}
+            {compound?.grap && (
+              <div
+                className="mt-0.5 rounded bg-purple-700 px-1.5 py-0.5 text-[10px] font-bold text-white"
+                title={`Forecast-triggered graded response: 24h forecast AQI ${compound.grap.trigger_aqi ?? "--"} enters the CAQM GRAP Stage ${GRAP_ROMAN[compound.grap.stage]} band (statutory in Delhi-NCR; advisory playbook elsewhere) — a day before observed AQI would trigger it`}
+              >
+                ⚖️ GRAP STAGE {GRAP_ROMAN[compound.grap.stage]} · forecast-triggered
+              </div>
+            )}
+            {compound?.dust_traffic && compound.dust_traffic.count > 0 && (
+              <div
+                className="mt-0.5 rounded bg-amber-600 px-1.5 py-0.5 text-[10px] font-bold text-white"
+                title="Cells where construction dust AND traffic are both major contributors (attribution shares ≥25% each) — traffic resuspends construction dust, so these corridors escalate fastest"
+              >
+                🚧 DUST×TRAFFIC · {compound.dust_traffic.count} cell{compound.dust_traffic.count > 1 ? "s" : ""}
               </div>
             )}
           </div>
