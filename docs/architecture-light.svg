@@ -94,11 +94,11 @@
     <text x="965" y="200" text-anchor="middle">one envelope:</text>
     <text x="965" y="218" text-anchor="middle" fill="#0f172a">{success, data,</text>
     <text x="965" y="236" text-anchor="middle" fill="#0f172a">error, meta}</text>
-    <text x="965" y="270" text-anchor="middle">25+ endpoints</text>
+    <text x="965" y="270" text-anchor="middle">30+ endpoints</text>
     <text x="965" y="288" text-anchor="middle">WebSocket /live</text>
     <text x="965" y="306" text-anchor="middle">Notice PDF</text>
     <text x="965" y="324" text-anchor="middle">/simulate · /optimize · /plume</text>
-    <text x="965" y="342" text-anchor="middle">/clean-zones · /history</text>
+    <text x="965" y="342" text-anchor="middle">/clean-zones · /interventions</text>
     <text x="965" y="360" text-anchor="middle">/admin/cities</text>
     <text x="965" y="394" text-anchor="middle" fill="#64748b">RLS + anon JWT</text>
     <text x="965" y="412" text-anchor="middle" fill="#64748b">service-role only</text>
@@ -114,7 +114,7 @@
   <g fill="#475569" font-size="12">
     <rect x="1084" y="140" width="152" height="120" rx="6" fill="#ffffff" stroke="#e2e8f0"/>
     <text x="1160" y="160" text-anchor="middle" fill="#0f172a" font-size="13" font-weight="700">Ops console (Vercel)</text>
-    <text x="1160" y="180" text-anchor="middle">blame map · plumes · wards</text>
+    <text x="1160" y="180" text-anchor="middle">blame map · plumes · wards · freight</text>
     <text x="1160" y="198" text-anchor="middle">worklist + dossier · forecast</text>
     <text x="1160" y="216" text-anchor="middle">what-if + optimiser</text>
     <text x="1160" y="234" text-anchor="middle">ROI · fairness · trace</text>

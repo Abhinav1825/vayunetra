@@ -56,7 +56,8 @@ test("enforcement worklist renders and a dossier opens", async ({ page }) => {
   const dossier = page.getByRole("button", { name: /evidence dossier/i }).first();
   await expect(dossier).toBeVisible({ timeout: 15_000 });
   await dossier.click();
-  await expect(page.getByText(/Regulatory citations/i)).toBeVisible();
+  // live dossiers run RAG + satellite-patch retrieval — give the backend room
+  await expect(page.getByText(/Regulatory citations/i)).toBeVisible({ timeout: 25_000 });
 });
 
 test("simulator section shows the what-if engine", async ({ page }) => {
