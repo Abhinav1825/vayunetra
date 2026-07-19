@@ -55,9 +55,7 @@ is our upgrade path, not our competitor.
 ## 📚 Docs (read in this order)
 1. [docs/PRD.md](docs/PRD.md) — product requirements (the "what" and "why")
 2. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — buildable blueprint (the "how")
-3. [docs/PLAN_OF_ACTION.md](docs/PLAN_OF_ACTION.md) — two-stage plan, 2 agents each
-4. **Your checklist:** [Omkar](docs/TASKS_OMKAR.md) · [Abhinav](docs/TASKS_ABHINAV.md) · [Sejal](docs/TASKS_SEJAL.md)
-5. [docs/API_CONTRACT.md](docs/API_CONTRACT.md) — the app contract everyone codes against
+3. [docs/API_CONTRACT.md](docs/API_CONTRACT.md) — the app contract everyone codes against
 
 ## 👥 Ownership (2 agents each)
 | Person | Agents | Lane |
