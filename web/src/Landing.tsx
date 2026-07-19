@@ -110,7 +110,7 @@ export default function Landing() {
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
           <div className="flex items-center gap-8">
             <a href="#/" className="flex items-center gap-2 text-[15px] font-bold tracking-tight text-slate-900">
-              <span className="flex h-6 w-6 items-center justify-center rounded bg-sky-600 text-[12px] font-black text-white">V</span>
+              <img src="/icon-192.png" alt="" className="h-6 w-6 rounded-md" width={24} height={24} />
               VayuNetra
             </a>
             <div className="hidden items-center gap-6 text-[13px] text-slate-500 md:flex">
@@ -346,7 +346,7 @@ export default function Landing() {
         <div className="mx-auto flex max-w-6xl flex-col gap-8 px-6 py-10 sm:flex-row sm:justify-between">
           <div>
             <div className="flex items-center gap-2 text-[14px] font-bold text-slate-900">
-              <span className="flex h-5 w-5 items-center justify-center rounded bg-sky-600 text-[10px] font-black text-white">V</span>
+              <img src="/icon-192.png" alt="" className="h-5 w-5 rounded" width={20} height={20} />
               VayuNetra
             </div>
             <p className="mt-2 max-w-xs text-[12px] leading-relaxed text-slate-500">

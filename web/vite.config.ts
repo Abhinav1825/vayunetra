@@ -23,8 +23,8 @@ export default defineConfig({
           "The operations layer for urban air quality: source attribution, 72h forecasts, enforcement and citizen advisories.",
         start_url: "/",
         display: "standalone",
-        background_color: "#0f172a",
-        theme_color: "#0ea5e9",
+        background_color: "#1b294a",
+        theme_color: "#1b294a",
         icons: [
           { src: "/icon-192.png", sizes: "192x192", type: "image/png" },
           { src: "/icon-512.png", sizes: "512x512", type: "image/png" },

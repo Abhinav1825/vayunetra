@@ -14,10 +14,11 @@ import base64
 import hmac
 import json
 import logging
+import math
 import os
 import time
 import asyncio
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Optional
 from urllib.parse import parse_qsl
@@ -943,6 +944,103 @@ def clean_zones(
         return err("bad_request", str(e))
     except Exception as e:  # noqa: BLE001
         return _server_error("clean_zones_error", e, "Failed to compute clean zones")
+
+
+# Plume layer cache — wind + registry change hourly at most; keep the map snappy.
+_PLUME_TTL_S = 600
+_plume_cache: dict[str, tuple[float, dict]] = {}
+
+
+@app.get("/plume", tags=["data"])
+def plume_layer(
+    city: str = Query("delhi", description="City ID"),
+    top: int = Query(12, ge=1, le=30),
+) -> dict:
+    """Wind-oriented Gaussian plume footprints for the top emission sources.
+
+    Physics: ml/dispersion/plume.py (Briggs urban), driven by the latest real
+    wind_u/wind_v measurements. Intensity is RELATIVE (category x detection
+    confidence) — we don't know absolute emission rates and say so in `note`.
+    """
+    if DEMO_MODE:
+        data = fixture("plume", default={})
+        payload = data.get(city) if isinstance(data, dict) else None
+        # unknown city → empty layer, not an error (consistent with /coverage;
+        # keeps /admin/cities onboarding graceful)
+        return ok(payload or {"city_id": city, "wind": None, "plumes": [],
+                              "note": "no plume snapshot for this city"})
+    now = time.time()
+    hit = _plume_cache.get(f"{city}:{top}")
+    if hit and now - hit[0] < _PLUME_TTL_S:
+        return ok(hit[1])
+    try:
+        sdb = _db()
+        ts_rows = (
+            sdb.table("measurements").select("ts").eq("city_id", city)
+            .eq("variable", "wind_u").order("ts", desc=True).limit(1).execute().data
+        ) or []
+        if not ts_rows:
+            return err("no_wind", f"No wind data available for {city}")
+        ts0 = ts_rows[0]["ts"]
+
+        def _mean_wind(var: str) -> float:
+            rows = (
+                sdb.table("measurements").select("value").eq("city_id", city)
+                .eq("variable", var).eq("ts", ts0).limit(2000).execute().data
+            ) or []
+            vals = []
+            for r in rows:
+                try:
+                    v = float(r["value"])
+                except (TypeError, ValueError, KeyError):
+                    continue  # one malformed row must not kill the whole layer
+                if math.isfinite(v):
+                    vals.append(v)
+            return sum(vals) / len(vals) if vals else 0.0
+
+        raw_sources = (
+            sdb.table("emission_sources")
+            .select("id,name,type,detection_confidence,geom")
+            .eq("city_id", city).limit(1000).execute().data
+        ) or []
+        sources = []
+        for s in raw_sources:
+            g = s.get("geom")
+            coords = g.get("coordinates") if isinstance(g, dict) else None
+            if (
+                isinstance(coords, list) and len(coords) == 2
+                and isinstance(coords[0], (int, float)) and isinstance(coords[1], (int, float))
+                and -180 <= coords[0] <= 180 and -90 <= coords[1] <= 90
+                and (coords[0], coords[1]) != (0, 0)  # null-island = broken geocode
+            ):
+                sources.append({
+                    "id": s.get("id"), "name": s.get("name"), "type": s.get("type"),
+                    "detection_confidence": s.get("detection_confidence"),
+                    "lon": coords[0], "lat": coords[1],
+                })
+
+        from ml.dispersion.footprint import plume_footprints
+
+        # Day/night (Pasquill stability) must follow the WIND SNAPSHOT's clock,
+        # not the request clock — same wind must always yield the same plume.
+        try:
+            wind_dt = datetime.fromisoformat(str(ts0).replace("Z", "+00:00"))
+            if wind_dt.tzinfo is None:
+                wind_dt = wind_dt.replace(tzinfo=timezone.utc)
+        except ValueError:
+            wind_dt = datetime.now(timezone.utc)
+        ist_hour = (wind_dt.astimezone(timezone.utc) + timedelta(hours=5, minutes=30)).hour
+        data = {
+            "city_id": city, "wind_ts": ts0,
+            **plume_footprints(
+                sources, _mean_wind("wind_u"), _mean_wind("wind_v"),
+                is_day=6 <= ist_hour < 18, top=top,
+            ),
+        }
+        _plume_cache[f"{city}:{top}"] = (now, data)
+        return ok(data)
+    except Exception as e:  # noqa: BLE001
+        return _server_error("plume_failed", e, "Could not compute the plume layer right now.")
 
 
 # ---------------------------------------------------------------------------

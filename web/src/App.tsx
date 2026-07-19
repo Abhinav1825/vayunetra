@@ -58,6 +58,8 @@ export default function App() {
   const [active, setActive] = useState(storedCity);
   const [mode, setMode] = useState<MapMode>("blame");
   const [showSources, setShowSources] = useState(false);
+  const [showPlumes, setShowPlumes] = useState(false);
+  const [showWards, setShowWards] = useState(false);
   const [tab, setTab] = useState<Tab>("action");
   const [cell, setCell] = useState<AttrCell | null>(null);
   const [fallback, setFallback] = useState(false);
@@ -137,9 +139,13 @@ export default function App() {
   }
 
   useEffect(() => {
+    let alive = true; // rapid city switches: a slow older fetch must not win
     api<typeof coverage>(`/coverage?city=${active}`)
-      .then(setCoverage)
-      .catch(() => setCoverage(null));
+      .then((d) => alive && setCoverage(d))
+      .catch(() => alive && setCoverage(null));
+    return () => {
+      alive = false;
+    };
   }, [active]);
 
   const city = cities.find((c) => c.city_id === active);
@@ -157,6 +163,8 @@ export default function App() {
           onSelect={handleSelect}
           onCellsLoaded={autoOpenBest}
           showSources={showSources}
+          showPlumes={showPlumes}
+          showWards={showWards}
           coverageCells={coverage?.cells ?? []}
           coverageKind={coverageKind}
         />
@@ -175,9 +183,7 @@ export default function App() {
               </svg>
             </a>
             <a href="#/" className="flex items-center gap-1.5 pr-1.5 text-sm font-extrabold tracking-tight text-slate-800">
-              <span className="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-sky-500 to-blue-700 text-[13px] font-black text-white shadow-sm">
-                V
-              </span>
+              <img src="/icon-192.png" alt="" className="h-6 w-6 rounded-md shadow-sm" width={24} height={24} />
               VayuNetra
             </a>
             <select
@@ -259,6 +265,35 @@ export default function App() {
             </span>
             <span>{showSources ? "on" : "off"}</span>
           </button>
+
+          <button
+            onClick={() => setShowPlumes((v) => !v)}
+            className={`mt-1.5 flex w-full items-center justify-between rounded-md px-2 py-1 text-xs font-medium transition-colors ${
+              showPlumes ? "bg-orange-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            }`}
+          >
+            <span className="flex items-center gap-1.5">
+              <span className="inline-block h-2.5 w-2.5 rounded-full border border-white bg-orange-500" />
+              Wind plumes
+            </span>
+            <span>{showPlumes ? "on" : "off"}</span>
+          </button>
+
+          <button
+            onClick={() => setShowWards((v) => !v)}
+            className={`mt-1.5 flex w-full items-center justify-between rounded-md px-2 py-1 text-xs font-medium transition-colors ${
+              showWards ? "bg-slate-800 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            }`}
+          >
+            <span className="flex items-center gap-1.5">
+              <span className="inline-block h-2.5 w-2.5 rounded-sm border border-slate-500 bg-transparent" />
+              Ward boundaries
+            </span>
+            <span>{showWards ? "on" : "off"}</span>
+          </button>
+          {showWards && (
+            <div className="mt-1 text-[10px] text-gray-400">ward boundaries © Datameet community maps (ODbL)</div>
+          )}
 
           {mode === "blame" && (
             <div className="mt-3 space-y-1 text-xs">
