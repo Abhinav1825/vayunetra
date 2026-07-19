@@ -80,7 +80,13 @@ def build_comparison(cities: list[dict], aqi_rows: list[dict], forecast_rows: li
             "highest_risk_city": max(cards, key=lambda r: r["forecast_24h_pm25"])["city_id"] if cards else None,
             "highest_burden_city": max(
                 cards, key=lambda r: r["health"]["attributable_deaths_per_year"])["city_id"] if cards else None,
-            "shared_pattern": "traffic + construction dominate the Stage-1 demo snapshot",
+            # computed from the live dominant sources, not a canned line
+            "shared_pattern": (
+                " · ".join(
+                    f"{c['name']}: {str(c['dominant_source']).replace('_', ' ')}" for c in cards
+                )
+                or "no live attribution yet"
+            ),
             "impact_basis": "annual burden via long-term CRF (WHO HRAPIE / Chen & Hoek 2020) "
                             "× cited city population & annual PM2.5 (UN WUP 2018, IQAir 2023)",
         },

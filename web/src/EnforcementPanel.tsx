@@ -60,7 +60,13 @@ function normalizePatch(patch: Dossier["satellite_patch"]): SatellitePatch | nul
 
 /** kb-chunk excerpts carry raw document scaffolding (===== rules, ALL-CAPS headers). */
 function cleanExcerpt(text: string): string {
-  const s = text.replace(/[=_*\-]{4,}/g, " ").replace(/\s+/g, " ").trim();
+  let s = text.replace(/[=_*\-]{4,}/g, " ").replace(/\s+/g, " ").trim();
+  // kb chunks carry table headers and SHOUTING section titles mid-excerpt
+  // ("ENFORCEMENT ACTIONS AND PENALTIES Violation Type | Penalty …") — cut
+  // the excerpt where that debris starts rather than showing it to officers.
+  const junk = s.search(/(?:[A-Z][A-Z ]{11,}(?::| [A-Z]))|(?:\S+ \| )/);
+  if (junk > 40) s = s.slice(0, junk).trim();
+  s = s.replace(/[|•·]\s*$/, "").trim();
   return s.length > 180 ? `${s.slice(0, 180)}…` : s;
 }
 

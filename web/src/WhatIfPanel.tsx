@@ -146,6 +146,13 @@ export default function WhatIfPanel({ city }: { city: string }) {
             <div className="text-xs font-medium text-gray-800">{res.intervention.description}</div>
           )}
           {res.intervention?.ward && <div className="text-[11px] text-gray-500">{res.intervention.ward}</div>}
+          {Number(avgDelta) === 0 && (
+            <div className="mt-2 rounded-md bg-amber-50 p-2 text-[11px] leading-4 text-amber-800">
+              Near-zero effect — honest result: this source contributes ~0% of the city's current
+              PM2.5 mix (see the blame map), so banning it changes little today. Try an intervention
+              matching the dominant source, e.g. a traffic or construction measure.
+            </div>
+          )}
           <div className="mt-2 grid grid-cols-2 gap-x-2 gap-y-1 text-xs text-gray-700">
             <span>
               avg ΔAQI <b>{avgDelta}</b>
@@ -168,7 +175,7 @@ export default function WhatIfPanel({ city }: { city: string }) {
         <div className="flex items-center justify-between gap-2">
           <div>
             <div className="font-semibold">
-              Optimizer packages <span className="text-[11px] font-normal text-gray-400">E5</span>
+              Optimizer packages
             </div>
             <div className="text-xs text-gray-600">Ranked actions under the inspector-hour budget.</div>
           </div>

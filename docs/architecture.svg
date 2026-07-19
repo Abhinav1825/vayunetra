@@ -93,10 +93,10 @@
     <text x="965" y="200" text-anchor="middle">one envelope:</text>
     <text x="965" y="218" text-anchor="middle" fill="#f9fafb">{success, data,</text>
     <text x="965" y="236" text-anchor="middle" fill="#f9fafb">error, meta}</text>
-    <text x="965" y="272" text-anchor="middle">20+ endpoints</text>
+    <text x="965" y="272" text-anchor="middle">25+ endpoints</text>
     <text x="965" y="290" text-anchor="middle">WebSocket /live</text>
     <text x="965" y="308" text-anchor="middle">Notice PDF</text>
-    <text x="965" y="326" text-anchor="middle">/simulate · /optimize</text>
+    <text x="965" y="326" text-anchor="middle">/simulate · /optimize · /plume</text>
     <text x="965" y="344" text-anchor="middle">/admin/cities</text>
     <text x="965" y="380" text-anchor="middle" fill="#94a3b8">RLS + anon JWT</text>
     <text x="965" y="398" text-anchor="middle" fill="#94a3b8">service-role only</text>
@@ -112,15 +112,15 @@
   <g fill="#d1d5db" font-size="12">
     <rect x="1084" y="140" width="152" height="120" rx="6" fill="#111827" stroke="#334155"/>
     <text x="1160" y="160" text-anchor="middle" fill="#f9fafb" font-size="13" font-weight="700">Ops console (Vercel)</text>
-    <text x="1160" y="180" text-anchor="middle">blame map · forecast</text>
-    <text x="1160" y="198" text-anchor="middle">worklist + dossier</text>
+    <text x="1160" y="180" text-anchor="middle">blame map · plumes · wards</text>
+    <text x="1160" y="198" text-anchor="middle">worklist + dossier · forecast</text>
     <text x="1160" y="216" text-anchor="middle">what-if + optimiser</text>
     <text x="1160" y="234" text-anchor="middle">ROI · agent trace</text>
     <text x="1160" y="252" text-anchor="middle">3-city switcher</text>
     <rect x="1084" y="272" width="152" height="104" rx="6" fill="#111827" stroke="#334155"/>
     <text x="1160" y="292" text-anchor="middle" fill="#f9fafb" font-size="13" font-weight="700">Citizen channels</text>
     <text x="1160" y="312" text-anchor="middle">PWA · Telegram bot</text>
-    <text x="1160" y="330" text-anchor="middle">IVR voice calls</text>
+    <text x="1160" y="330" text-anchor="middle">IVR in+out calls</text>
     <text x="1160" y="348" text-anchor="middle">public display mode</text>
     <text x="1160" y="366" text-anchor="middle">en · hi · kn · mr</text>
     <rect x="1084" y="392" width="152" height="86" rx="6" fill="#111827" stroke="#334155"/>
