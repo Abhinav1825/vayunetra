@@ -16,11 +16,13 @@ test("landing renders and links into the console", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { name: /operations layer for urban air quality/i })).toBeVisible();
   await page.getByRole("link", { name: /open the console/i }).first().click();
-  await expect(page).toHaveURL(/#\/console/);
+  await expect(page).toHaveURL(/\/console$/);
 });
 
 test("first-run tour shows once, then never again", async ({ page }) => {
+  // legacy hash URL (old QR codes) must upgrade to the clean path
   await page.goto("/#/console");
+  await expect(page).toHaveURL(/\/console$/);
   const dialog = page.getByRole("dialog", { name: "Quick tour" });
   await expect(dialog).toBeVisible({ timeout: 15_000 });
   await dialog.getByRole("button", { name: "Skip" }).click();
@@ -31,7 +33,7 @@ test("first-run tour shows once, then never again", async ({ page }) => {
 });
 
 test("console loads the sidebar shell and the layer control", async ({ page }) => {
-  await page.goto("/#/console");
+  await page.goto("/console");
   const sidebar = page.getByRole("navigation", { name: "Console sections" }).first();
   await expect(sidebar.getByRole("button", { name: "Enforcement" })).toBeVisible();
   await expect(sidebar.getByRole("button", { name: "Simulator" })).toBeVisible();
@@ -42,14 +44,14 @@ test("console loads the sidebar shell and the layer control", async ({ page }) =
 });
 
 test("a cell story auto-opens with an explanation (never an empty box)", async ({ page }) => {
-  await page.goto("/#/console");
+  await page.goto("/console");
   // H8: the best cell opens on load; C1: it always carries a "Why" section.
   await expect(page.getByText("Cell story", { exact: false }).first()).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText(/Why —/).first()).toBeVisible();
 });
 
 test("enforcement worklist renders and a dossier opens", async ({ page }) => {
-  await page.goto("/#/console");
+  await page.goto("/console");
   await expect(page.getByText("Enforcement Worklist")).toBeVisible();
   const dossier = page.getByRole("button", { name: /evidence dossier/i }).first();
   await expect(dossier).toBeVisible({ timeout: 15_000 });
@@ -58,7 +60,7 @@ test("enforcement worklist renders and a dossier opens", async ({ page }) => {
 });
 
 test("simulator section shows the what-if engine", async ({ page }) => {
-  await page.goto("/#/console");
+  await page.goto("/console");
   await page
     .getByRole("navigation", { name: "Console sections" })
     .first()

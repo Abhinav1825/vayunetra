@@ -1,7 +1,8 @@
-// Public landing page — light theme only. Console lives at #/console.
+// Public landing page — light theme only. Console lives at /console.
 import { useEffect, useState } from "react";
 import { api } from "./api";
 import { aqiCategory, pm25ToAqi } from "./aqi";
+import { linkClick } from "./router";
 
 type AqiRow = { pm25?: number; value?: number };
 type Trace = { total_latency_ms?: number };
@@ -82,6 +83,27 @@ const VALIDATION: Array<[string, string, string]> = [
 
 const DATA_SOURCES = ["CPCB / CAAQMS", "Sentinel-5P", "Sentinel-2", "Open-Meteo · ERA5", "NASA FIRMS", "OpenStreetMap", "GPW v4.11"];
 
+// Production snapshot, 19 July 2026 — real aggregates (live attribution mean
+// across Delhi cells; /comparison city averages). Colors match the console.
+const SNAPSHOT_MIX: Array<[string, number, string]> = [
+  ["traffic", 50.2, "#ef4444"],
+  ["transported", 13.5, "#3b82f6"],
+  ["industrial", 13.3, "#9333ea"],
+  ["construction dust", 12.4, "#ca8a04"],
+  ["other", 10.6, "#6b7280"],
+];
+const SNAPSHOT_CITIES: Array<[string, number, number, string]> = [
+  ["Delhi", 35.1, 58.4, "deteriorating"],
+  ["Bengaluru", 19.1, 13.4, "stable"],
+  ["Mumbai", 20.1, 14.2, "stable"],
+];
+const SNAPSHOT_SCALE: Array<[string, string]> = [
+  ["1,119", "~1 km² cells scored across 3 cities"],
+  ["547", "registered + satellite-detected sources"],
+  ["2,366", "vulnerability-scored zones (hospitals, schools)"],
+  ["390", "live enforcement recommendations"],
+];
+
 export default function Landing() {
   const [aqi, setAqi] = useState<number | null>(null);
   const [latencyS, setLatencyS] = useState<string | null>(null);
@@ -109,7 +131,7 @@ export default function Landing() {
       <nav className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
           <div className="flex items-center gap-8">
-            <a href="#/" className="flex items-center gap-2 text-[15px] font-bold tracking-tight text-slate-900">
+            <a href="/" onClick={(e) => linkClick(e, "/")} className="flex items-center gap-2 text-[15px] font-bold tracking-tight text-slate-900">
               <img src="/icon-192.png" alt="" className="h-6 w-6 rounded-md" width={24} height={24} />
               VayuNetra
             </a>
@@ -125,7 +147,7 @@ export default function Landing() {
               className="text-slate-400 transition-colors hover:text-slate-900" title="Source on GitHub" aria-label="Source on GitHub">
               <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5" aria-hidden="true"><path d={IC.github} /></svg>
             </a>
-            <a href="#/console"
+            <a href="/console" onClick={(e) => linkClick(e, "/console")}
               className="rounded-md bg-slate-900 px-3.5 py-1.5 text-[13px] font-semibold text-white transition-colors hover:bg-slate-700">
               Open console
             </a>
@@ -149,7 +171,7 @@ export default function Landing() {
           Live today for Delhi, Bengaluru and Mumbai — built entirely on free public infrastructure.
         </p>
         <div className="mt-8 flex flex-wrap items-center gap-3">
-          <a href="#/console"
+          <a href="/console" onClick={(e) => linkClick(e, "/console")}
             className="flex items-center gap-2 rounded-md bg-sky-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-sky-700">
             Open the console
             <Icon d={IC.arrow} className="h-4 w-4" />
@@ -190,7 +212,7 @@ export default function Landing() {
             <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />
             <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />
             <span className="ml-3 rounded bg-white px-3 py-0.5 font-mono text-[11px] text-slate-500 ring-1 ring-slate-200">
-              vayunetra-aqi.vercel.app/#/console
+              vayunetra-aqi.vercel.app/console
             </span>
           </div>
           <img src="/console.jpg" alt="VayuNetra operations console: source blame map with SHAP explanation, forecast, enforcement worklist and a Sentinel-2 evidence dossier"
@@ -210,6 +232,90 @@ export default function Landing() {
           {DATA_SOURCES.map((s) => <span key={s}>{s}</span>)}
         </div>
       </div>
+
+      {/* The numbers, right now — real production snapshot, hand-rolled SVG
+          (no chart library on the landing: the console bundle stays split). */}
+      <section className="border-t border-slate-200">
+        <div className="mx-auto max-w-6xl px-6 py-14">
+          <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-sky-700">The data, at a glance</p>
+          <div className="mt-6 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+            {/* Delhi source-mix donut */}
+            <div>
+              <h3 className="text-[14px] font-bold text-slate-900">Who is to blame — Delhi</h3>
+              <div className="mt-3 flex items-center gap-4">
+                <svg viewBox="0 0 42 42" className="h-28 w-28 -rotate-90" role="img" aria-label="Delhi PM2.5 source mix">
+                  {(() => {
+                    const R = 15.9155; // circumference = 100
+                    let off = 0;
+                    return SNAPSHOT_MIX.map(([, pct, color]) => {
+                      const el = (
+                        <circle
+                          key={color + off}
+                          cx="21" cy="21" r={R} fill="none" stroke={color} strokeWidth="7"
+                          strokeDasharray={`${pct} ${100 - pct}`} strokeDashoffset={-off}
+                        />
+                      );
+                      off += pct;
+                      return el;
+                    });
+                  })()}
+                </svg>
+                <div className="space-y-1">
+                  {SNAPSHOT_MIX.map(([name, pct, color]) => (
+                    <div key={name} className="flex items-center gap-2 text-[12px] text-slate-600">
+                      <span className="h-2.5 w-2.5 rounded-sm" style={{ background: color }} />
+                      {name} <b className="text-slate-800">{pct}%</b>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* City PM2.5 now vs +24h */}
+            <div>
+              <h3 className="text-[14px] font-bold text-slate-900">City PM2.5 — now vs forecast +24h</h3>
+              <div className="mt-3 space-y-3">
+                {SNAPSHOT_CITIES.map(([name, now, next, trend]) => (
+                  <div key={name}>
+                    <div className="flex items-baseline justify-between text-[12px]">
+                      <span className="font-semibold text-slate-700">{name}</span>
+                      <span className={trend === "deteriorating" ? "text-red-600" : "text-emerald-600"}>{trend}</span>
+                    </div>
+                    <div className="mt-1 space-y-1">
+                      {[["now", now, "#94a3b8"], ["+24h", next, "#2563eb"] as const].map(([label, v, color]) => (
+                        <div key={String(label)} className="flex items-center gap-2">
+                          <span className="w-8 text-right font-mono text-[10px] text-slate-400">{label}</span>
+                          <div className="h-2.5 flex-1 rounded-full bg-slate-100">
+                            <div className="h-2.5 rounded-full" style={{ width: `${Math.min(100, (Number(v) / 60) * 100)}%`, background: String(color) }} />
+                          </div>
+                          <span className="w-8 font-mono text-[10px] text-slate-500">{v}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Scale numbers */}
+            <div>
+              <h3 className="text-[14px] font-bold text-slate-900">Running scale</h3>
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                {SNAPSHOT_SCALE.map(([n, label]) => (
+                  <div key={label} className="rounded-lg border border-slate-200 p-3">
+                    <div className="text-xl font-extrabold tracking-tight text-slate-900">{n}</div>
+                    <div className="mt-0.5 text-[11px] leading-4 text-slate-500">{label}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+          <p className="mt-6 text-[11px] text-slate-400">
+            Live snapshot from the production system, 19 July 2026 — aggregated from real station measurements and model
+            attribution. Open the console for the current numbers.
+          </p>
+        </div>
+      </section>
 
       {/* How it works */}
       <section id="how" className="border-t border-slate-200 bg-slate-50/60">
@@ -320,7 +426,7 @@ export default function Landing() {
           <div>
             <h2 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">See it running on live data.</h2>
             <p className="mt-1 text-[14px] text-slate-600">Three cities, real measurements, no sign-up.</p>
-            <a href="#/console"
+            <a href="/console" onClick={(e) => linkClick(e, "/console")}
               className="mt-5 inline-flex items-center gap-2 rounded-md bg-sky-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-sky-700">
               Open the console
               <Icon d={IC.arrow} className="h-4 w-4" />
@@ -357,7 +463,7 @@ export default function Landing() {
             <div>
               <p className="font-mono text-[10px] uppercase tracking-wider text-slate-400">Product</p>
               <div className="mt-2 space-y-1.5 text-slate-600">
-                <a href="#/console" className="block transition-colors hover:text-slate-900">Console</a>
+                <a href="/console" onClick={(e) => linkClick(e, "/console")} className="block transition-colors hover:text-slate-900">Console</a>
                 <a href="#how" className="block transition-colors hover:text-slate-900">How it works</a>
                 <a href="#architecture" className="block transition-colors hover:text-slate-900">Architecture</a>
                 <a href="#validation" className="block transition-colors hover:text-slate-900">Validation</a>

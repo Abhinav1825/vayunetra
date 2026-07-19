@@ -99,3 +99,24 @@ def test_plume_endpoint_unknown_city_returns_empty_layer():
 
 def test_plume_endpoint_validates_top():
     assert client.get("/plume", params={"city": "delhi", "top": 999}).status_code == 422
+
+
+# --- /history (48h PM2.5 trend) ----------------------------------------------
+
+def test_history_fixture_series():
+    body = client.get("/history", params={"city": "delhi"}).json()
+    assert body["success"] is True
+    series = body["data"]["series"]
+    assert len(series) >= 12
+    assert all(p["pm25"] > 0 and p["n"] > 0 for p in series)
+    assert series == sorted(series, key=lambda p: p["ts"])
+
+
+def test_history_unknown_city_empty_not_error():
+    body = client.get("/history", params={"city": "atlantis"}).json()
+    assert body["success"] is True
+    assert body["data"]["series"] == []
+
+
+def test_history_validates_hours():
+    assert client.get("/history", params={"city": "delhi", "hours": 9999}).status_code == 422

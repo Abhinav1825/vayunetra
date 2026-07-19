@@ -194,6 +194,52 @@ def aqi_current(
     return ok(list(latest.values()))
 
 
+# Trailing PM2.5 history cache — hourly buckets change once an hour at most.
+_HISTORY_TTL_S = 600
+_history_cache: dict[str, tuple[float, list]] = {}
+
+
+@app.get("/history", tags=["data"])
+def pm25_history(
+    city: str = Query("delhi", description="City ID"),
+    hours: int = Query(48, ge=6, le=168),
+) -> dict:
+    """City-mean PM2.5 per hour over the trailing window (real station rows)."""
+    if DEMO_MODE:
+        data = fixture("history", default={})
+        series = data.get(city) if isinstance(data, dict) else None
+        return ok({"city_id": city, "series": series or []})
+    key = f"{city}:{hours}"
+    now = time.time()
+    hit = _history_cache.get(key)
+    if hit and now - hit[0] < _HISTORY_TTL_S:
+        return ok({"city_id": city, "series": hit[1]})
+    try:
+        since = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
+        rows = (
+            _db().table("measurements").select("ts,value").eq("city_id", city)
+            .eq("variable", "pm25").gte("ts", since)
+            .order("ts", desc=True).limit(20000).execute().data
+        ) or []
+        buckets: dict[str, list[float]] = {}
+        for r in rows:
+            ts = r.get("ts")
+            try:
+                v = float(r.get("value"))
+            except (TypeError, ValueError):
+                continue
+            if ts and math.isfinite(v):
+                buckets.setdefault(str(ts)[:13], []).append(v)  # bucket = YYYY-MM-DDTHH
+        series = [
+            {"ts": f"{k}:00:00+00:00", "pm25": round(sum(vs) / len(vs), 1), "n": len(vs)}
+            for k, vs in sorted(buckets.items())
+        ]
+        _history_cache[key] = (now, series)
+        return ok({"city_id": city, "series": series})
+    except Exception as e:  # noqa: BLE001
+        return _server_error("history_failed", e, "Could not load PM2.5 history right now.")
+
+
 # ---------------------------------------------------------------------------
 # Attribution
 # ---------------------------------------------------------------------------

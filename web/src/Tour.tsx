@@ -25,6 +25,9 @@ type Step = {
   // step 2). Right-anchored steps must also cancel the base `left-1/2`.
   place: string;
   arrow?: "up-left" | "left" | "right";
+  // Element the dimmed overlay cuts a spotlight around (desktop only).
+  target?: string;
+  shrink?: number; // spotlight only the central fraction (full-bleed targets)
 };
 
 const STEPS: Step[] = [
@@ -33,31 +36,65 @@ const STEPS: Step[] = [
     body: "Pick Delhi, Bengaluru or Mumbai up here. Everything below — map, forecasts, actions — follows the city you choose.",
     place: "lg:translate-x-0 lg:translate-y-0 lg:left-56 lg:top-16",
     arrow: "up-left",
+    target: "[data-tour=city]",
   },
   {
     title: "Every hexagon is ~1 km² of the city",
     body: "The map shows who is to blame for PM2.5, square kilometre by square kilometre. Click any hexagon to see its full story: sources, evidence and a 72-hour outlook.",
-    place: "",
+    place: "lg:translate-x-0 lg:translate-y-0 lg:left-[24rem] lg:top-[60%]",
+    target: "[data-tour=map]",
+    shrink: 0.42,
   },
   {
     title: "From blame to action",
     body: "The Enforcement panel turns the science into a ranked officer worklist — each item carries cited evidence, a satellite dossier and a ready-to-send notice PDF.",
     place: "lg:translate-x-0 lg:translate-y-0 lg:left-auto lg:right-[26.5rem] lg:top-24",
     arrow: "right",
+    target: "[data-tour=panel]",
   },
   {
     title: "Explore the rest",
     body: "Forecast, citizen Advisories in 4 languages, city comparison, a what-if Simulator, health & ₹ Impact, and the live agent Pipeline — all in the sidebar.",
     place: "lg:translate-x-0 lg:translate-y-0 lg:left-52 lg:top-1/3",
     arrow: "left",
+    target: "[data-tour=sidebar]",
   },
 ];
+
+type Spot = { left: number; top: number; width: number; height: number };
+
+function spotlightRect(s: Step): Spot | null {
+  if (!s.target || !window.matchMedia("(min-width: 1024px)").matches) return null;
+  const el = document.querySelector(s.target);
+  if (!el) return null;
+  const r = el.getBoundingClientRect();
+  if (r.width < 4 || r.height < 4) return null;
+  let { left, top, width, height } = r;
+  if (s.shrink) {
+    // full-bleed target (the map): spotlight only its central region
+    left += (width * (1 - s.shrink)) / 2;
+    top += (height * (1 - s.shrink)) / 2;
+    width *= s.shrink;
+    height *= s.shrink;
+  }
+  const pad = 6;
+  return { left: left - pad, top: top - pad, width: width + 2 * pad, height: height + 2 * pad };
+}
 
 /** First-run guided tour: 4 fixed cards, no library, dismiss = never again. */
 export default function Tour({ onDone }: { onDone: () => void }) {
   const [step, setStep] = useState(0);
   const s = STEPS[step];
   const last = step === STEPS.length - 1;
+
+  // Spotlight: measured per step, re-measured on resize.
+  const [spot, setSpot] = useState<Spot | null>(() => spotlightRect(STEPS[0]));
+  useEffect(() => {
+    const measure = () => setSpot(spotlightRect(STEPS[step]));
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [step]);
 
   function finish() {
     markSeen();
@@ -75,12 +112,28 @@ export default function Tour({ onDone }: { onDone: () => void }) {
 
   return (
     <div
-      className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[2px]"
+      className={`fixed inset-0 z-40 ${spot ? "" : "bg-slate-900/50 backdrop-blur-[2px]"}`}
       role="dialog"
       aria-modal="true"
       aria-label="Quick tour"
       onClick={(e) => e.target === e.currentTarget && finish()}
     >
+      {/* The spotlight: a transparent window whose giant box-shadow dims
+          everything else — the highlighted element stays at full brightness.
+          It morphs between steps via the transition on position/size. */}
+      {spot && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute rounded-xl ring-2 ring-emerald-300/90 transition-all duration-300 ease-out"
+          style={{
+            left: spot.left,
+            top: spot.top,
+            width: spot.width,
+            height: spot.height,
+            boxShadow: "0 0 0 9999px rgba(15, 23, 42, 0.55)",
+          }}
+        />
+      )}
       {/* Positioning and animation live on separate elements — the vn-pop
           keyframe's `transform` would otherwise override the centering
           translate (animation fill-mode wins over utility classes). */}

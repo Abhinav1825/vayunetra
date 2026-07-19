@@ -14,6 +14,7 @@ import TraceViewer from "./TraceViewer";
 import WhatIfPanel from "./WhatIfPanel";
 import RoiPanel from "./RoiPanel";
 import FairnessPanel from "./FairnessPanel";
+import CityStatsPanel from "./CityStatsPanel";
 import LayersControl from "./LayersControl";
 import { Sidebar, BottomNav, type Section } from "./Sidebar";
 import TopBar from "./TopBar";
@@ -54,6 +55,7 @@ export default function App() {
   const [showWards, setShowWards] = useState(false);
   const [section, setSection] = useState<Section>("action");
   const [cell, setCell] = useState<AttrCell | null>(null);
+  const [attrCells, setAttrCells] = useState<AttrCell[]>([]);
   const [fallback, setFallback] = useState(false);
   const [tour, setTour] = useState(() => !tourSeen());
   const [coverageKind, setCoverageKind] = useState<"stations" | "dense">("dense");
@@ -108,6 +110,7 @@ export default function App() {
 
   useEffect(() => {
     setCell(null); // clear story on city switch
+    setAttrCells([]); // stats panel must not show the previous city's mix
     openedRef.current = false; // allow one auto-open for the new city
   }, [active]);
 
@@ -153,14 +156,17 @@ export default function App() {
 
         <main className="relative min-h-0 flex-1 overflow-y-auto pb-[calc(4.5rem+env(safe-area-inset-bottom))] lg:overflow-hidden lg:pb-0">
           {/* Map — in-flow on mobile, full-bleed behind panels on desktop */}
-          <div className="relative z-0 h-[42vh] w-full lg:absolute lg:inset-0 lg:h-full">
+          <div data-tour="map" className="relative z-0 h-[42vh] w-full lg:absolute lg:inset-0 lg:h-full">
             <BlameMap
               city={active}
               center={center}
               mode={mode}
               selected={cell?.h3_cell}
               onSelect={handleSelect}
-              onCellsLoaded={autoOpenBest}
+              onCellsLoaded={(c) => {
+                setAttrCells(c);
+                autoOpenBest(c);
+              }}
               showSources={showSources}
               showPlumes={showPlumes}
               showWards={showWards}
@@ -245,7 +251,12 @@ export default function App() {
                   <CityIntelPanel city={active} />
                 </>
               )}
-              {section === "forecast" && <ForecastPanel city={active} />}
+              {section === "forecast" && (
+                <>
+                  <ForecastPanel city={active} />
+                  <CityStatsPanel city={active} cells={attrCells} coverageCells={coverage?.cells ?? []} />
+                </>
+              )}
               {section === "citizen" && <CitizenPanel city={active} languages={city?.languages} />}
               {section === "compare" && <ComparativePanel onSelectCity={setActive} />}
               {section === "whatif" && <WhatIfPanel city={active} />}
