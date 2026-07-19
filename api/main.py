@@ -744,7 +744,10 @@ def comparison() -> dict:
             {"city_id": r["city_id"], "horizon_h": r.get("horizon_h", 24), "value": r["value"]}
             for r in fc if r.get("value") is not None
         ]
-        return ok(build_comparison(cities, aqi_rows, forecast_rows))
+        rec_statuses = (
+            sdb.table("enforcement_recs").select("city_id,status").limit(5000).execute().data
+        ) or []
+        return ok(build_comparison(cities, aqi_rows, forecast_rows, rec_statuses))
     except Exception as e:  # noqa: BLE001
         return _server_error("comparison_error", e, "Failed to build multi-city comparison")
 

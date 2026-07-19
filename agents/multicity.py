@@ -45,8 +45,16 @@ def playbook_for(source: str, trend: str) -> list[str]:
     return ["maintain monitoring", "compare against similar H3 signatures", "keep advisory ready"]
 
 
-def build_comparison(cities: list[dict], aqi_rows: list[dict], forecast_rows: list[dict]) -> dict:
+def build_comparison(
+    cities: list[dict],
+    aqi_rows: list[dict],
+    forecast_rows: list[dict],
+    rec_status_rows: list[dict] | None = None,
+) -> dict:
     cards = []
+    status_by_city: dict[str, Counter] = {}
+    for r in rec_status_rows or []:
+        status_by_city.setdefault(r.get("city_id", ""), Counter())[r.get("status") or "proposed"] += 1
     for city in cities:
         cid = city["city_id"]
         city_aqi = [r for r in aqi_rows if r.get("city_id") == cid]
@@ -68,6 +76,13 @@ def build_comparison(cities: list[dict], aqi_rows: list[dict], forecast_rows: li
             "dominant_source": source,
             "signature_match": "construction-winter" if source == "construction_dust" else f"{source}-signature",
             "playbook": playbook_for(source, trend),
+            # Compliance posture: real enforcement-rec statuses. Honest zero
+            # state — no real-world intervention has been dispatched yet.
+            "compliance": {
+                "total": sum(status_by_city.get(cid, Counter()).values()),
+                **{k: status_by_city.get(cid, Counter()).get(k, 0)
+                   for k in ("proposed", "approved", "dispatched", "dismissed")},
+            },
             "health": {
                 "annual_pm25": roi["annual_pm25"],
                 "attributable_deaths_per_year": roi["attributable_deaths_per_year"],

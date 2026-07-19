@@ -29,7 +29,7 @@ def _live_vulnerability(city_id: str) -> list[dict]:
 
     rows = (
         client().table("vulnerability")
-        .select("zone_id,population,hospitals,schools,eldercare,vulnerability_index")
+        .select("zone_id,population,hospitals,schools,eldercare,outdoor_sites,vulnerability_index")
         .eq("city_id", city_id).order("vulnerability_index", desc=True)
         .limit(TOP_ZONES).execute().data or []
     )
@@ -40,6 +40,7 @@ def _live_vulnerability(city_id: str) -> list[dict]:
             "vulnerability_index": r["vulnerability_index"],
             "schools": r["schools"],
             "hospitals": r["hospitals"],
+            "outdoor_worker_share": min(1.0, (r.get("outdoor_sites") or 0) / 8.0),
         }
         for r in rows
     ]
