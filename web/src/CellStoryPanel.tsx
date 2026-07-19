@@ -3,6 +3,7 @@ import { api } from "./api";
 import { aqiCategory, pm25ToAqi } from "./aqi";
 import { SOURCE_COLORS, dominantSource, type Shares } from "./sources";
 import { DRIVER_LABELS, type AttrCell } from "./BlameMap";
+import { placeForCell } from "./placeName";
 
 type FC = { h3_cell: string; horizon_h: number; value: number; pi_low: number; pi_high: number };
 
@@ -26,6 +27,18 @@ export default function CellStoryPanel({
   onAct: () => void;
 }) {
   const [fc, setFc] = useState<FC[] | null>(null);
+  const [place, setPlace] = useState<string | null>(null);
+
+  // Ward name from the shipped boundary files — humans read "Karol Bagh",
+  // not an H3 id. Falls back to the raw id when no ward matches.
+  useEffect(() => {
+    let alive = true;
+    setPlace(null);
+    placeForCell(city, cell.h3_cell).then((p) => alive && setPlace(p?.label ?? null));
+    return () => {
+      alive = false;
+    };
+  }, [city, cell.h3_cell]);
 
   useEffect(() => {
     setFc(null);
@@ -52,7 +65,14 @@ export default function CellStoryPanel({
       <div className="flex items-start justify-between">
         <div>
           <div className="text-[11px] font-semibold uppercase tracking-wide text-blue-600">Cell story</div>
-          <div className="font-mono text-xs text-gray-500">{cell.h3_cell}</div>
+          {place ? (
+            <>
+              <div className="text-sm font-bold leading-tight text-slate-800">{place}</div>
+              <div className="font-mono text-[10px] text-gray-400">~1 km² cell · {cell.h3_cell}</div>
+            </>
+          ) : (
+            <div className="font-mono text-xs text-gray-500">{cell.h3_cell}</div>
+          )}
         </div>
         <button aria-label="Close cell story" onClick={onClose} className="rounded px-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700">
           ✕

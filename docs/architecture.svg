@@ -93,7 +93,7 @@
     <text x="965" y="200" text-anchor="middle">one envelope:</text>
     <text x="965" y="218" text-anchor="middle" fill="#f9fafb">{success, data,</text>
     <text x="965" y="236" text-anchor="middle" fill="#f9fafb">error, meta}</text>
-    <text x="965" y="272" text-anchor="middle">25+ endpoints</text>
+    <text x="965" y="272" text-anchor="middle">30+ endpoints</text>
     <text x="965" y="290" text-anchor="middle">WebSocket /live</text>
     <text x="965" y="308" text-anchor="middle">Notice PDF</text>
     <text x="965" y="326" text-anchor="middle">/simulate · /optimize · /plume</text>
@@ -112,7 +112,7 @@
   <g fill="#d1d5db" font-size="12">
     <rect x="1084" y="140" width="152" height="120" rx="6" fill="#111827" stroke="#334155"/>
     <text x="1160" y="160" text-anchor="middle" fill="#f9fafb" font-size="13" font-weight="700">Ops console (Vercel)</text>
-    <text x="1160" y="180" text-anchor="middle">blame map · plumes · wards</text>
+    <text x="1160" y="180" text-anchor="middle">blame map · plumes · wards · freight</text>
     <text x="1160" y="198" text-anchor="middle">worklist + dossier · forecast</text>
     <text x="1160" y="216" text-anchor="middle">what-if + optimiser</text>
     <text x="1160" y="234" text-anchor="middle">ROI · agent trace</text>

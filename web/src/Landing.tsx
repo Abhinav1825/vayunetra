@@ -52,7 +52,7 @@ const STEPS = [
   {
     icon: IC.megaphone,
     title: "Protect",
-    body: "Health advisories generated from the forecast and targeted at the most vulnerable zones — 9,900+ mapped hospitals and schools — in four languages over the web app, Telegram, IVR calls and public displays.",
+    body: "Health advisories generated from the forecast and targeted at the most vulnerable zones — 6,000+ mapped hospitals, schools, elder-care homes and outdoor-work sites — in four languages over the web app, Telegram, IVR calls and public displays.",
   },
 ];
 
@@ -63,7 +63,7 @@ const FEATURES = [
   { icon: IC.flame, title: "Multi-hazard alerts", body: "Heat×smog compound risk (IMD × CPCB criteria), dust×traffic co-occurrence corridors, and the statutory CAQM GRAP stage triggered a day early — by our own forecast." },
   { icon: IC.chip, title: "What-if simulator + optimiser", body: "Cited counterfactuals — odd-even, construction bans, full GRAP packages — and an optimiser that ranks intervention bundles by impact per inspector-hour." },
   { icon: IC.rupee, title: "Health & carbon ROI", body: "Every ΔPM2.5 priced in ₹, lives and CO₂e using WHO HRAPIE dose–response and GPW population — the NCAP funding case, fully cited." },
-  { icon: IC.shield, title: "Vulnerability-targeted advisories", body: "2,366 zones scored from real OSM hospitals, clinics, schools and elder-care × population. Advisories escalate where forecast air is bad and sensitive people are." },
+  { icon: IC.shield, title: "Vulnerability-targeted advisories", body: "2,624 zones scored from real OSM hospitals, clinics, schools, elder-care and outdoor-work sites × population. Advisories escalate where forecast air is bad and sensitive people are." },
   { icon: IC.leaf, title: "Clean-air zones", body: "The flip side of the blame map: the cleanest ~1 km cells right now, computed from the dense coverage field, with one-tap directions." },
   { icon: IC.globe, title: "Multi-city, config-driven", body: "Delhi, Bengaluru, Mumbai live today with cross-city playbooks. Onboarding a new city is one API call — rehearsed live on production." },
   { icon: IC.megaphone, title: "Citizen channels", body: "English, Hindi, Kannada, Marathi over PWA, a Telegram bot judges can subscribe to live (/start), IVR voice calls and a public-display mode." },
@@ -98,9 +98,9 @@ const SNAPSHOT_CITIES: Array<[string, number, number, string]> = [
   ["Mumbai", 20.1, 14.2, "stable"],
 ];
 const SNAPSHOT_SCALE: Array<[string, string]> = [
-  ["1,119", "~1 km² cells scored across 3 cities"],
+  ["6,394", "~1 km² cells modeled across 3 cities"],
   ["547", "registered + satellite-detected sources"],
-  ["2,366", "vulnerability-scored zones (hospitals, schools)"],
+  ["2,624", "vulnerability-scored zones (hospitals, schools, outdoor work)"],
   ["390", "live enforcement recommendations"],
 ];
 

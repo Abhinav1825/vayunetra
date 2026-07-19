@@ -134,12 +134,12 @@ export function BottomNav({ active, onSelect }: SidebarProps) {
           <button
             key={s.id}
             onClick={() => onSelect(s.id)}
-            className={`flex min-w-[3.4rem] flex-1 flex-col items-center gap-0.5 px-1 py-1.5 text-[9px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/80 ${
+            className={`flex min-w-[2.75rem] flex-1 flex-col items-center gap-0.5 px-0.5 py-1.5 text-[8px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/80 min-[400px]:min-w-[3.4rem] min-[400px]:px-1 min-[400px]:text-[9px] ${
               on ? "text-emerald-300" : "text-slate-400"
             }`}
           >
             <Icon d={s.icon} className="h-5 w-5" />
-            {s.label}
+            <span className="w-full truncate text-center">{s.label}</span>
           </button>
         );
       })}

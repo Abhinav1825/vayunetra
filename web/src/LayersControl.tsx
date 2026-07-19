@@ -62,7 +62,9 @@ export default function LayersControl(p: LayersControlProps) {
   // Open by default only where there's room — on phones the expanded card
   // would bury the (much smaller) map.
   const [open, setOpen] = useState(
-    () => typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches,
+    // Auto-expand only where the drawer + right panel leave room for the card
+    // (the 1024–1279 window is too tight — there it starts as the compact chip).
+    () => typeof window !== "undefined" && window.matchMedia("(min-width: 1280px)").matches,
   );
   const overlaysOn = [p.showSources, p.showPlumes, p.showWards, p.showFreight].filter(Boolean).length;
 
