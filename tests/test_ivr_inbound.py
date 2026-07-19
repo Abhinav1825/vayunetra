@@ -1,0 +1,97 @@
+"""Inbound IVR webhook tests (Twilio Voice → /ivr/inbound → /ivr/advisory).
+
+A phone caller can never see an error page: every path must answer HTTP 200
+with valid TwiML, including bad digits, missing input, and malformed bodies.
+Runs in DEMO_MODE so the advisory content comes from demo/fixtures/advisory.json.
+"""
+import html
+import os
+
+os.environ["DEMO_MODE"] = "true"
+
+from fastapi.testclient import TestClient  # noqa: E402
+
+import api.main as m  # noqa: E402
+from channels.ivr import IVR_CITY_MENU, render_twiml, render_welcome_twiml  # noqa: E402
+
+client = TestClient(m.app)
+
+
+def _fixture_message(city: str) -> str:
+    rows = [r for r in m.fixture_rows("advisory", city) if (r.get("language") or "en") == "en"]
+    assert rows, f"fixture must contain an English advisory for {city}"
+    return str(rows[0]["message"]).strip()
+
+
+# --- welcome menu -------------------------------------------------------------
+
+def test_inbound_menu_is_twiml_and_lists_all_cities():
+    r = client.get("/ivr/inbound")
+    assert r.status_code == 200
+    assert r.headers["content-type"].startswith("text/xml")
+    assert "<Gather" in r.text
+    for _, (_, name) in IVR_CITY_MENU.items():
+        assert name in r.text
+
+
+def test_inbound_menu_accepts_post_too():
+    r = client.post("/ivr/inbound", data={"CallSid": "CAtest", "From": "+911234567890"})
+    assert r.status_code == 200
+    assert "<Gather" in r.text
+
+
+def test_welcome_twiml_has_default_redirect():
+    xml = render_welcome_twiml("/ivr/advisory")
+    assert "<Redirect" in xml and "Digits=1" in xml
+
+
+# --- advisory playback --------------------------------------------------------
+
+def test_advisory_reads_chosen_city_fixture():
+    r = client.post("/ivr/advisory", data={"Digits": "2", "CallSid": "CAtest"})
+    assert r.status_code == 200
+    assert r.headers["content-type"].startswith("text/xml")
+    assert html.escape(_fixture_message("bengaluru")) in r.text
+    assert "Bengaluru" in r.text
+
+
+def test_advisory_get_with_query_digits():
+    r = client.get("/ivr/advisory", params={"Digits": "3"})
+    assert r.status_code == 200
+    assert html.escape(_fixture_message("mumbai")) in r.text
+
+
+def test_advisory_unknown_digits_defaults_to_delhi():
+    r = client.post("/ivr/advisory", data={"Digits": "9"})
+    assert r.status_code == 200
+    assert html.escape(_fixture_message("delhi")) in r.text
+
+
+def test_advisory_no_input_defaults_to_delhi():
+    r = client.post("/ivr/advisory")
+    assert r.status_code == 200
+    assert html.escape(_fixture_message("delhi")) in r.text
+
+
+def test_advisory_malformed_body_still_speaks():
+    r = client.post(
+        "/ivr/advisory",
+        content=b"\xff\xfe not-a-form",
+        headers={"content-type": "application/x-www-form-urlencoded"},
+    )
+    assert r.status_code == 200
+    assert "<Response>" in r.text
+
+
+# --- TwiML injection safety ---------------------------------------------------
+
+def test_advisory_message_is_xml_escaped():
+    xml = render_twiml({"message": 'Alert <Say>evil</Say> & "quotes"'}, city_name="Delhi")
+    assert "<Say>evil</Say>" not in xml
+    assert "&lt;Say&gt;evil&lt;/Say&gt;" in xml
+
+
+def test_latest_advisory_never_returns_wrong_city():
+    # fixture_rows falls back to ALL rows for unknown cities; _latest_advisory
+    # must return None rather than another city's advisory (spoken as the wrong city)
+    assert m._latest_advisory("kolkata") is None

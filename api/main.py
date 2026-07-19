@@ -20,8 +20,9 @@ import asyncio
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
+from urllib.parse import parse_qsl
 
-from fastapi import FastAPI, Header, HTTPException, Query, Depends, WebSocket, WebSocketDisconnect, Response
+from fastapi import FastAPI, Header, HTTPException, Query, Depends, Request, WebSocket, WebSocketDisconnect, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field
@@ -391,6 +392,23 @@ _BROADCAST_WINDOW_S = 300
 _last_broadcast: dict[str, float] = {}
 
 
+def _latest_advisory(city: str) -> Optional[dict]:
+    """Freshest English advisory for a city (fixture rows in DEMO_MODE)."""
+    if DEMO_MODE:
+        # strict city match — fixture_rows falls back to ALL rows for unknown
+        # cities, and speaking another city's advisory is worse than none
+        rows = [
+            r for r in fixture_rows("advisory", city)
+            if (r.get("language") or "en") == "en" and r.get("city_id") == city
+        ]
+    else:
+        rows = (
+            _db().table("advisories").select("*").eq("city_id", city)
+            .eq("language", "en").order("issued_at", desc=True).limit(1).execute().data
+        ) or []
+    return rows[0] if rows else None
+
+
 class BroadcastBody(BaseModel):
     city: str = _CITY
     ivr: bool = False
@@ -410,17 +428,9 @@ def advisory_broadcast(body: BroadcastBody, db=Depends(get_db)) -> dict:
         return err("rate_limited", f"Broadcast already sent recently — retry in {wait}s")
     _last_broadcast[city] = now
 
-    # Pick the freshest English advisory for the city (fixture in DEMO_MODE).
-    if DEMO_MODE:
-        rows = [r for r in fixture_rows("advisory", city) if (r.get("language") or "en") == "en"]
-    else:
-        rows = (
-            _db().table("advisories").select("*").eq("city_id", city)
-            .eq("language", "en").order("issued_at", desc=True).limit(1).execute().data
-        )
-    if not rows:
+    adv = _latest_advisory(city)
+    if not adv:
         return err("no_advisory", f"No advisory available for {city}")
-    adv = rows[0]
 
     results: dict[str, Any] = {"advisory": {"ward_id": adv.get("ward_id"), "message": adv.get("message")}}
 
@@ -454,6 +464,48 @@ def advisory_broadcast(body: BroadcastBody, db=Depends(get_db)) -> dict:
             results["ivr"] = {"status": "skipped", "detail": "Twilio not configured on this server"}
 
     return ok(results)
+
+
+def _twiml(xml: str) -> Response:
+    return Response(content=xml, media_type="text/xml")
+
+
+# Inbound IVR (Twilio Voice webhook). No bearer auth — Twilio can't send one, and
+# these endpoints only speak the same public advisory text /advisory already serves.
+# Both accept GET and POST because the webhook method is configurable in Twilio.
+@app.api_route("/ivr/inbound", methods=["GET", "POST"], tags=["advisory"])
+def ivr_inbound() -> Response:
+    """Welcome menu for callers: pick a city on the keypad."""
+    from channels.ivr import render_welcome_twiml
+
+    return _twiml(render_welcome_twiml("/ivr/advisory"))
+
+
+@app.api_route("/ivr/advisory", methods=["GET", "POST"], tags=["advisory"])
+async def ivr_advisory(request: Request) -> Response:
+    """Read the chosen city's latest advisory back to the caller.
+
+    Must always return valid TwiML — an exception here becomes a dead phone
+    line mid-call, so every failure path degrades to a spoken fallback.
+    """
+    from channels.ivr import IVR_CITY_MENU, render_twiml, render_unavailable_twiml
+
+    digits = request.query_params.get("Digits", "")
+    if request.method == "POST":
+        try:
+            body = (await request.body()).decode("utf-8", "replace")
+            digits = dict(parse_qsl(body)).get("Digits", digits)
+        except Exception:  # noqa: BLE001 — malformed body → fall back to default city
+            pass
+    city_id, city_name = IVR_CITY_MENU.get(digits.strip(), IVR_CITY_MENU["1"])
+    try:
+        adv = _latest_advisory(city_id)
+    except Exception as e:  # noqa: BLE001 — DB down must not kill the call
+        logger.error("ivr advisory fetch failed for %s: %s", city_id, e, exc_info=True)
+        adv = None
+    if not adv:
+        return _twiml(render_unavailable_twiml(city_name))
+    return _twiml(render_twiml(adv, city_name=city_name))
 
 
 @app.post("/telegram/webhook", tags=["advisory"])

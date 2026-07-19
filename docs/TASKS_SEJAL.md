@@ -49,11 +49,11 @@ item of the whole submission. Record it before any Stage-2 code.** Also:
 ## STAGE 2 — Enhancements (v3.3 statuses — most of yours SHIPPED in PR #8 🎉)
 - [ ] 🔴 **DEMO VIDEO (≤3 min) — before anything below.** Stage-1 DoD's only missing deliverable. Runbook exists (`STAGE1_DEMO_VIDEO_RUNBOOK.md`); record against the LIVE site after the latest push.
 - [x] **E2 — Dense-coverage** ✅ shipped *(rebase note above)*. 🔁 Real-data Kaggle training = **stretch**, not blocker — the shipped version is honestly labeled "synthetic-field validation".
-- [ ] 🔁 **E6 — Multimodal evidence** — **wait for Abhinav's detection-lite** (needs detections to attach patches to); it's next in the cut order if time runs short. 🔴/🟡
+- [x] 🔁 **E6 — Multimodal evidence** ✅ *(detection-lite landed; 492 image kb_chunks live incl. 90 REAL Sentinel-2 RGB thumbnails for rec-referenced sources — live dossiers now show genuine satellite imagery, placeholders honestly labeled)*
 - [x] **E7 — Health & carbon** ✅ *(factor tables now also cite WHO AirQ+ + Balakrishnan/Lancet-2019 — the 1.67M figure PS5 quotes)*
 - [x] **What-if UI + SHAP + detected-sources toggle** ✅ — *optimiser package cards*: add when Abhinav ships `/optimize`; *Fairness panel*: after his audit.
-- [ ] **Deck + video v2** — absorb `docs/DECK_NOTES_ADDITIONS.md`; add optimiser + ₹/lives/CO₂e moments once E5 lands. 🟢/🟡
-- [ ] 🆕 **Telegram two-way subscribe** *(v3.3 addition, post-merge)*: `/start` → pick city → auto-receive advisories — lets judges subscribe their own phone during judging. 🟡
+- [x] **Deck v2** ✅ *(PITCH_DECK.html absorbed DECK_NOTES_ADDITIONS + PS-stat problem slide, rubric row, QR close slide; optimiser + ₹/lives/CO₂e moments in)* — video half lives in the DEMO VIDEO item above, still open.
+- [x] 🆕 **Telegram two-way subscribe** ✅ *(webhook live on Render `/telegram/webhook`; `/start` → city pick → subscriber stored; first live subscriber verified in `advisory_subscribers`)*
 
 **Your Stage-2 "done when":** dense 1km toggle works; a dossier shows a real satellite patch; ₹/lives/CO₂e cards + ROI dashboard live; polished deck + video done.
 

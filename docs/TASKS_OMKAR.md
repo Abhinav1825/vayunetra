@@ -33,7 +33,7 @@
 - [x] **GNN/TFT forecast upgrade** ✅ *(evaluated on Colab T4, identical walk-forward folds — LightGBM won 3/3 → KEPT baseline per the rule; evaluate.ipynb §7 + notebooks/colab_tft_forecast.ipynb)*
 - [x] **Forecast + dispersion hooks for E3** ✅ *(built the full engine: ml/simulator/counterfactual.py, live on /simulate — cited magnitudes, GPW population, real tonnes-avoided)*
 - [x] **Attribution v2 polish** ✅ *(hybrid GBM+SHAP, R² gate, rush-hour validation 2.30×, inventory validation 0.92 vs SAFAR)*
-- [ ] 🆕 **Agent Trace Viewer + "run pipeline live" button** *(v3.3 addition — surface `/traces` + `/agent/query` as a live multi-agent timeline panel; makes the agentic architecture visible to judges)* 🟢
+- [x] 🆕 **Agent Trace Viewer + "run pipeline live" button** ✅ *(TraceViewer.tsx shipped; verified present in the deployed Vercel bundle — "Run agents live" button + per-node timeline reading `/traces` + `/agent/query`)*
 
 **Your Stage-2 "done when":** GNN tried & reported honestly ✅; E3 hooks ready ✅; trace viewer shows the agents thinking on stage.
 
