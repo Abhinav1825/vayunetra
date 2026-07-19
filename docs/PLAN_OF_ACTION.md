@@ -32,7 +32,7 @@ OSM emission-source registry w/ daily auto-refresh (replaces hand-seeded) · **G
 prediction intervals (§9) · E3 counterfactual engine + live `/simulate` w/ cited intervention magnitudes +
 real tonnes-avoided · heat×smog compound alerts (`/alerts/compound` + header badge) · CAQM directive corpus in
 RAG · notice PDF export · Telegram+IVR live broadcast (3 numbers) · cold-start insurance + keep-alive cron ·
-`scripts/refresh_advisories.py` (advisories auto-refresh daily).
+`scripts/refresh_advisories.py` (advisories auto-refresh daily) · real vulnerability zones (2,366 zones from ~9,900 OSM facilities × GPW pop) · clean-air zones (`/clean-zones` from the E2 field) · QR codes (app + Telegram) · enforcement worklist filters/search · light-mode landing page with the updated architecture diagram.
 
 ### ⚠️ Process (this is how we avoid breaking each other)
 - **Rebase onto latest `main` before continuing** — `agents/enforcement.py`, `agents/graph.py`, `api/main.py`,

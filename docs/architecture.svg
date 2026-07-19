@@ -20,13 +20,13 @@
     <text x="140" y="239" text-anchor="middle">Open-Meteo · ERA5 archive</text>
     <rect x="46" y="260" width="188" height="52" rx="6" fill="#111827" stroke="#334155"/>
     <text x="140" y="281" text-anchor="middle" fill="#f9fafb" font-weight="700">Satellites (Earth Engine)</text>
-    <text x="140" y="299" text-anchor="middle">Sentinel-5P NO₂ · S2 · FIRMS fire</text>
+    <text x="140" y="299" text-anchor="middle">Sentinel-5P NO₂ · S2 · FIRMS</text>
     <rect x="46" y="320" width="188" height="52" rx="6" fill="#111827" stroke="#334155"/>
     <text x="140" y="341" text-anchor="middle" fill="#f9fafb" font-weight="700">Emission-source registry</text>
-    <text x="140" y="359" text-anchor="middle">OSM Overpass · daily refresh</text>
+    <text x="140" y="359" text-anchor="middle">OSM + satellite-detected (E1)</text>
     <rect x="46" y="380" width="188" height="52" rx="6" fill="#111827" stroke="#334155"/>
-    <text x="140" y="401" text-anchor="middle" fill="#f9fafb" font-weight="700">Population per cell</text>
-    <text x="140" y="419" text-anchor="middle">GPW v4.11 (CIESIN/SEDAC)</text>
+    <text x="140" y="401" text-anchor="middle" fill="#f9fafb" font-weight="700">Population + vulnerability</text>
+    <text x="140" y="419" text-anchor="middle">GPW v4.11 · OSM hospitals/schools</text>
     <rect x="46" y="440" width="188" height="52" rx="6" fill="#111827" stroke="#334155"/>
     <text x="140" y="461" text-anchor="middle" fill="#f9fafb" font-weight="700">Mobility proxy</text>
     <text x="140" y="479" text-anchor="middle">GTFS + road-network time-of-day</text>
@@ -45,7 +45,7 @@
     <rect x="306" y="258" width="168" height="30" rx="6" fill="#111827" stroke="#334155"/><text x="390" y="278" text-anchor="middle">forecasts</text>
     <rect x="306" y="294" width="168" height="30" rx="6" fill="#111827" stroke="#334155"/><text x="390" y="314" text-anchor="middle">emission_sources</text>
     <rect x="306" y="330" width="168" height="30" rx="6" fill="#111827" stroke="#334155"/><text x="390" y="350" text-anchor="middle">enforcement_recs</text>
-    <rect x="306" y="366" width="168" height="30" rx="6" fill="#111827" stroke="#334155"/><text x="390" y="386" text-anchor="middle">advisories</text>
+    <rect x="306" y="366" width="168" height="30" rx="6" fill="#111827" stroke="#334155"/><text x="390" y="386" text-anchor="middle">advisories · subscribers</text>
     <rect x="306" y="402" width="168" height="30" rx="6" fill="#111827" stroke="#334155"/><text x="390" y="422" text-anchor="middle">kb_chunks (text+image)</text>
     <rect x="306" y="438" width="168" height="30" rx="6" fill="#111827" stroke="#334155"/><text x="390" y="458" text-anchor="middle">action_traces</text>
     <text x="390" y="500" text-anchor="middle" fill="#94a3b8" font-size="12">models WRITE rows,</text>
@@ -72,15 +72,15 @@
     <text x="620" y="325" text-anchor="middle" font-size="12">RAG-cited worklist</text>
     <rect x="700" y="286" width="140" height="52" rx="6" fill="#111827" stroke="#334155"/>
     <text x="770" y="307" text-anchor="middle" fill="#f9fafb" font-weight="700">A4 Advisory</text>
-    <text x="770" y="325" text-anchor="middle" font-size="12">4 languages, templated</text>
+    <text x="770" y="325" text-anchor="middle" font-size="12">4-lang · vuln-aware</text>
     <rect x="550" y="348" width="290" height="30" rx="6" fill="#111827" stroke="#334155"/>
     <text x="695" y="368" text-anchor="middle" fill="#f9fafb" font-weight="700">A5 Multi-City — cross-city playbooks</text>
     <text x="695" y="404" text-anchor="middle" fill="#94a3b8" font-size="12" font-weight="700">SUPPORTING MODELS</text>
     <rect x="550" y="414" width="290" height="94" rx="6" fill="#111827" stroke="#334155"/>
     <text x="695" y="434" text-anchor="middle" font-size="12">E1 satellite CV (U-Net) · E2 dense 1 km field</text>
     <text x="695" y="452" text-anchor="middle" font-size="12">E3 what-if counterfactual · E5 optimiser</text>
-    <text x="695" y="470" text-anchor="middle" font-size="12">E7 health ₹ / lives / CO₂e · GRAP stage trigger</text>
-    <text x="695" y="488" text-anchor="middle" font-size="12">RAG over NCAP / GRAP / CPCB corpus</text>
+    <text x="695" y="470" text-anchor="middle" font-size="12">E7 ₹/lives/CO₂e · fairness · GRAP trigger</text>
+    <text x="695" y="488" text-anchor="middle" font-size="12">clean-air zones · RAG over NCAP/GRAP/CPCB</text>
     <text x="695" y="536" text-anchor="middle" fill="#94a3b8" font-size="12">every claim cited, gated, or labeled heuristic</text>
   </g>
 
