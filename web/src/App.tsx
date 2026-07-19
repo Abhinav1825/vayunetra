@@ -158,7 +158,7 @@ export default function App() {
 
         <main className="relative min-h-0 flex-1 overflow-y-auto pb-[calc(4.5rem+env(safe-area-inset-bottom))] lg:overflow-hidden lg:pb-0">
           {/* Map — in-flow on mobile, full-bleed behind panels on desktop */}
-          <div data-tour="map" className="relative z-0 h-[42vh] w-full lg:absolute lg:inset-0 lg:h-full">
+          <div data-tour="map" className="relative z-0 h-[42vh] min-h-[21rem] w-full lg:absolute lg:inset-0 lg:h-full lg:min-h-0">
             <BlameMap
               city={active}
               center={center}
@@ -178,14 +178,14 @@ export default function App() {
             />
 
             {/* Live status — top-left so the section panel owns the right edge */}
-            <div className="absolute left-2 top-2 z-10 flex flex-wrap items-start gap-2 lg:left-4 lg:top-3">
+            <div className="absolute left-2 top-2 z-10 flex flex-wrap items-start gap-2 lg:left-4 lg:top-3 lg:max-w-[calc(100%-27.5rem)]">
               <AqiHeader city={active} />
               <LatencyWidget city={active} />
             </div>
 
             {/* Cell story — slide-in drawer under the status strip (desktop) */}
             {cell && (
-              <div className="vn-slide-in-left absolute bottom-4 left-4 top-48 z-10 hidden w-72 lg:block">
+              <div className="vn-slide-in-left absolute bottom-4 left-4 top-[17.5rem] z-10 hidden w-72 lg:block min-[1280px]:top-48">
                 <div className="vn-scroll max-h-full overflow-y-auto rounded-xl">
                   <CellStoryPanel
                     city={active}
