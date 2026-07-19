@@ -44,6 +44,17 @@ const NODES: Record<string, { label: string; color: string; icon: string }> = {
 };
 const FALLBACK_NODE = { label: "", color: "#64748b", icon: "M12 5v14m-7-7h14" };
 
+// The full graph, in execution order. The trace only records nodes that RAN —
+// the spike gate routes past enforcement when the air is clean, and that
+// decision is worth SHOWING, not silently dropping rows.
+const PIPELINE_ORDER = ["orchestrator", "attribution", "forecast", "spike_gate", "enforcement", "advisory"];
+
+const MULTICITY = {
+  label: "Multi-City",
+  color: "#0369a1",
+  icon: "M3 21h18M6 21V10m6 11V4m6 17v-8",
+};
+
 function NodeIcon({ d, color }: { d: string; color: string }) {
   return (
     <svg
@@ -70,18 +81,63 @@ function Timeline({ steps }: { steps: TraceStep[] }) {
     );
   }
   const t0 = new Date(steps[0].ts).getTime();
+  const ran = new Map(steps.map((s, i) => [s.node, i]));
   const stepMs = steps.map((s, i) => (i === 0 ? 0 : new Date(s.ts).getTime() - new Date(steps[i - 1].ts).getTime()));
   const maxStep = Math.max(1, ...stepMs);
+  const escalated = ran.has("enforcement");
+
+  // Render the WHOLE graph: executed nodes with times, plus the gate's
+  // decision and any skipped branch — extra trace nodes append at the end.
+  const rows = [
+    ...PIPELINE_ORDER,
+    ...steps.map((s) => s.node).filter((n) => !PIPELINE_ORDER.includes(n)),
+  ];
+
   return (
     <div className="relative mt-2">
       {/* connector line behind the icon badges */}
       <div className="absolute bottom-3 left-[11px] top-3 w-px bg-slate-200" aria-hidden="true" />
       <div className="space-y-1">
-        {steps.map((s, i) => {
-          const node = NODES[s.node] ?? { ...FALLBACK_NODE, label: s.node.replace("_", " ") };
-          const dt = (new Date(s.ts).getTime() - t0) / 1000;
+        {rows.map((name) => {
+          const node = NODES[name] ?? { ...FALLBACK_NODE, label: name.replace("_", " ") };
+          const i = ran.get(name);
+
+          if (name === "spike_gate" && i === undefined) {
+            // The gate is a decision, not a timed node — show what it chose.
+            return (
+              <div key={name} className="relative flex items-center gap-2.5 text-xs">
+                <span
+                  className="z-10 flex h-[23px] w-[23px] shrink-0 items-center justify-center rounded-full bg-white"
+                  style={{ boxShadow: `inset 0 0 0 1px ${node.color}55` }}
+                >
+                  <NodeIcon d={node.icon} color={node.color} />
+                </span>
+                <span className="w-24 shrink-0 font-medium text-slate-600">{node.label}</span>
+                <span className={`text-[10.5px] ${escalated ? "text-amber-600" : "text-emerald-600"}`}>
+                  {escalated ? "spike → escalated to enforcement" : "no spike → straight to advisory"}
+                </span>
+              </div>
+            );
+          }
+
+          if (i === undefined) {
+            // in the graph but not in this run (e.g. enforcement on clean air)
+            return (
+              <div key={name} className="relative flex items-center gap-2.5 text-xs opacity-70">
+                <span className="z-10 flex h-[23px] w-[23px] shrink-0 items-center justify-center rounded-full border border-dashed border-slate-300 bg-white">
+                  <NodeIcon d={node.icon} color="#94a3b8" />
+                </span>
+                <span className="w-24 shrink-0 font-medium text-slate-400">{node.label}</span>
+                <span className="text-[10.5px] italic text-slate-400">
+                  {name === "enforcement" ? "skipped — air is clean, nothing to enforce" : "not in this run"}
+                </span>
+              </div>
+            );
+          }
+
+          const dt = (new Date(steps[i].ts).getTime() - t0) / 1000;
           return (
-            <div key={i} className="relative flex items-center gap-2.5 text-xs">
+            <div key={name} className="relative flex items-center gap-2.5 text-xs">
               <span
                 className="z-10 flex h-[23px] w-[23px] shrink-0 items-center justify-center rounded-full ring-1 ring-inset"
                 style={{ background: `${node.color}14`, boxShadow: `inset 0 0 0 1px ${node.color}33` }}
@@ -107,6 +163,15 @@ function Timeline({ steps }: { steps: TraceStep[] }) {
             </div>
           );
         })}
+
+        {/* the 6th agent runs cross-city, outside the per-city pipeline */}
+        <div className="relative flex items-center gap-2.5 text-xs opacity-70">
+          <span className="z-10 flex h-[23px] w-[23px] shrink-0 items-center justify-center rounded-full border border-dashed border-slate-300 bg-white">
+            <NodeIcon d={MULTICITY.icon} color="#94a3b8" />
+          </span>
+          <span className="w-24 shrink-0 font-medium text-slate-400">{MULTICITY.label}</span>
+          <span className="text-[10.5px] italic text-slate-400">cross-city playbooks — see the Cities section</span>
+        </div>
       </div>
     </div>
   );
