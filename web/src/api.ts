@@ -20,7 +20,11 @@ import fxCoverage from "./fixtures/coverage.json";
 const BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 // Supabase anon key — safe to expose in the browser (publishable by design).
 const TOKEN = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
-const TIMEOUT_MS = 12_000;
+// Render free tier + a parallel first-load burst: the slowest live endpoint
+// (~9s warm) regularly crossed the old 12s limit and false-triggered the
+// demo-snapshot fallback. 25s tolerates warm-but-slow; a true cold start
+// (30-60s) still falls back — which is exactly what the insurance is for.
+const TIMEOUT_MS = 25_000;
 
 export const API_BASE = BASE;
 export const API_TOKEN = TOKEN;
@@ -82,6 +86,13 @@ function notifyFallback() {
   window.dispatchEvent(new CustomEvent("api-fallback"));
 }
 
+/** Fired on every successful live response — lets the app clear the
+ * "backend waking up" banner the moment the backend is actually awake,
+ * instead of showing it forever after one slow request. */
+function notifyLive() {
+  window.dispatchEvent(new CustomEvent("api-live"));
+}
+
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers);
   if (TOKEN && !headers.has("Authorization")) {
@@ -96,6 +107,7 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
     if (!env.success || env.data === null) {
       throw new Error(env.error?.message ?? `API error (${res.status})`);
     }
+    notifyLive();
     return env.data;
   } catch (e) {
     // Silent-fallback idempotent reads plus the pure /simulate compute; real

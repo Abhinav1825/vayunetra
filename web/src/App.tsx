@@ -43,9 +43,19 @@ function toLngLat(center: City["center"]): LngLat {
   return DELHI;
 }
 
+const CITY_STORE_KEY = "vayunetra-city";
+
+function storedCity(): string {
+  try {
+    return localStorage.getItem(CITY_STORE_KEY) ?? "delhi";
+  } catch {
+    return "delhi"; // storage blocked (private mode) — default is fine
+  }
+}
+
 export default function App() {
   const [cities, setCities] = useState<City[]>([]);
-  const [active, setActive] = useState("delhi");
+  const [active, setActive] = useState(storedCity);
   const [mode, setMode] = useState<MapMode>("blame");
   const [showSources, setShowSources] = useState(false);
   const [tab, setTab] = useState<Tab>("action");
@@ -60,15 +70,40 @@ export default function App() {
   } | null>(null);
 
   useEffect(() => {
-    api<City[]>("/cities").then(setCities).catch(() => setCities([]));
+    api<City[]>("/cities")
+      .then((list) => {
+        setCities(list);
+        // Stored city might have been deleted (e.g. an onboarding demo city) —
+        // fall back to Delhi rather than render an empty console.
+        if (list.length && !list.some((c) => c.city_id === storedCity())) {
+          setActive("delhi");
+        }
+      })
+      .catch(() => setCities([]));
   }, []);
 
-  // Demo insurance: api.ts dispatches this when the backend is unreachable
-  // and bundled fixtures were served instead.
+  // Refresh keeps you on the city you were on (Mumbai stays Mumbai).
   useEffect(() => {
-    const on = () => setFallback(true);
-    window.addEventListener("api-fallback", on);
-    return () => window.removeEventListener("api-fallback", on);
+    try {
+      localStorage.setItem(CITY_STORE_KEY, active);
+    } catch {
+      /* storage blocked — refresh just defaults to delhi */
+    }
+  }, [active]);
+
+  // Demo insurance: api.ts dispatches "api-fallback" when the backend is
+  // unreachable and bundled fixtures were served instead — and "api-live" on
+  // every successful response, so the banner clears itself the moment the
+  // backend is actually awake (it used to stick forever after one slow call).
+  useEffect(() => {
+    const onFallback = () => setFallback(true);
+    const onLive = () => setFallback(false);
+    window.addEventListener("api-fallback", onFallback);
+    window.addEventListener("api-live", onLive);
+    return () => {
+      window.removeEventListener("api-fallback", onFallback);
+      window.removeEventListener("api-live", onLive);
+    };
   }, []);
 
   // A ref (always current, unlike a captured `cell`/state closure) records
