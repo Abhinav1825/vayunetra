@@ -45,7 +45,7 @@
 
 ## STAGE 2 — Enhancements (v3.3 statuses — Stage-1 DoD met)
 - [x] 🔴 **E5 — Prescriptive optimiser** ✅ **BUILT & WIRED.** Greedy/knapsack calls the LIVE E3 engine to rank by ΔAQI·people per inspector-hour. Wired the `/optimize` stub in `api/main.py` for Sejal's UI.
-- [x] 🔁 **E1 — Satellite CV** ✅ **BUILT & INFERRED (verified 2026-07-13):** U-Net code + GEE export + preprocessing all merged. The trained weights are now hosted via Kaggle Notebook (link in README) and committed to the repo, and inference successfully wrote 21 `cv_detected` rows to Supabase. Sejal's E6 is unblocked.
+- [x] 🔁 **E1 — Satellite CV** ✅ **BUILT & INFERRED:** Deployed the honest "detection-lite v0" fallback (Earth-Engine heuristics: NDVI drop & FIRMS thermal anomalies). The U-Net is described in the README as a CNN-in-training since it cannot yet honestly detect on real tiles. Detections successfully written to Supabase via `scripts/run_e1_inference_live.py`. Sejal's E6 is unblocked.
 - [x] ~~**E3 — What-if engine**~~ ✅ **built by Omkar, live on `/simulate`** (cited magnitudes, GPW population, real tonnes). Nothing to build — E5 sits on top.
 - [x] ~~**E4 — Spike/anomaly detector**~~ ✅ **VALIDATED** (built using IsolationForest anyway and validated against a mock 300 PM2.5 spike in evaluate.ipynb!) 
 - [x] **Quantified fairness audit** + `evaluate.ipynb` v2 ✅ **BUILT.** Added the fairness partial-corr and aggregate E-feature metrics.

@@ -16,9 +16,9 @@ enforcement intelligence → citizen advisory → multi-city comparison.**
 
 **Live right now:** 3 cities (Delhi · Bengaluru · Mumbai) · 170k+ real measurements (OpenAQ + Open-Meteo + Sentinel-5P) · 138 attribution cells · 63 quantile forecasts · 144 advisories in 4 languages · 18 RAG-cited enforcement recommendations · signal→action latency traced end-to-end.
 
-**E1 Satellite CV (U-Net) Reproducibility:** 
-The source detection model (`e1_cv_model.pth`) was trained on a Kaggle P100 GPU using labeled Sentinel-2 patches.
-[Kaggle Training Notebook Link](https://www.kaggle.com/code/vayu-netra/e1-satellite-cv-unet-training) | Detections write to `emission_sources(source_origin='cv_detected')` via [scripts/run_e1_inference_live.py](scripts/run_e1_inference_live.py) (restoration in progress after a cron wipe — the daily registry refresh is now scoped so restored rows persist).
+**E1 Satellite CV Reproducibility (Detection-Lite v0):** 
+The live detector runs **heuristic detection-lite v0** via Earth Engine (NDVI drop → construction/bare soil; FIRMS thermal anomaly → waste burning). Detections write to `emission_sources(source_origin='cv_detected')` via [scripts/run_e1_inference_live.py](scripts/run_e1_inference_live.py) (restored after a cron wipe — the daily registry refresh is now scoped so restored rows persist).
+*Note:* The U-Net CNN model (`e1_cv_model.pth`) is currently a CNN-in-training (trained on synthetic data in this [Kaggle Notebook](https://www.kaggle.com/code/vayu-netra/e1-satellite-cv-unet-training)); we honestly fallback to detection-lite v0 heuristics for real tiles to avoid fabricating data.
 
 **Honest numbers** (walk-forward backtests on live data, 3 folds — regenerate via [eval/evaluate.ipynb](eval/evaluate.ipynb)):
 | City | skill vs persistence (24/48/72h) | skill vs climatology (24/48/72h) |
