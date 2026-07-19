@@ -15,6 +15,7 @@ import WhatIfPanel from "./WhatIfPanel";
 import RoiPanel from "./RoiPanel";
 import FairnessPanel from "./FairnessPanel";
 import CityStatsPanel from "./CityStatsPanel";
+import InterventionsPanel from "./InterventionsPanel";
 import LayersControl from "./LayersControl";
 import { Sidebar, BottomNav, type Section } from "./Sidebar";
 import TopBar from "./TopBar";
@@ -53,6 +54,7 @@ export default function App() {
   const [showSources, setShowSources] = useState(false);
   const [showPlumes, setShowPlumes] = useState(false);
   const [showWards, setShowWards] = useState(false);
+  const [showFreight, setShowFreight] = useState(false);
   const [section, setSection] = useState<Section>("action");
   const [cell, setCell] = useState<AttrCell | null>(null);
   const [attrCells, setAttrCells] = useState<AttrCell[]>([]);
@@ -170,6 +172,7 @@ export default function App() {
               showSources={showSources}
               showPlumes={showPlumes}
               showWards={showWards}
+              showFreight={showFreight}
               coverageCells={coverage?.cells ?? []}
               coverageKind={coverageKind}
             />
@@ -206,6 +209,8 @@ export default function App() {
                 onShowPlumes={setShowPlumes}
                 showWards={showWards}
                 onShowWards={setShowWards}
+                showFreight={showFreight}
+                onShowFreight={setShowFreight}
                 coverageKind={coverageKind}
                 onCoverageKind={setCoverageKind}
                 coverage={coverage}
@@ -249,6 +254,7 @@ export default function App() {
                 <>
                   <EnforcementPanel city={active} focusCell={cell?.h3_cell ?? null} />
                   <CityIntelPanel city={active} />
+                  <InterventionsPanel city={active} />
                 </>
               )}
               {section === "forecast" && (

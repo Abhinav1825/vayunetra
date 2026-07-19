@@ -19,6 +19,8 @@ interface LayersControlProps {
   onShowPlumes: (v: boolean) => void;
   showWards: boolean;
   onShowWards: (v: boolean) => void;
+  showFreight: boolean;
+  onShowFreight: (v: boolean) => void;
   coverageKind: "stations" | "dense";
   onCoverageKind: (k: "stations" | "dense") => void;
   coverage: CoverageMeta;
@@ -62,7 +64,7 @@ export default function LayersControl(p: LayersControlProps) {
   const [open, setOpen] = useState(
     () => typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches,
   );
-  const overlaysOn = [p.showSources, p.showPlumes, p.showWards].filter(Boolean).length;
+  const overlaysOn = [p.showSources, p.showPlumes, p.showWards, p.showFreight].filter(Boolean).length;
 
   if (!open) {
     return (
@@ -126,6 +128,13 @@ export default function LayersControl(p: LayersControlProps) {
           swatch="inline-block h-2.5 w-2.5 rounded-sm border border-slate-500 bg-transparent"
           label="Ward boundaries"
           activeClass="bg-slate-800 text-white"
+        />
+        <OverlayToggle
+          on={p.showFreight}
+          onClick={() => p.onShowFreight(!p.showFreight)}
+          swatch="inline-block h-2.5 w-2.5 rounded-full border border-white bg-violet-600"
+          label="Freight corridors"
+          activeClass="bg-violet-700 text-white"
         />
       </div>
       {p.showWards && (

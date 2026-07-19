@@ -56,6 +56,11 @@ type PlumeData = { wind: PlumeWind | null; plumes: Plume[]; reach_m?: number; no
 type WardFeature = { properties: { ward_id: string; name: string } };
 type WardCollection = { type: "FeatureCollection"; features: WardFeature[] };
 
+// Freight corridors (web/public/corridors/{city}.geojson — real OSM
+// motorway/trunk ways; policy = the city's real truck-hours rule).
+type FreightFeature = { properties: { name: string; highway?: string; policy?: string } };
+type FreightCollection = { type: "FeatureCollection"; features: FreightFeature[] };
+
 const COMPASS = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"];
 
 function compass(bearingDeg: number): string {
@@ -151,6 +156,7 @@ export default function BlameMap({
   showSources = false,
   showPlumes = false,
   showWards = false,
+  showFreight = false,
   coverageCells = [],
   coverageKind = "dense",
 }: {
@@ -163,6 +169,7 @@ export default function BlameMap({
   showSources?: boolean;
   showPlumes?: boolean;
   showWards?: boolean;
+  showFreight?: boolean;
   coverageCells?: CoverageCell[];
   coverageKind?: "stations" | "dense";
 }) {
@@ -173,6 +180,7 @@ export default function BlameMap({
   const [sources, setSources] = useState<EmissionSource[]>([]);
   const [plume, setPlume] = useState<PlumeData | null>(null);
   const [wards, setWards] = useState<WardCollection | null>(null);
+  const [freight, setFreight] = useState<FreightCollection | null>(null);
   const [phase, setPhase] = useState(0);
 
   const [mapError, setMapError] = useState(false);
@@ -249,6 +257,19 @@ export default function BlameMap({
     };
   }, [city, showWards]);
 
+  useEffect(() => {
+    if (!showFreight) return;
+    let alive = true;
+    setFreight(null);
+    fetch(`/corridors/${city}.geojson`)
+      .then((r) => (r.ok ? (r.json() as Promise<FreightCollection>) : null))
+      .then((d) => alive && setFreight(d))
+      .catch(() => alive && setFreight(null));
+    return () => {
+      alive = false;
+    };
+  }, [city, showFreight]);
+
   // Slow opacity pulse gives the plumes a "drifting" feel without particle cost.
   useEffect(() => {
     if (!showPlumes) return;
@@ -293,6 +314,7 @@ export default function BlameMap({
       | ScatterplotLayer<EmissionSource>
       | PolygonLayer<Plume>
       | GeoJsonLayer;
+    // (freight corridors reuse GeoJsonLayer)
     const layers: AnyLayer[] = [mode === "coverage" ? coverage : blame];
     if (showWards && wards) {
       layers.push(
@@ -304,6 +326,19 @@ export default function BlameMap({
           getFillColor: [148, 163, 184, 8], // near-invisible tint keeps hover picking alive
           getLineColor: [51, 65, 85, 160],
           lineWidthMinPixels: 1,
+          pickable: true,
+        }),
+      );
+    }
+    if (showFreight && freight) {
+      layers.push(
+        new GeoJsonLayer({
+          id: "freight",
+          data: freight as unknown as import("geojson").FeatureCollection,
+          stroked: true,
+          filled: false,
+          getLineColor: [124, 58, 237, 190],
+          lineWidthMinPixels: 2,
           pickable: true,
         }),
       );
@@ -366,9 +401,17 @@ export default function BlameMap({
           };
         }
         if ("properties" in o) {
-          const p = o.properties;
+          const p = o.properties as { ward_id?: string; name: string; highway?: string; policy?: string };
+          if (p.ward_id) {
+            return {
+              html: `<b>${p.name}</b><br/><span style="color:#888">ward ${p.ward_id}</span>`,
+              style: { fontSize: "12px" },
+            };
+          }
           return {
-            html: `<b>${p.name}</b><br/><span style="color:#888">ward ${p.ward_id}</span>`,
+            html:
+              `<b>${p.name}</b><br/><span style="color:#888">diesel freight corridor (OSM ${p.highway ?? "trunk"})</span>` +
+              (p.policy ? `<br/><span style="color:#7c3aed">${p.policy}</span>` : ""),
             style: { fontSize: "12px" },
           };
         }
@@ -378,7 +421,7 @@ export default function BlameMap({
         };
       },
     });
-  }, [cells, mode, selected, onSelect, showSources, sources, coverageCells, coverageKind, showPlumes, plume, showWards, wards, phase]);
+  }, [cells, mode, selected, onSelect, showSources, sources, coverageCells, coverageKind, showPlumes, plume, showWards, wards, showFreight, freight, phase]);
 
   return (
     <div className="relative h-full w-full">

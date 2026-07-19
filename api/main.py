@@ -397,7 +397,82 @@ def enforcement_update_status(rec_id: int, body: StatusBody, db=Depends(get_db))
         return ok({"rec_id": rec_id, "status": body.status, "demo": True})
 
     db.table("enforcement_recs").update({"status": body.status}).eq("id", rec_id).execute()
+
+    # First real dispatch arms the before/after effect measurement: freeze the
+    # cell's trailing-7-day PM2.5 baseline now, so effectiveness is measurable
+    # by design the moment an intervention actually happens in the world.
+    if body.status == "dispatched":
+        try:
+            sdb = _db()
+            rec = (sdb.table("enforcement_recs").select("city_id,h3_cell")
+                   .eq("id", rec_id).limit(1).execute().data or [None])[0]
+            if rec:
+                since = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+                rows = (sdb.table("measurements").select("value")
+                        .eq("city_id", rec["city_id"]).eq("variable", "pm25")
+                        .eq("h3_cell", rec["h3_cell"]).gte("ts", since)
+                        .limit(2000).execute().data or [])
+                from core.interventions import mean
+                baseline = mean([r.get("value") for r in rows])
+                sdb.table("intervention_tracking").upsert(
+                    {"rec_id": rec_id, "city_id": rec["city_id"],
+                     "h3_cell": rec["h3_cell"], "baseline_pm25": baseline},
+                    on_conflict="rec_id",
+                ).execute()
+        except Exception as e:  # noqa: BLE001 — tracking must never block the status change
+            logger.error("intervention tracking arm failed for rec %s: %s", rec_id, e, exc_info=True)
     return ok({"rec_id": rec_id, "status": body.status})
+
+
+@app.get("/interventions", tags=["enforcement"])
+def interventions(city: str = Query("delhi", description="City ID")) -> dict:
+    """Before/after effect tracking for dispatched enforcement recs.
+
+    Honest empty state until the first real-world dispatch; after that, the
+    effect is the cell's PM2.5 change minus the city's drift over the same
+    window (crude control, disclosed as such).
+    """
+    if DEMO_MODE:
+        return ok({"city_id": city, "tracked": [],
+                   "note": "No real-world intervention dispatched yet — tracking arms automatically at first dispatch."})
+    try:
+        from core.interventions import effect_summary, mean
+
+        sdb = _db()
+        tracked = (sdb.table("intervention_tracking").select("*")
+                   .eq("city_id", city).order("dispatched_at", desc=True)
+                   .limit(20).execute().data or [])
+        if not tracked:
+            return ok({"city_id": city, "tracked": [],
+                       "note": "No real-world intervention dispatched yet — tracking arms automatically at first dispatch."})
+
+        def city_mean(since: str, until: str | None = None) -> float | None:
+            q = (sdb.table("measurements").select("value").eq("city_id", city)
+                 .eq("variable", "pm25").gte("ts", since).limit(5000))
+            if until:
+                q = q.lte("ts", until)
+            return mean([r.get("value") for r in (q.execute().data or [])])
+
+        out = []
+        for t in tracked:
+            cell_rows = (sdb.table("measurements").select("value")
+                         .eq("city_id", city).eq("variable", "pm25")
+                         .eq("h3_cell", t["h3_cell"]).gte("ts", t["dispatched_at"])
+                         .limit(2000).execute().data or [])
+            before7 = (datetime.fromisoformat(str(t["dispatched_at"]).replace("Z", "+00:00"))
+                       - timedelta(days=7)).isoformat()
+            summary = effect_summary(
+                baseline_pm25=t.get("baseline_pm25"),
+                cell_after=mean([r.get("value") for r in cell_rows]),
+                city_before=city_mean(before7, t["dispatched_at"]),
+                city_after=city_mean(t["dispatched_at"]),
+                dispatched_at=t["dispatched_at"],
+            )
+            out.append({"rec_id": t["rec_id"], "h3_cell": t["h3_cell"],
+                        "dispatched_at": t["dispatched_at"], **summary})
+        return ok({"city_id": city, "tracked": out})
+    except Exception as e:  # noqa: BLE001
+        return _server_error("interventions_failed", e, "Could not load intervention tracking.")
 
 
 # ---------------------------------------------------------------------------
