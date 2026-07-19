@@ -37,3 +37,6 @@ test:           ## run tests with coverage
 
 lint:           ## ruff lint
 	ruff check .
+
+prewarm:        ## judging-morning pre-warm + GO/NO-GO smoke check (run ~15 min before demo)
+	./scripts/prewarm_demo.sh
