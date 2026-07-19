@@ -562,8 +562,19 @@ def static_layers(city: str = Query(..., description="City ID")) -> dict:
     if DEMO_MODE:
         data = fixture_rows("static_layers", city)
         return ok(data[0] if isinstance(data, list) and data else data)
-    sources = _db().table("emission_sources").select("*").eq("city_id", city).execute().data
-    return ok({"city_id": city, "emission_sources": sources, "vulnerability": [], "roads": []})
+    sdb = _db()
+    sources = sdb.table("emission_sources").select("*").eq("city_id", city).execute().data or []
+    # Real vulnerability zones (OSM hospitals/schools/elder-care × GPW population,
+    # connectors/vulnerability.py). ward_id mirrors zone_id for UI compatibility.
+    vuln = (
+        sdb.table("vulnerability")
+        .select("h3_cell,zone_id,population,hospitals,schools,eldercare,vulnerability_index")
+        .eq("city_id", city).order("vulnerability_index", desc=True).limit(1200)
+        .execute().data or []
+    )
+    for v in vuln:
+        v["ward_id"] = v["zone_id"]
+    return ok({"city_id": city, "emission_sources": sources, "vulnerability": vuln, "roads": []})
 
 
 @app.get("/mobility", tags=["data"])

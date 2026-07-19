@@ -16,7 +16,33 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-import core.env  # noqa: F401
+import core.env  # noqa: F401,E402
+
+
+TOP_ZONES = 4  # advisories target the most vulnerable zones per city
+
+
+def _live_vulnerability(city_id: str) -> list[dict]:
+    """Top REAL vulnerability zones (OSM facilities × GPW population) — the
+    advisory generator reads ward_id/vulnerability_index/schools/hospitals."""
+    from core.supa import client
+
+    rows = (
+        client().table("vulnerability")
+        .select("zone_id,population,hospitals,schools,eldercare,vulnerability_index")
+        .eq("city_id", city_id).order("vulnerability_index", desc=True)
+        .limit(TOP_ZONES).execute().data or []
+    )
+    return [
+        {
+            "ward_id": r["zone_id"],
+            "population": r["population"],
+            "vulnerability_index": r["vulnerability_index"],
+            "schools": r["schools"],
+            "hospitals": r["hospitals"],
+        }
+        for r in rows
+    ]
 
 
 def main() -> None:
@@ -25,6 +51,12 @@ def main() -> None:
 
     cities = _cities()
     layers = {c["city_id"]: build_static_layers(c["city_id"]) for c in cities}
+    # Prefer the live vulnerability table (real OSM + GPW data) over the
+    # deterministic seed wards; fall back to the seed if a city has no rows yet.
+    for c in cities:
+        live = _live_vulnerability(c["city_id"])
+        if live:
+            layers[c["city_id"]]["vulnerability"] = live
     total = _replace_advisories(cities, layers)
     print(f"advisories refreshed: {total} rows across {len(cities)} cities")
 

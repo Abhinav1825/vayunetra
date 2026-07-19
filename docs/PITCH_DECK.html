@@ -41,12 +41,13 @@
   <section>
     <h2>The problem is not missing data. It is a missing loop.</h2>
     <div class="grid">
-      <div class="card"><div class="metric warn">1.67M</div>deaths in India attributable to air pollution in one year</div>
-      <div class="card"><div class="metric warn">73,395</div>estimated premature deaths per year in Delhi alone</div>
-      <div class="card"><div class="metric warn">days</div>from a pollution signal to a source-attributed field action today</div>
+      <div class="card"><div class="metric warn">1.67M</div>premature deaths per year in India from air pollution</div>
+      <div class="card"><div class="metric warn">218</div>Delhi's average AQI in 2024-25 — 'Poor' or worse on 200+ days</div>
+      <div class="card"><div class="metric warn">31%</div>of monitored cities have ANY actionable response protocol (CAG audit, 2024)</div>
+      <div class="card"><div class="metric warn">900+</div>CAAQMS stations already deployed — the data exists</div>
     </div>
-    <p style="margin-top:28px">CAAQMS stations measure. SAFAR forecasts. But the operational questions — <i>who is to blame in this square kilometre, right now, and what do we do about it</i> — still take days of manual work, unattributed to sources.</p>
-    <p class="cite">Balakrishnan et al., Lancet Planetary Health 2019 (2017 GBD estimate) · Delhi figure: Chen &amp; Hoek (2020) long-term CRF at Delhi's cited annual mean, UN WUP population — full derivation in evaluate.ipynb</p>
+    <p style="margin-top:28px">24 of India's 50 most polluted cities are Tier-1/2 urban centres. The monitoring network is built; what's missing is the layer that turns a reading into an attributed, prioritised, delivered intervention — <i>who is to blame in this square kilometre, right now, and what do we do about it before tomorrow.</i></p>
+    <p class="cite">1.67M: Balakrishnan et al., Lancet Planetary Health 2019 · AQI 218 / 200+ days / 24-of-50 / 900+ stations / 31% CAG 2024: the ET AI Hackathon PS-5 brief (CPCB National AQ data &amp; CAG audit) · Delhi's ~73,395 attributable deaths/yr derived via Chen &amp; Hoek (2020) CRF in evaluate.ipynb</p>
   </section>
 
   <!-- 3 · SOLUTION -->
@@ -236,6 +237,7 @@
       <tr><td>Uncertainty is honest</td><td>raw 48–63% → <b>75–80% coverage</b></td><td>CQR recalibration audit (nominal 80%)</td></tr>
       <tr><td>Model choice was earned</td><td><b>TFT trained on GPU — and rejected</b></td><td>LightGBM won 3 of 3 cities on held-out skill</td></tr>
       <tr><td>The loop is fast</td><td><b>0.8–9.7 s</b> signal → cited action</td><td>live per-node traces (target &lt; 5 min)</td></tr>
+      <tr><td>Enforcement recs are defensible</td><td><b>7–8/10 "would-act"</b> on a CPCB/GRAP rubric</td><td>6-dimension rubric proxy; expert rating sheet ready in the repo for panel validation</td></tr>
       <tr><td>It holds together</td><td><b>116 automated tests</b> + full offline mode</td><td>CI on every push; DEMO_MODE runs the whole flow from fixtures</td></tr>
     </table>
     <p class="cite">All reproducible from evaluate.ipynb §§1–10 in the repo — including the failures (raw interval under-coverage, the rejected TFT).</p>
@@ -248,8 +250,9 @@
       <div class="card"><b>Blame map</b> — H3 hexagons with source shares + SHAP "why" tooltips; satellite-NO₂ and dense-coverage layers</div>
       <div class="card"><b>Forecast</b> — 24/48/72h per cell with calibrated bands and honest skill badges</div>
       <div class="card"><b>Enforcement</b> — prioritised worklist → evidence dossier → cited draft Notice PDF, officer-in-the-loop</div>
-      <div class="card"><b>Citizen</b> — advisories in en/hi/kn/mr over PWA, Telegram bot, IVR voice calls, public display</div>
+      <div class="card"><b>Citizen</b> — advisories in en/hi/kn/mr over PWA, Telegram bot, IVR voice calls, public display — targeted at the most <b>vulnerable zones</b> (9,900+ OSM-mapped hospitals, clinics &amp; schools × GPW population)</div>
     </div>
+    <p class="cite">Health text is deliberately <b>LLM-free</b>: deterministic templates cannot hallucinate medical advice — a safety choice, not a gap (Gemini polish over locked facts = roadmap). Judges can subscribe live: /start to @aqivayu_bot.</p>
     <div class="grid">
       <div class="card"><div class="metric">60</div>registry sources, auto-refreshed daily from OSM</div>
       <div class="card"><div class="metric">216</div>mobility feature rows feeding the models</div>

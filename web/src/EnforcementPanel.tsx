@@ -90,10 +90,21 @@ export default function EnforcementPanel({ city, focusCell }: { city: string; fo
   }, [city]);
 
   // With a focused hexagon, closest actions come first — the story's step 3.
+  // Clusters of near-identical recs (many detected sites in one cell sharing
+  // the same contribution/exposure) collapse into one card with a count —
+  // a worklist that repeats "44% · 15,000" five times reads as noise.
   const ordered = useMemo(() => {
     if (!rows) return null;
-    if (!focusCell) return rows;
-    return rows
+    const seen = new Map<string, Rec & { km?: number | null; similar?: number }>();
+    for (const r of rows) {
+      const key = `${r.h3_cell ?? "?"}|${Math.round(r.contribution * 100)}|${r.pop_exposed}`;
+      const kept = seen.get(key);
+      if (kept) kept.similar = (kept.similar ?? 0) + 1;
+      else seen.set(key, { ...r });
+    }
+    const collapsed = [...seen.values()];
+    if (!focusCell) return collapsed;
+    return collapsed
       .map((r) => ({ ...r, km: r.h3_cell ? cellKm(focusCell, r.h3_cell) : null }))
       .sort((a, b) => (a.km ?? 1e9) - (b.km ?? 1e9));
   }, [rows, focusCell]);
@@ -139,7 +150,7 @@ export default function EnforcementPanel({ city, focusCell }: { city: string; fo
         </div>
       ) : (
         <div className="mt-2 space-y-2">
-          {ordered.map((r: Rec & { km?: number | null }) => (
+          {ordered.map((r: Rec & { km?: number | null; similar?: number }) => (
             <div
               key={r.id}
               className={`rounded-lg border p-2.5 transition-colors ${
@@ -160,7 +171,15 @@ export default function EnforcementPanel({ city, focusCell }: { city: string; fo
               </div>
               <div className="mt-1 text-xs leading-5 text-gray-700">{cleanRationale(r.rationale)}</div>
               <div className="mt-1 text-xs text-gray-500">
-                {Math.round(r.contribution * 100)}% contribution · {r.pop_exposed.toLocaleString()} exposed
+                {Math.round(r.contribution * 100)}% contribution · {(r.pop_exposed ?? 0).toLocaleString()} exposed
+                {(r.similar ?? 0) > 0 && (
+                  <span
+                    className="ml-1.5 rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-600"
+                    title="Other detected sites in this same cell with matching contribution/exposure — one inspection visit covers the cluster"
+                  >
+                    +{r.similar} similar site{r.similar! > 1 ? "s" : ""} here
+                  </span>
+                )}
               </div>
               <div className="mt-2 flex gap-2">
                 <button
