@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
 import { MapboxOverlay } from "@deck.gl/mapbox";
 import { H3HexagonLayer } from "@deck.gl/geo-layers";
-import { ScatterplotLayer } from "@deck.gl/layers";
+import { GeoJsonLayer, PolygonLayer, ScatterplotLayer } from "@deck.gl/layers";
 import { api } from "./api";
 import { colorFor, dominantSource, pm25Color, satColor, type Shares } from "./sources";
 
@@ -30,6 +30,41 @@ function normalizeSources(rows: RawSource[]): EmissionSource[] {
   return rows
     .map((s) => ({ ...s, coordinates: s.coordinates ?? s.geom?.coordinates }))
     .filter((s): s is EmissionSource => Array.isArray(s.coordinates) && s.coordinates.length === 2);
+}
+
+// Wind-oriented Gaussian plume footprints from /plume (relative intensity —
+// source category x detection confidence; the API says so in its `note`).
+export type Plume = {
+  id: number | string;
+  name: string;
+  type: string;
+  intensity: number;
+  origin: [number, number];
+  polygon: [number, number][];
+};
+
+export type PlumeWind = {
+  speed_ms: number;
+  bearing_deg: number;
+  calm: boolean;
+  stability: string;
+};
+
+type PlumeData = { wind: PlumeWind | null; plumes: Plume[]; reach_m?: number; note?: string };
+
+// Ward boundary GeoJSON (web/public/wards/{city}.geojson — datameet, ODbL).
+type WardFeature = { properties: { ward_id: string; name: string } };
+type WardCollection = { type: "FeatureCollection"; features: WardFeature[] };
+
+// Freight corridors (web/public/corridors/{city}.geojson — real OSM
+// motorway/trunk ways; policy = the city's real truck-hours rule).
+type FreightFeature = { properties: { name: string; highway?: string; policy?: string } };
+type FreightCollection = { type: "FeatureCollection"; features: FreightFeature[] };
+
+const COMPASS = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"];
+
+function compass(bearingDeg: number): string {
+  return COMPASS[Math.round(((bearingDeg % 360) + 360) % 360 / 22.5) % 16];
 }
 
 // E2 dense-coverage cell: dense (downscaled ~1 km) + sparse (stations-only) PM2.5.
@@ -119,6 +154,9 @@ export default function BlameMap({
   onSelect,
   onCellsLoaded,
   showSources = false,
+  showPlumes = false,
+  showWards = false,
+  showFreight = false,
   coverageCells = [],
   coverageKind = "dense",
 }: {
@@ -129,6 +167,9 @@ export default function BlameMap({
   onSelect?: (cell: AttrCell | null) => void;
   onCellsLoaded?: (cells: AttrCell[]) => void;
   showSources?: boolean;
+  showPlumes?: boolean;
+  showWards?: boolean;
+  showFreight?: boolean;
   coverageCells?: CoverageCell[];
   coverageKind?: "stations" | "dense";
 }) {
@@ -137,6 +178,10 @@ export default function BlameMap({
   const overlayRef = useRef<MapboxOverlay | null>(null);
   const [cells, setCells] = useState<AttrCell[]>([]);
   const [sources, setSources] = useState<EmissionSource[]>([]);
+  const [plume, setPlume] = useState<PlumeData | null>(null);
+  const [wards, setWards] = useState<WardCollection | null>(null);
+  const [freight, setFreight] = useState<FreightCollection | null>(null);
+  const [phase, setPhase] = useState(0);
 
   const [mapError, setMapError] = useState(false);
 
@@ -163,19 +208,74 @@ export default function BlameMap({
   }, [center]);
 
   useEffect(() => {
+    let alive = true; // rapid city switches: a slow older fetch must not win
     api<AttrCell[]>(`/attribution?city=${city}`)
       .then((c) => {
+        if (!alive) return;
         setCells(c);
         onCellsLoaded?.(c);
       })
-      .catch(() => setCells([]));
+      .catch(() => alive && setCells([]));
+    return () => {
+      alive = false;
+    };
   }, [city]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
+    let alive = true;
     api<{ emission_sources?: RawSource[] }>(`/static-layers?city=${city}`)
-      .then((d) => setSources(normalizeSources(d.emission_sources ?? [])))
-      .catch(() => setSources([]));
+      .then((d) => alive && setSources(normalizeSources(d.emission_sources ?? [])))
+      .catch(() => alive && setSources([]));
+    return () => {
+      alive = false;
+    };
   }, [city]);
+
+  useEffect(() => {
+    if (!showPlumes) return;
+    let alive = true;
+    setPlume(null);
+    api<PlumeData>(`/plume?city=${city}`)
+      .then((d) => alive && setPlume(d))
+      .catch(() => alive && setPlume(null));
+    return () => {
+      alive = false;
+    };
+  }, [city, showPlumes]);
+
+  useEffect(() => {
+    if (!showWards) return;
+    let alive = true;
+    setWards(null);
+    // static asset from web/public — works offline and in DEMO_MODE
+    fetch(`/wards/${city}.geojson`)
+      .then((r) => (r.ok ? (r.json() as Promise<WardCollection>) : null))
+      .then((d) => alive && setWards(d))
+      .catch(() => alive && setWards(null));
+    return () => {
+      alive = false;
+    };
+  }, [city, showWards]);
+
+  useEffect(() => {
+    if (!showFreight) return;
+    let alive = true;
+    setFreight(null);
+    fetch(`/corridors/${city}.geojson`)
+      .then((r) => (r.ok ? (r.json() as Promise<FreightCollection>) : null))
+      .then((d) => alive && setFreight(d))
+      .catch(() => alive && setFreight(null));
+    return () => {
+      alive = false;
+    };
+  }, [city, showFreight]);
+
+  // Slow opacity pulse gives the plumes a "drifting" feel without particle cost.
+  useEffect(() => {
+    if (!showPlumes) return;
+    const t = setInterval(() => setPhase((p) => (p + 1) % 100000), 160);
+    return () => clearInterval(t);
+  }, [showPlumes]);
 
   useEffect(() => {
     const blame = new H3HexagonLayer<AttrCell>({
@@ -211,8 +311,54 @@ export default function BlameMap({
     type AnyLayer =
       | H3HexagonLayer<AttrCell>
       | H3HexagonLayer<CoverageCell>
-      | ScatterplotLayer<EmissionSource>;
+      | ScatterplotLayer<EmissionSource>
+      | PolygonLayer<Plume>
+      | GeoJsonLayer;
+    // (freight corridors reuse GeoJsonLayer)
     const layers: AnyLayer[] = [mode === "coverage" ? coverage : blame];
+    if (showWards && wards) {
+      layers.push(
+        new GeoJsonLayer({
+          id: "wards",
+          data: wards as unknown as import("geojson").FeatureCollection,
+          stroked: true,
+          filled: true,
+          getFillColor: [148, 163, 184, 8], // near-invisible tint keeps hover picking alive
+          getLineColor: [51, 65, 85, 160],
+          lineWidthMinPixels: 1,
+          pickable: true,
+        }),
+      );
+    }
+    if (showFreight && freight) {
+      layers.push(
+        new GeoJsonLayer({
+          id: "freight",
+          data: freight as unknown as import("geojson").FeatureCollection,
+          stroked: true,
+          filled: false,
+          getLineColor: [124, 58, 237, 190],
+          lineWidthMinPixels: 2,
+          pickable: true,
+        }),
+      );
+    }
+    if (showPlumes && plume?.plumes?.length) {
+      layers.push(
+        new PolygonLayer<Plume>({
+          id: "plumes",
+          data: plume.plumes,
+          getPolygon: (d) => d.polygon,
+          getFillColor: (d, { index }) => {
+            const pulse = 0.72 + 0.28 * Math.sin(phase / 4 + index * 0.9);
+            return [234, 88, 12, Math.min(210, Math.round(30 + 150 * d.intensity * pulse))];
+          },
+          stroked: false,
+          pickable: true,
+          updateTriggers: { getFillColor: phase },
+        }),
+      );
+    }
     if (showSources && sources.length) {
       layers.push(
         new ScatterplotLayer<EmissionSource>({
@@ -234,7 +380,7 @@ export default function BlameMap({
 
     overlayRef.current?.setProps({
       layers,
-      getTooltip: (info: { object?: AttrCell | CoverageCell | EmissionSource }) => {
+      getTooltip: (info: { object?: AttrCell | CoverageCell | EmissionSource | Plume | WardFeature }) => {
         const o = info?.object;
         if (!o) return null;
         if ("shares" in o) return tooltip(o, mode);
@@ -245,17 +391,50 @@ export default function BlameMap({
             style: { fontSize: "12px" },
           };
         }
+        if ("polygon" in o && "intensity" in o) {
+          const w = plume?.wind;
+          return {
+            html:
+              `<b>${o.name}</b><br/>${(o.type ?? "source").replace("_", " ")} plume · relative intensity ${Math.round(o.intensity * 100)}%` +
+              (w ? `<br/><span style="color:#888">wind ${w.speed_ms} m/s → ${compass(w.bearing_deg)} · Gaussian (Briggs urban)</span>` : ""),
+            style: { fontSize: "12px" },
+          };
+        }
+        if ("properties" in o) {
+          const p = o.properties as { ward_id?: string; name: string; highway?: string; policy?: string };
+          if (p.ward_id) {
+            return {
+              html: `<b>${p.name}</b><br/><span style="color:#888">ward ${p.ward_id}</span>`,
+              style: { fontSize: "12px" },
+            };
+          }
+          return {
+            html:
+              `<b>${p.name}</b><br/><span style="color:#888">diesel freight corridor (OSM ${p.highway ?? "trunk"})</span>` +
+              (p.policy ? `<br/><span style="color:#7c3aed">${p.policy}</span>` : ""),
+            style: { fontSize: "12px" },
+          };
+        }
         return {
           html: `<b>${o.name}</b><br/>${o.type.replace("_", " ")} · ${Math.round((o.detection_confidence ?? 0) * 100)}% · ${o.source_origin ?? "registry"}`,
           style: { fontSize: "12px" },
         };
       },
     });
-  }, [cells, mode, selected, onSelect, showSources, sources, coverageCells, coverageKind]);
+  }, [cells, mode, selected, onSelect, showSources, sources, coverageCells, coverageKind, showPlumes, plume, showWards, wards, showFreight, freight, phase]);
 
   return (
     <div className="relative h-full w-full">
       <div ref={containerRef} className="h-full w-full" />
+      {showPlumes && plume?.wind && (
+        <div className="absolute bottom-2 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5 whitespace-nowrap rounded-md border border-slate-200 bg-white/95 px-2.5 py-1.5 text-[11px] font-medium text-slate-700 shadow">
+          <span aria-hidden="true" className="inline-block text-orange-600" style={{ transform: `rotate(${plume.wind.bearing_deg}deg)` }}>
+            ↑
+          </span>
+          wind {plume.wind.speed_ms} m/s → {compass(plume.wind.bearing_deg)}
+          {plume.wind.calm ? " · calm, pollution pooling" : ""} · stability {plume.wind.stability}
+        </div>
+      )}
       {mapError && (
         <div className="absolute inset-0 flex items-center justify-center bg-slate-100 p-6 text-center text-sm text-slate-500">
           Map view unavailable on this device — the analysis panels still work.

@@ -6,3 +6,31 @@ html, body, #root {
   height: 100%;
   margin: 0;
 }
+
+/* Shell animations — subtle, 150-250ms, GPU-friendly transforms only. */
+@keyframes vn-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes vn-slide-in-right {
+  from { opacity: 0; transform: translateX(16px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes vn-slide-in-left {
+  from { opacity: 0; transform: translateX(-16px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes vn-pop {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+.vn-fade-in { animation: vn-fade-in 200ms ease-out both; }
+.vn-slide-in-right { animation: vn-slide-in-right 220ms ease-out both; }
+.vn-slide-in-left { animation: vn-slide-in-left 220ms ease-out both; }
+.vn-pop { animation: vn-pop 180ms ease-out both; }
+
+/* Slim scrollbars inside the console panels (WebKit + Firefox). */
+.vn-scroll { scrollbar-width: thin; scrollbar-color: rgb(148 163 184 / 0.5) transparent; }
+.vn-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+.vn-scroll::-webkit-scrollbar-thumb { background: rgb(148 163 184 / 0.5); border-radius: 3px; }
+.vn-scroll::-webkit-scrollbar-track { background: transparent; }

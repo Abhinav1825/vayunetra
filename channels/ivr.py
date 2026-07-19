@@ -1,10 +1,11 @@
 """IVR / public-display scripts for Agent 4 advisories.
 
-Places a real Twilio voice call that reads an advisory in a clear Indian-English
-neural voice, slowed slightly and repeated once for intelligibility over a phone
-line. (The legacy 'alice' voice was robotic and the old "press 1/2" menu never
-collected input — a working keypad needs a hosted TwiML webhook, so it's dropped
-here in favour of a clear, self-contained message.)
+Two directions, one voice:
+- Outbound: place a real Twilio call that reads an advisory in a clear
+  Indian-English neural voice, slowed slightly and repeated once.
+- Inbound: TwiML builders for the hosted webhook (`/ivr/inbound` on the API) —
+  callers dial our Twilio number, pick a city on the keypad, and hear that
+  city's latest advisory. Point the Twilio number's Voice webhook at the API.
 """
 from __future__ import annotations
 
@@ -28,11 +29,12 @@ def render_ivr_script(advisory: dict) -> str:
     )
 
 
-def render_twiml(advisory: dict) -> str:
+def render_twiml(advisory: dict, city_name: str | None = None) -> str:
     """TwiML for a slowed, repeated, clearly-spoken advisory call."""
     msg = html.escape(str(advisory.get("message", "")).strip())
+    intro = f"Here is the latest advisory for {html.escape(city_name)}. " if city_name else ""
     body = (
-        f"This is an air quality alert from {BRAND}. "
+        f"{intro}This is an air quality alert from {BRAND}. "
         f'<break time="600ms"/> {msg} '
         f'<break time="800ms"/> I will now repeat this alert. '
         f'<break time="400ms"/> {msg} '
@@ -43,6 +45,56 @@ def render_twiml(advisory: dict) -> str:
         '<Pause length="1"/>'
         f'<Say voice="{IVR_VOICE}" language="{IVR_LANG}">'
         f'<prosody rate="90%">{body}</prosody></Say>'
+        "</Response>"
+    )
+
+
+# Inbound keypad menu: digit → (city_id, spoken name). Kept in the channel layer
+# so the API and any future channel share one source of truth.
+IVR_CITY_MENU = {
+    "1": ("delhi", "Delhi"),
+    "2": ("bengaluru", "Bengaluru"),
+    "3": ("mumbai", "Mumbai"),
+}
+
+
+def render_welcome_twiml(action_url: str) -> str:
+    """TwiML greeting for inbound callers: gather one digit to pick a city.
+
+    No input → redirect to the action URL with Delhi as the default, so every
+    caller always hears an advisory. Twilio resolves relative action URLs
+    against the webhook URL, so a bare path like `/ivr/advisory` works.
+    """
+    menu = " ".join(
+        f"Press {digit} for {name}." for digit, (_, name) in sorted(IVR_CITY_MENU.items())
+    )
+    action = html.escape(action_url)
+    return (
+        "<Response>"
+        '<Pause length="1"/>'
+        f'<Gather action="{action}" method="POST" numDigits="1" timeout="7">'
+        f'<Say voice="{IVR_VOICE}" language="{IVR_LANG}"><prosody rate="90%">'
+        f"Welcome to {BRAND}, your city's air quality intelligence line. "
+        f'<break time="400ms"/> {menu}'
+        "</prosody></Say>"
+        "</Gather>"
+        f'<Say voice="{IVR_VOICE}" language="{IVR_LANG}">'
+        "No input received. Playing the Delhi advisory.</Say>"
+        f'<Redirect method="POST">{action}?Digits=1</Redirect>'
+        "</Response>"
+    )
+
+
+def render_unavailable_twiml(city_name: str) -> str:
+    """Honest fallback when no advisory exists for the chosen city."""
+    safe = html.escape(city_name)
+    return (
+        "<Response>"
+        f'<Say voice="{IVR_VOICE}" language="{IVR_LANG}"><prosody rate="90%">'
+        f"There is no active air quality advisory for {safe} right now. "
+        "Conditions are being monitored around the clock, and alerts are issued "
+        "the moment a risk is forecast. Stay safe. Goodbye."
+        "</prosody></Say>"
         "</Response>"
     )
 

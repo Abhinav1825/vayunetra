@@ -13,6 +13,7 @@ type CityCard = {
   dominant_source: string;
   signature_match: string;
   playbook: string[];
+  compliance?: { total: number; proposed: number; approved: number; dispatched: number; dismissed: number };
   health?: {
     annual_pm25: number;
     attributable_deaths_per_year: number;
@@ -47,7 +48,7 @@ export default function ComparativePanel({ onSelectCity }: { onSelectCity: (city
   }));
 
   return (
-    <Panel title="Multi-City Compare" tag="A5">
+    <Panel title="Multi-City Compare">
       {failed && !data ? (
         <EmptyState message="Couldn't load the multi-city comparison." tone="error" onRetry={load} />
       ) : (
@@ -115,6 +116,15 @@ export default function ComparativePanel({ onSelectCity }: { onSelectCity: (city
               </div>
             )}
             <div className="mt-1.5 text-xs text-gray-600">→ {c.playbook[0]}</div>
+            {c.compliance && c.compliance.total > 0 && (
+              <div className="mt-1.5 border-t border-slate-100 pt-1.5 text-[11px] text-gray-500">
+                <span className="font-medium text-gray-600">Compliance:</span> {c.compliance.total} recommendations
+                {c.compliance.approved > 0 && <> · {c.compliance.approved} approved</>}
+                {c.compliance.dispatched > 0 && <> · {c.compliance.dispatched} dispatched</>}
+                {c.compliance.dismissed > 0 && <> · {c.compliance.dismissed} dismissed</>}
+                {c.compliance.proposed === c.compliance.total && <> — all awaiting officer review</>}
+              </div>
+            )}
           </button>
         ))}
       </div>

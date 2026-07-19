@@ -73,13 +73,25 @@ export default function CitizenPanel({ city, languages }: { city: string; langua
     setTimeout(() => setBcast("idle"), 8000);
   }
 
-  const visible = (rows ?? []).filter((r) => r.channel === channel);
-  const channels = Array.from(new Set((rows ?? []).map((r) => r.channel)));
+  // One advisory per zone (rows repeat per delivery channel with the same
+  // text) — the chips below switch the CHANNEL PREVIEW, i.e. how the same
+  // advisory actually looks on the app, in Telegram, over IVR, on a display.
+  const seen = new Set<string>();
+  const items = (rows ?? []).filter((r) => {
+    if (seen.has(r.ward_id)) return false;
+    seen.add(r.ward_id);
+    return true;
+  });
+  const CHANNELS: Array<[string, string]> = [
+    ["pwa", "App"],
+    ["telegram", "Telegram"],
+    ["ivr", "IVR call"],
+    ["display", "Big screen"],
+  ];
 
   return (
     <Panel
       title="Citizen Advisory"
-      tag="A4"
       right={
         <select
           className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-medium text-slate-700"
@@ -95,12 +107,13 @@ export default function CitizenPanel({ city, languages }: { city: string; langua
       }
     >
       <div className="flex flex-wrap gap-1">
-        {(channels.length ? channels : ["pwa", "telegram", "ivr", "display"]).map((c) => (
+        {CHANNELS.map(([c, label]) => (
           <SegBtn key={c} active={channel === c} onClick={() => setChannel(c)}>
-            {c}
+            {label}
           </SegBtn>
         ))}
       </div>
+      <div className="mt-1 text-[10px] text-gray-400">how the same advisory reaches citizens on each channel</div>
 
       {rows === null ? (
         <div className="mt-3 space-y-2">
@@ -108,10 +121,12 @@ export default function CitizenPanel({ city, languages }: { city: string; langua
             <div key={i} className="h-14 animate-pulse rounded-md bg-gray-100" />
           ))}
         </div>
-      ) : (
+      ) : items.length === 0 ? (
+        <div className="mt-3 text-xs text-gray-500">No advisory in this language yet</div>
+      ) : channel === "pwa" ? (
         <div className="mt-3 space-y-2">
-          {visible.map((a, idx) => (
-            <div key={`${a.ward_id}-${a.channel}-${idx}`} className="rounded-md border border-gray-200 p-2">
+          {items.map((a) => (
+            <div key={a.ward_id} className="rounded-md border border-gray-200 p-2">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-medium">{a.ward_id}</span>
                 <span className="rounded bg-amber-100 px-1.5 py-0.5 text-amber-800">{a.risk_tier.replace("_", " ")}</span>
@@ -119,7 +134,61 @@ export default function CitizenPanel({ city, languages }: { city: string; langua
               <div className="mt-1 text-xs leading-5 text-gray-700">{a.message}</div>
             </div>
           ))}
-          {visible.length === 0 && <div className="text-xs text-gray-500">No advisory in this language/channel yet</div>}
+        </div>
+      ) : channel === "telegram" ? (
+        <div className="mt-3">
+          {/* Telegram chat mock: bot bubbles, real message text */}
+          <div className="rounded-lg bg-[#8ab4d8]/20 p-2.5">
+            <div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold text-slate-700">
+              <img src="/icon-192.png" alt="" className="h-4 w-4 rounded-full" width={16} height={16} />
+              VayuNetra Bot
+            </div>
+            {items.slice(0, 3).map((a) => (
+              <div key={a.ward_id} className="mb-1.5 max-w-[95%] rounded-xl rounded-tl-sm bg-white p-2 text-xs leading-5 text-slate-800 shadow-sm">
+                <b>⚠ {a.ward_id}</b> · {a.risk_tier.replace("_", " ")}
+                <br />
+                {a.message}
+              </div>
+            ))}
+          </div>
+          <div className="mt-2 flex items-center gap-2 rounded-md border border-gray-200 p-2">
+            <img src="/qr-telegram.svg" alt="QR — open the VayuNetra Telegram bot" className="h-14 w-14" width={56} height={56} />
+            <div className="text-[11px] leading-4 text-gray-600">
+              Live two-way bot: <b>/start</b> → pick a city → auto-receive advisories. Scan to subscribe on your own phone.
+            </div>
+          </div>
+        </div>
+      ) : channel === "ivr" ? (
+        <div className="mt-3 space-y-2">
+          {/* What a caller actually hears (mirrors channels/ivr.py wording) */}
+          <div className="rounded-md border border-gray-200 p-2.5">
+            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-700">📞 What callers hear</div>
+            <p className="mt-1 text-xs italic leading-5 text-gray-600">
+              "This is an air quality alert from Vayu Netra. {items[0].message} I will now repeat this alert… Stay safe, and
+              limit outdoor exposure. Goodbye."
+            </p>
+          </div>
+          <div className="rounded-md bg-slate-50 p-2 text-[11px] leading-4 text-gray-600">
+            Citizens can also <b>call in</b>: the line answers with a city menu — press 1 Delhi · 2 Bengaluru · 3 Mumbai — and
+            reads that city's latest advisory in a clear Indian-English voice.
+          </div>
+        </div>
+      ) : (
+        <div className="mt-3 space-y-2">
+          {/* Public display board mode: big type, high contrast */}
+          {items.slice(0, 2).map((a) => (
+            <div key={a.ward_id} className="rounded-lg bg-[#1b294a] p-3 text-white">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-widest text-emerald-300">Air quality advisory</span>
+                <span className="rounded bg-amber-400 px-1.5 py-0.5 text-[11px] font-bold text-slate-900">
+                  {a.risk_tier.replace("_", " ").toUpperCase()}
+                </span>
+              </div>
+              <div className="mt-1 text-[15px] font-extrabold leading-6">{a.ward_id.toUpperCase()}</div>
+              <div className="mt-0.5 text-[13px] leading-5 text-slate-200">{a.message}</div>
+            </div>
+          ))}
+          <div className="text-[10px] text-gray-400">public display / big-screen board rendering</div>
         </div>
       )}
 

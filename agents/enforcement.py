@@ -17,7 +17,7 @@ import json
 import os
 import re
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -523,7 +523,7 @@ def build_dossier(rec_id: int, city_id: str = "delhi") -> dict:
             "status": rec.get("status", "proposed"),
             "citations": full_citations,
             "satellite_patch": satellite_patch,
-            "suggested_notice_text": _build_notice_text(rec, full_citations, satellite_patch),
+            "suggested_notice_text": _build_notice_text(rec, full_citations, satellite_patch, demo_source),
             "generated_at": datetime.now(timezone.utc).isoformat(),
         }
 
@@ -545,8 +545,11 @@ def build_dossier(rec_id: int, city_id: str = "delhi") -> dict:
             .data
         )
         source = src_rows[0] if src_rows else None
-    source_category = "construction_dust"  # TODO: derive from source registry join
-    chunks = retrieve_for_enforcement(source_category, city_id, top_k=5)
+    _CATEGORY = {"construction": "construction_dust", "industry": "industrial",
+                 "power": "industrial", "waste_burn": "biomass_burning"}
+    source_category = _CATEGORY.get(str((source or {}).get("type") or ""), "construction_dust")
+    # cite for the rec's actual city, not the caller's default
+    chunks = retrieve_for_enforcement(source_category, rec["city_id"], top_k=5)
     full_citations = [c.as_citation() for c in chunks]
     # Live dossiers may only show REAL ingested image evidence — never a
     # generated placeholder dressed up as satellite imagery.
@@ -561,7 +564,7 @@ def build_dossier(rec_id: int, city_id: str = "delhi") -> dict:
         "status": rec.get("status", "proposed"),
         "citations": full_citations,
         "satellite_patch": satellite_patch,
-        "suggested_notice_text": _build_notice_text(rec, full_citations, satellite_patch),
+        "suggested_notice_text": _build_notice_text(rec, full_citations, satellite_patch, source),
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }
 
@@ -580,53 +583,137 @@ class _NoRows:
         return type("_Resp", (), {"data": []})()
 
 
-def _build_notice_text(rec: dict, citations: list[dict], satellite_patch: dict | None = None) -> str:
+_TYPE_LABEL = {
+    "construction": "construction dust",
+    "industry": "industrial emissions",
+    "power": "industrial emissions",
+    "waste_burn": "open waste burning",
+    "brick_kiln": "brick-kiln emissions",
+}
+
+
+def _clean_provision_quote(excerpt: str, max_len: int = 220) -> str:
+    """First quotable sentence of a kb excerpt — or nothing.
+
+    kb chunks carry markdown separators (`====`), list markers and mid-section
+    fragments; a garbled quote on an officer notice is worse than no quote, so
+    only a clean, capitalised sentence of reasonable length gets through.
+    """
+    text = re.sub(r"[=_*#]{2,}", " ", excerpt)
+    text = re.sub(r"\s+", " ", text).strip()
+    for part in re.split(r"(?<=[.;])\s+", text):
+        part = part.strip(" -••")
+        if not (40 <= len(part) <= max_len and part[0].isupper()):
+            continue
+        if "|" in part:  # table debris
+            continue
+        letters = [c for c in part if c.isalpha()]
+        if letters and sum(c.isupper() for c in letters) / len(letters) > 0.4:
+            continue  # SHOUTING section header, not a provision
+        return part.rstrip(".;") + "."
+    return ""
+
+
+def _build_notice_text(
+    rec: dict,
+    citations: list[dict],
+    satellite_patch: dict | None = None,
+    source: dict | None = None,
+) -> str:
     """Generate a draft enforcement notice.
 
     Structured as `TITLE`, `Label: value` metadata, then `HEADING:`-delimited
     sections — a format the PDF renderer (agents.notice_pdf) styles into a
-    professional document, and which also reads cleanly as plain text.
+    professional document, and which also reads cleanly as plain text. The
+    `[[SATELLITE_IMAGE]]` marker is where the renderer embeds the actual
+    Sentinel-2 patch (never the raw data URI — that is not notice content).
     """
     pct = round((rec.get("contribution", 0) * 100), 1)
     pop = rec.get("pop_exposed", 0)
+    cell = rec.get("h3_cell", "n/a")
+    city = str(rec.get("city_id", "")).title() or "the city"
     rationale = rec.get("rationale", "Pollution violation detected.")
-    rules = [c.get("rule", "") for c in citations[:3] if c.get("rule")]
-    reg = "\n".join(f"- {r}" for r in rules) or "- As per applicable CPCB / GRAP dust-control norms."
+
+    # Addressee — a notice is served on someone, not on the void.
+    src_name = (source or {}).get("name") or ""
+    src_type = str((source or {}).get("type") or "")
+    type_label = _TYPE_LABEL.get(src_type, "")
+    to_line = (
+        f"The Occupier / Site Manager, {src_name}, {city} (grid cell {cell})"
+        if src_name
+        else f"The Occupier / Site Manager of the identified premises, {city} (grid cell {cell})"
+    )
+    subject = "Non-compliance with air pollution control norms" + (
+        f" - {type_label}" if type_label else ""
+    )
+
+    # Citations: dedupe + de-SHOUT registry titles; quote the leading provision
+    # so the notice cites substance, not just a document name.
+    rules = _pretty_rules([c.get("rule", "") for c in citations], limit=3)
+    reg_lines = [f"- {r}" for r in rules] or ["- As per applicable CPCB / GRAP dust-control norms."]
+    quote = _clean_provision_quote(next((c.get("excerpt") or "" for c in citations if c.get("excerpt")), ""))
+    if quote:
+        reg_lines.append(f'Relevant provision (extract): "{quote}"')
+    reg = "\n".join(reg_lines)
+
     visual = ""
     if satellite_patch:
         meta = satellite_patch.get("metadata") or {}
+        conf = meta.get("detection_confidence")
+        conf_str = f"{round(float(conf) * 100)}% detection confidence" if isinstance(conf, (int, float)) else ""
+        title = satellite_patch.get("title", "satellite image patch")
         visual = (
             "\n"
             "SATELLITE EVIDENCE:\n"
-            f"Sentinel-2 patch: {satellite_patch.get('title', 'visual evidence')}\n"
-            f"Detection confidence: {meta.get('detection_confidence', 'n/a')}\n"
-            f"Image reference: {satellite_patch.get('image_ref', '')}\n"
+            f"{title}" + (f" ({conf_str})" if conf_str else "") + "\n"
+            "[[SATELLITE_IMAGE]]\n"
+            "The image above forms part of the digital evidence dossier for this "
+            "recommendation and is available in the VayuNetra console.\n"
         )
+
     ref = f"VN-ENF-{str(rec.get('id', '0000')).zfill(4)}"
-    date = datetime.now(timezone.utc).strftime("%d %B %Y")
+    now = datetime.now(timezone.utc)
+    date = now.strftime("%d %B %Y")
+    ist = timezone(timedelta(hours=5, minutes=30))
+    deadline = (now + timedelta(hours=24)).astimezone(ist).strftime("%d %B %Y, %H:%M IST")
+
     return (
         "ENFORCEMENT NOTICE\n"
         f"Reference: {ref}\n"
         f"Date: {date}\n"
-        "Issuing Authority: VayuNetra AI Enforcement System\n"
+        "Status: DRAFT - pending officer authorisation\n"
+        "Prepared by: VayuNetra decision-support system\n"
+        "\n"
+        "TO:\n"
+        f"{to_line}\n"
         "\n"
         "SUBJECT:\n"
-        "Non-compliance with Air Pollution Control Norms\n"
+        f"{subject}\n"
         "\n"
         "FINDINGS:\n"
         f"{rationale}\n"
         "\n"
-        "IMPACT:\n"
-        f"Estimated {pop:,} persons exposed. The identified source contributes "
-        f"approximately {pct}% of local PM2.5 concentration.\n"
+        "EXPOSURE ASSESSMENT:\n"
+        f"An estimated {pop:,} residents live within the affected ~1 sq. km grid cell "
+        f"({cell}). VayuNetra source attribution assigns approximately {pct}% of the "
+        "local PM2.5 concentration to this source (GPW v4 population x model attribution).\n"
         "\n"
         "APPLICABLE REGULATIONS:\n"
         f"{reg}\n"
         f"{visual}"
         "\n"
         "REQUIRED ACTION:\n"
-        "Immediate site inspection and compliance within 24 hours. Non-compliance "
-        "will result in penalties and/or site sealing as per applicable law.\n"
+        "The occupier shall undertake immediate corrective measures and demonstrate "
+        f"compliance by {deadline} (24 hours from issue). Continued non-compliance "
+        "may attract penalties and/or site sealing under the applicable provisions.\n"
+        "\n"
+        "REPRESENTATION:\n"
+        "A written representation, with supporting documents, may be submitted to the "
+        "authorising officer within the compliance window.\n"
+        "\n"
+        "AUTHORISATION:\n"
+        "Name: ______________________________  Designation: ______________________________\n"
+        "Signature: ______________________________  Date: ______________________________\n"
         "\n"
         "This is a system-generated draft for officer review before issuance."
     )
