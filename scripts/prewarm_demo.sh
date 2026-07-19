@@ -32,6 +32,9 @@ ENDPOINTS=(
   "/latency?city=delhi"
   "/traces?city=delhi&limit=1"
   "/roi?city=delhi"
+  "/clean-zones?city=delhi&top=4"
+  "/plume?city=delhi"
+  "/static-layers?city=delhi"
 )
 
 fail=0
@@ -54,6 +57,15 @@ for e in "${ENDPOINTS[@]}"; do
   [ "$okflag" = "FAIL" ] && fail=$((fail+1))
   printf "   %-4s %-40s %ss\n" "$okflag" "$e" "$t"
 done
+
+echo
+echo "== inbound IVR (TwiML, no auth — what Twilio's webhook sees) =="
+ivr=$(curl -s -m 30 -w "|%{http_code}" "$API/ivr/inbound")
+if [[ "$ivr" == *"<Gather"* && "$ivr" == *"|200" ]]; then
+  echo "   PASS /ivr/inbound (TwiML city menu)"
+else
+  echo "   FAIL /ivr/inbound"; fail=$((fail+1))
+fi
 
 echo
 echo "== worklist + dossier + satellite patch (the demo money-shot) =="

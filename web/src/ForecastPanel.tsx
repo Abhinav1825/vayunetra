@@ -69,7 +69,7 @@ export default function ForecastPanel({ city }: { city: string }) {
   return (
     <Panel
       title="Forecast"
-      tag="PM2.5 · A2"
+      tag="PM2.5"
       right={
         <div className="flex gap-1">
           {HORIZONS.map((h) => (

@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
 import BlameMap, { type AttrCell, type CoverageCell, type MapMode } from "./BlameMap";
 import ForecastPanel from "./ForecastPanel";
-import { SOURCE_COLORS, PM25_LEGEND } from "./sources";
 import { api } from "./api";
 import AqiHeader from "./AqiHeader";
 import CellStoryPanel from "./CellStoryPanel";
@@ -15,21 +14,16 @@ import TraceViewer from "./TraceViewer";
 import WhatIfPanel from "./WhatIfPanel";
 import RoiPanel from "./RoiPanel";
 import FairnessPanel from "./FairnessPanel";
-import { Panel, SegBtn } from "./ui";
+import CityStatsPanel from "./CityStatsPanel";
+import InterventionsPanel from "./InterventionsPanel";
+import LayersControl from "./LayersControl";
+import { Sidebar, BottomNav, type Section } from "./Sidebar";
+import TopBar from "./TopBar";
+import Tour, { tourSeen } from "./Tour";
 
 type LngLat = [number, number];
 type GeoPoint = { coordinates: [number, number] };
 type City = { city_id: string; name: string; center?: LngLat | GeoPoint; languages?: string[] };
-type Tab = "action" | "citizen" | "compare" | "whatif" | "impact";
-
-const TABS: Tab[] = ["action", "citizen", "compare", "whatif", "impact"];
-const TAB_LABEL: Record<Tab, string> = {
-  action: "Action",
-  citizen: "Citizen",
-  compare: "Compare",
-  whatif: "What-if",
-  impact: "ROI",
-};
 
 const DELHI: LngLat = [77.21, 28.61];
 
@@ -58,9 +52,14 @@ export default function App() {
   const [active, setActive] = useState(storedCity);
   const [mode, setMode] = useState<MapMode>("blame");
   const [showSources, setShowSources] = useState(false);
-  const [tab, setTab] = useState<Tab>("action");
+  const [showPlumes, setShowPlumes] = useState(false);
+  const [showWards, setShowWards] = useState(false);
+  const [showFreight, setShowFreight] = useState(false);
+  const [section, setSection] = useState<Section>("action");
   const [cell, setCell] = useState<AttrCell | null>(null);
+  const [attrCells, setAttrCells] = useState<AttrCell[]>([]);
   const [fallback, setFallback] = useState(false);
+  const [tour, setTour] = useState(() => !tourSeen());
   const [coverageKind, setCoverageKind] = useState<"stations" | "dense">("dense");
   const [coverage, setCoverage] = useState<{
     cells: CoverageCell[];
@@ -113,6 +112,7 @@ export default function App() {
 
   useEffect(() => {
     setCell(null); // clear story on city switch
+    setAttrCells([]); // stats panel must not show the previous city's mix
     openedRef.current = false; // allow one auto-open for the new city
   }, [active]);
 
@@ -137,191 +137,149 @@ export default function App() {
   }
 
   useEffect(() => {
+    let alive = true; // rapid city switches: a slow older fetch must not win
     api<typeof coverage>(`/coverage?city=${active}`)
-      .then(setCoverage)
-      .catch(() => setCoverage(null));
+      .then((d) => alive && setCoverage(d))
+      .catch(() => alive && setCoverage(null));
+    return () => {
+      alive = false;
+    };
   }, [active]);
 
   const city = cities.find((c) => c.city_id === active);
   const center = toLngLat(city?.center);
 
   return (
-    <div className="relative h-full w-full overflow-y-auto bg-slate-100 lg:overflow-hidden">
-      {/* Map — in-flow on mobile, full-bleed on desktop */}
-      <div className="relative z-0 h-[46vh] w-full lg:absolute lg:inset-0 lg:h-full">
-        <BlameMap
-          city={active}
-          center={center}
-          mode={mode}
-          selected={cell?.h3_cell}
-          onSelect={handleSelect}
-          onCellsLoaded={autoOpenBest}
-          showSources={showSources}
-          coverageCells={coverage?.cells ?? []}
-          coverageKind={coverageKind}
-        />
+    <div className="flex h-full w-full flex-col bg-slate-100">
+      <TopBar cities={cities} active={active} onCity={setActive} section={section} onReplayTour={() => setTour(true)} />
 
-        {/* Header overlays the map on all breakpoints */}
-        <div className="absolute left-2 right-2 top-2 z-10 flex flex-wrap items-start justify-between gap-2 lg:left-4 lg:right-4 lg:top-4">
-          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200/80 bg-white/95 p-2 shadow-lg shadow-slate-900/5 backdrop-blur">
-            <a
-              href="#/"
-              title="Back to landing page"
-              aria-label="Back to landing page"
-              className="flex h-7 w-7 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
-                <path d="M19 12H5m6-6l-6 6 6 6" />
-              </svg>
-            </a>
-            <a href="#/" className="flex items-center gap-1.5 pr-1.5 text-sm font-extrabold tracking-tight text-slate-800">
-              <span className="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-sky-500 to-blue-700 text-[13px] font-black text-white shadow-sm">
-                V
-              </span>
-              VayuNetra
-            </a>
-            <select
-              className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
-              value={active}
-              onChange={(e) => setActive(e.target.value)}
-            >
-              {cities.length === 0 && <option value="delhi">Delhi</option>}
-              {cities.map((c) => (
-                <option key={c.city_id} value={c.city_id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-            <div className="flex rounded-lg bg-slate-100 p-0.5">
-              {TABS.map((t) => (
-                <button
-                  key={t}
-                  onClick={() => setTab(t)}
-                  className={`rounded-md px-3 py-1 text-sm font-medium transition-colors ${
-                    tab === t ? "bg-blue-600 text-white shadow-sm" : "text-slate-600 hover:bg-slate-200"
-                  }`}
-                >
-                  {TAB_LABEL[t]}
-                </button>
-              ))}
+      <div className="flex min-h-0 flex-1">
+        <Sidebar active={section} onSelect={setSection} />
+
+        <main className="relative min-h-0 flex-1 overflow-y-auto pb-[calc(4.5rem+env(safe-area-inset-bottom))] lg:overflow-hidden lg:pb-0">
+          {/* Map — in-flow on mobile, full-bleed behind panels on desktop */}
+          <div data-tour="map" className="relative z-0 h-[42vh] w-full lg:absolute lg:inset-0 lg:h-full">
+            <BlameMap
+              city={active}
+              center={center}
+              mode={mode}
+              selected={cell?.h3_cell}
+              onSelect={handleSelect}
+              onCellsLoaded={(c) => {
+                setAttrCells(c);
+                autoOpenBest(c);
+              }}
+              showSources={showSources}
+              showPlumes={showPlumes}
+              showWards={showWards}
+              showFreight={showFreight}
+              coverageCells={coverage?.cells ?? []}
+              coverageKind={coverageKind}
+            />
+
+            {/* Live status — top-left so the section panel owns the right edge */}
+            <div className="absolute left-2 top-2 z-10 flex flex-wrap items-start gap-2 lg:left-4 lg:top-3">
+              <AqiHeader city={active} />
+              <LatencyWidget city={active} />
             </div>
-          </div>
-          <div className="flex flex-wrap items-start gap-2">
-            <AqiHeader city={active} />
-            <LatencyWidget city={active} />
-          </div>
-        </div>
 
-        {fallback && (
-          <div className="absolute inset-x-2 top-20 z-10 mx-auto max-w-md rounded-md bg-amber-100 px-3 py-1.5 text-center text-xs text-amber-900 shadow lg:top-24">
-            ⚠ backend waking up — showing bundled demo snapshot.{" "}
-            <button className="underline" onClick={() => window.location.reload()}>
-              retry
-            </button>
-            <button aria-label="Dismiss notice" className="ml-2 text-amber-500" onClick={() => setFallback(false)}>
-              ✕
-            </button>
-          </div>
-        )}
-
-        <div className="absolute bottom-1 right-2 z-10 text-[11px] text-gray-500 lg:hidden">scroll for panels ↓</div>
-      </div>
-
-      {/* Left rail (desktop) / first stack (mobile) */}
-      <div className="relative z-10 space-y-3 p-3 lg:absolute lg:bottom-4 lg:left-4 lg:top-24 lg:w-72 lg:overflow-auto lg:p-0 lg:pr-1">
-        {cell && (
-          <CellStoryPanel
-            city={active}
-            cell={cell}
-            onClose={() => setCell(null)}
-            onAct={() => setTab("action")} // keep the cell focused — enforcement sorts by it
-          />
-        )}
-        <Panel title="Map Layers">
-          <div className="flex gap-1">
-            {(["blame", "satellite", "coverage"] as MapMode[]).map((m) => (
-              <SegBtn key={m} active={mode === m} onClick={() => setMode(m)} className="flex-1">
-                {m === "blame" ? "Sources" : m === "satellite" ? "Sat NO2" : "PM2.5"}
-              </SegBtn>
-            ))}
-          </div>
-
-          {/* Independent overlay (not part of the blame/satellite radio) */}
-          <button
-            onClick={() => setShowSources((v) => !v)}
-            className={`mt-2 flex w-full items-center justify-between rounded-md px-2 py-1 text-xs font-medium transition-colors ${
-              showSources ? "bg-slate-800 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-            }`}
-          >
-            <span className="flex items-center gap-1.5">
-              <span className="inline-block h-2.5 w-2.5 rounded-full border border-white bg-slate-900" />
-              Detected sources
-            </span>
-            <span>{showSources ? "on" : "off"}</span>
-          </button>
-
-          {mode === "blame" && (
-            <div className="mt-3 space-y-1 text-xs">
-              {Object.entries(SOURCE_COLORS).map(([k, [r, g, b]]) => (
-                <div key={k} className="flex items-center gap-2">
-                  <span className="inline-block h-3 w-3 rounded" style={{ background: `rgb(${r},${g},${b})` }} />
-                  <span>{k.replace("_", " ")}</span>
+            {/* Cell story — slide-in drawer under the status strip (desktop) */}
+            {cell && (
+              <div className="vn-slide-in-left absolute bottom-4 left-4 top-48 z-10 hidden w-72 lg:block">
+                <div className="vn-scroll max-h-full overflow-y-auto rounded-xl">
+                  <CellStoryPanel
+                    city={active}
+                    cell={cell}
+                    onClose={() => setCell(null)}
+                    onAct={() => setSection("action")} // keep the cell focused — enforcement sorts by it
+                  />
                 </div>
-              ))}
-              <div className="pt-1 text-[11px] text-gray-400">tip: click a hexagon for its full story</div>
-            </div>
-          )}
-          {mode === "satellite" && (
-            <div className="mt-3 text-xs text-gray-600">Sentinel-5P NO2 column. Blue is lower, red is higher.</div>
-          )}
-          {mode === "coverage" && (
-            <div className="mt-3 text-xs">
-              <div className="flex gap-1">
-                {(["stations", "dense"] as const).map((k) => (
-                  <SegBtn key={k} active={coverageKind === k} onClick={() => setCoverageKind(k)} className="flex-1">
-                    {k === "stations" ? "Stations only" : "Dense 1km"}
-                  </SegBtn>
-                ))}
               </div>
-              <div className="mt-2 space-y-1">
-                {PM25_LEGEND.map(([label, color]) => (
-                  <div key={label} className="flex items-center gap-2">
-                    <span className="inline-block h-3 w-3 rounded" style={{ background: color }} />
-                    <span>{label}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-1 text-[11px] text-gray-400">
-                {coverage
-                  ? `${coverage.n_stations ?? "~"} stations → ${coverage.n_cells ?? coverage.cells.length} cells · ${
-                      typeof coverage.validation?.skill_vs_bilinear === "number"
-                        ? `+${Math.round(coverage.validation.skill_vs_bilinear * 100)}% skill vs interpolation (synthetic-field validation)`
-                        : "experimental — covariate-guided interpolation"
-                    }`
-                  : "loading field…"}
-              </div>
-            </div>
-          )}
-        </Panel>
+            )}
 
-        <ForecastPanel city={active} />
-        <CityIntelPanel city={active} />
-        <TraceViewer city={active} />
+            {/* Map layers — bottom-right corner of the map, clear of the
+                cell-story drawer (left) and the section panel (right edge) */}
+            <div className="absolute bottom-2 left-2 z-10 lg:bottom-8 lg:left-auto lg:right-[26.5rem]">
+              <LayersControl
+                mode={mode}
+                onMode={setMode}
+                showSources={showSources}
+                onShowSources={setShowSources}
+                showPlumes={showPlumes}
+                onShowPlumes={setShowPlumes}
+                showWards={showWards}
+                onShowWards={setShowWards}
+                showFreight={showFreight}
+                onShowFreight={setShowFreight}
+                coverageKind={coverageKind}
+                onCoverageKind={setCoverageKind}
+                coverage={coverage}
+              />
+            </div>
+
+            {fallback && (
+              <div className="absolute inset-x-2 top-2 z-10 mx-auto max-w-md rounded-md bg-amber-100 px-3 py-1.5 text-center text-xs text-amber-900 shadow lg:inset-x-auto lg:left-1/2 lg:-translate-x-1/2">
+                ⚠ backend waking up — showing bundled demo snapshot.{" "}
+                <button className="underline" onClick={() => window.location.reload()}>
+                  retry
+                </button>
+                <button aria-label="Dismiss notice" className="ml-2 text-amber-500" onClick={() => setFallback(false)}>
+                  ✕
+                </button>
+              </div>
+            )}
+
+            <div className="absolute bottom-1 right-2 z-10 text-[11px] text-gray-500 lg:hidden">scroll for panels ↓</div>
+          </div>
+
+          {/* Section content — right panel on desktop, stacked below map on mobile */}
+          <div
+            data-tour="panel"
+            className="vn-scroll relative z-10 space-y-3 p-3 lg:absolute lg:bottom-4 lg:right-3 lg:top-3 lg:w-[25rem] lg:overflow-y-auto lg:p-0 lg:pl-1"
+          >
+            {/* Mobile keeps the cell story inline, above the section content */}
+            {cell && (
+              <div className="lg:hidden">
+                <CellStoryPanel
+                  city={active}
+                  cell={cell}
+                  onClose={() => setCell(null)}
+                  onAct={() => setSection("action")}
+                />
+              </div>
+            )}
+
+            <div key={section} className="space-y-3 lg:vn-slide-in-right">
+              {section === "action" && (
+                <>
+                  <EnforcementPanel city={active} focusCell={cell?.h3_cell ?? null} />
+                  <CityIntelPanel city={active} />
+                  <InterventionsPanel city={active} />
+                </>
+              )}
+              {section === "forecast" && (
+                <>
+                  <ForecastPanel city={active} />
+                  <CityStatsPanel city={active} cells={attrCells} coverageCells={coverage?.cells ?? []} />
+                </>
+              )}
+              {section === "citizen" && <CitizenPanel city={active} languages={city?.languages} />}
+              {section === "compare" && <ComparativePanel onSelectCity={setActive} />}
+              {section === "whatif" && <WhatIfPanel city={active} />}
+              {section === "impact" && (
+                <>
+                  <RoiPanel city={active} />
+                  <FairnessPanel />
+                </>
+              )}
+              {section === "pipeline" && <TraceViewer city={active} />}
+            </div>
+          </div>
+        </main>
       </div>
 
-      {/* Right rail (desktop) / second stack (mobile) */}
-      <div className="relative z-10 space-y-3 p-3 pt-0 lg:absolute lg:bottom-4 lg:right-4 lg:top-24 lg:w-96 lg:overflow-auto lg:p-0 lg:pr-1">
-        {tab === "action" && <EnforcementPanel city={active} focusCell={cell?.h3_cell ?? null} />}
-        {tab === "citizen" && <CitizenPanel city={active} languages={city?.languages} />}
-        {tab === "compare" && <ComparativePanel onSelectCity={setActive} />}
-        {tab === "whatif" && <WhatIfPanel city={active} />}
-        {tab === "impact" && (
-          <>
-            <RoiPanel city={active} />
-            <FairnessPanel />
-          </>
-        )}
-      </div>
+      <BottomNav active={section} onSelect={setSection} />
+      {tour && <Tour onDone={() => setTour(false)} />}
     </div>
   );
 }

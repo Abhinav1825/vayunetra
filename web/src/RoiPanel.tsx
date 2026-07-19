@@ -46,7 +46,7 @@ export default function RoiPanel({ city }: { city: string }) {
 
   if (!d)
     return (
-      <Panel title="City ROI — the funding case" tag="E7">
+      <Panel title="City ROI — the funding case">
         {failed ? (
           <EmptyState message="Couldn't load the ROI figures." tone="error" onRetry={load} />
         ) : (
@@ -61,7 +61,7 @@ export default function RoiPanel({ city }: { city: string }) {
   ];
 
   return (
-    <Panel title="City ROI — the funding case" tag="E7">
+    <Panel title="City ROI — the funding case">
       <div className="grid grid-cols-2 gap-2">
         <Big label="Attributable deaths / yr" value={intfmt(d.attributable_deaths_per_year)} tone="bad" />
         <Big label="Annual health burden" value={inr(d.annual_health_burden_inr)} tone="bad" />

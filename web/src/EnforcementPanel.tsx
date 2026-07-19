@@ -60,7 +60,13 @@ function normalizePatch(patch: Dossier["satellite_patch"]): SatellitePatch | nul
 
 /** kb-chunk excerpts carry raw document scaffolding (===== rules, ALL-CAPS headers). */
 function cleanExcerpt(text: string): string {
-  const s = text.replace(/[=_*\-]{4,}/g, " ").replace(/\s+/g, " ").trim();
+  let s = text.replace(/[=_*\-]{4,}/g, " ").replace(/\s+/g, " ").trim();
+  // kb chunks carry table headers and SHOUTING section titles mid-excerpt
+  // ("ENFORCEMENT ACTIONS AND PENALTIES Violation Type | Penalty …") — cut
+  // the excerpt where that debris starts rather than showing it to officers.
+  const junk = s.search(/(?:[A-Z][A-Z ]{11,}(?::| [A-Z]))|(?:\S+ \| )/);
+  if (junk > 40) s = s.slice(0, junk).trim();
+  s = s.replace(/[|•·]\s*$/, "").trim();
   return s.length > 180 ? `${s.slice(0, 180)}…` : s;
 }
 
@@ -161,7 +167,6 @@ export default function EnforcementPanel({ city, focusCell }: { city: string; fo
   return (
     <Panel
       title="Enforcement Worklist"
-      tag="A3"
       right={
         focusCell ? (
           <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[11px] font-medium text-blue-700">

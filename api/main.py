@@ -14,14 +14,16 @@ import base64
 import hmac
 import json
 import logging
+import math
 import os
 import time
 import asyncio
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Optional
+from urllib.parse import parse_qsl
 
-from fastapi import FastAPI, Header, HTTPException, Query, Depends, WebSocket, WebSocketDisconnect, Response
+from fastapi import FastAPI, Header, HTTPException, Query, Depends, Request, WebSocket, WebSocketDisconnect, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field
@@ -192,6 +194,52 @@ def aqi_current(
     return ok(list(latest.values()))
 
 
+# Trailing PM2.5 history cache — hourly buckets change once an hour at most.
+_HISTORY_TTL_S = 600
+_history_cache: dict[str, tuple[float, list]] = {}
+
+
+@app.get("/history", tags=["data"])
+def pm25_history(
+    city: str = Query("delhi", description="City ID"),
+    hours: int = Query(48, ge=6, le=168),
+) -> dict:
+    """City-mean PM2.5 per hour over the trailing window (real station rows)."""
+    if DEMO_MODE:
+        data = fixture("history", default={})
+        series = data.get(city) if isinstance(data, dict) else None
+        return ok({"city_id": city, "series": series or []})
+    key = f"{city}:{hours}"
+    now = time.time()
+    hit = _history_cache.get(key)
+    if hit and now - hit[0] < _HISTORY_TTL_S:
+        return ok({"city_id": city, "series": hit[1]})
+    try:
+        since = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
+        rows = (
+            _db().table("measurements").select("ts,value").eq("city_id", city)
+            .eq("variable", "pm25").gte("ts", since)
+            .order("ts", desc=True).limit(20000).execute().data
+        ) or []
+        buckets: dict[str, list[float]] = {}
+        for r in rows:
+            ts = r.get("ts")
+            try:
+                v = float(r.get("value"))
+            except (TypeError, ValueError):
+                continue
+            if ts and math.isfinite(v):
+                buckets.setdefault(str(ts)[:13], []).append(v)  # bucket = YYYY-MM-DDTHH
+        series = [
+            {"ts": f"{k}:00:00+00:00", "pm25": round(sum(vs) / len(vs), 1), "n": len(vs)}
+            for k, vs in sorted(buckets.items())
+        ]
+        _history_cache[key] = (now, series)
+        return ok({"city_id": city, "series": series})
+    except Exception as e:  # noqa: BLE001
+        return _server_error("history_failed", e, "Could not load PM2.5 history right now.")
+
+
 # ---------------------------------------------------------------------------
 # Attribution
 # ---------------------------------------------------------------------------
@@ -330,8 +378,9 @@ def enforcement_notice_pdf(rec_id: int, db=Depends(get_db)) -> Response:
         from agents.enforcement import build_dossier
         dossier = build_dossier(rec_id)
         text = dossier.get("suggested_notice_text") or f"ENFORCEMENT NOTICE\n\nRecommendation #{rec_id}"
+    patch_image = (dossier.get("satellite_patch") or {}).get("image_ref")
     return Response(
-        content=notice_pdf_bytes(text),
+        content=notice_pdf_bytes(text, image_data_uri=patch_image),
         media_type="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="notice_{rec_id}.pdf"'},
     )
@@ -348,7 +397,82 @@ def enforcement_update_status(rec_id: int, body: StatusBody, db=Depends(get_db))
         return ok({"rec_id": rec_id, "status": body.status, "demo": True})
 
     db.table("enforcement_recs").update({"status": body.status}).eq("id", rec_id).execute()
+
+    # First real dispatch arms the before/after effect measurement: freeze the
+    # cell's trailing-7-day PM2.5 baseline now, so effectiveness is measurable
+    # by design the moment an intervention actually happens in the world.
+    if body.status == "dispatched":
+        try:
+            sdb = _db()
+            rec = (sdb.table("enforcement_recs").select("city_id,h3_cell")
+                   .eq("id", rec_id).limit(1).execute().data or [None])[0]
+            if rec:
+                since = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+                rows = (sdb.table("measurements").select("value")
+                        .eq("city_id", rec["city_id"]).eq("variable", "pm25")
+                        .eq("h3_cell", rec["h3_cell"]).gte("ts", since)
+                        .limit(2000).execute().data or [])
+                from core.interventions import mean
+                baseline = mean([r.get("value") for r in rows])
+                sdb.table("intervention_tracking").upsert(
+                    {"rec_id": rec_id, "city_id": rec["city_id"],
+                     "h3_cell": rec["h3_cell"], "baseline_pm25": baseline},
+                    on_conflict="rec_id",
+                ).execute()
+        except Exception as e:  # noqa: BLE001 — tracking must never block the status change
+            logger.error("intervention tracking arm failed for rec %s: %s", rec_id, e, exc_info=True)
     return ok({"rec_id": rec_id, "status": body.status})
+
+
+@app.get("/interventions", tags=["enforcement"])
+def interventions(city: str = Query("delhi", description="City ID")) -> dict:
+    """Before/after effect tracking for dispatched enforcement recs.
+
+    Honest empty state until the first real-world dispatch; after that, the
+    effect is the cell's PM2.5 change minus the city's drift over the same
+    window (crude control, disclosed as such).
+    """
+    if DEMO_MODE:
+        return ok({"city_id": city, "tracked": [],
+                   "note": "No real-world intervention dispatched yet — tracking arms automatically at first dispatch."})
+    try:
+        from core.interventions import effect_summary, mean
+
+        sdb = _db()
+        tracked = (sdb.table("intervention_tracking").select("*")
+                   .eq("city_id", city).order("dispatched_at", desc=True)
+                   .limit(20).execute().data or [])
+        if not tracked:
+            return ok({"city_id": city, "tracked": [],
+                       "note": "No real-world intervention dispatched yet — tracking arms automatically at first dispatch."})
+
+        def city_mean(since: str, until: str | None = None) -> float | None:
+            q = (sdb.table("measurements").select("value").eq("city_id", city)
+                 .eq("variable", "pm25").gte("ts", since).limit(5000))
+            if until:
+                q = q.lte("ts", until)
+            return mean([r.get("value") for r in (q.execute().data or [])])
+
+        out = []
+        for t in tracked:
+            cell_rows = (sdb.table("measurements").select("value")
+                         .eq("city_id", city).eq("variable", "pm25")
+                         .eq("h3_cell", t["h3_cell"]).gte("ts", t["dispatched_at"])
+                         .limit(2000).execute().data or [])
+            before7 = (datetime.fromisoformat(str(t["dispatched_at"]).replace("Z", "+00:00"))
+                       - timedelta(days=7)).isoformat()
+            summary = effect_summary(
+                baseline_pm25=t.get("baseline_pm25"),
+                cell_after=mean([r.get("value") for r in cell_rows]),
+                city_before=city_mean(before7, t["dispatched_at"]),
+                city_after=city_mean(t["dispatched_at"]),
+                dispatched_at=t["dispatched_at"],
+            )
+            out.append({"rec_id": t["rec_id"], "h3_cell": t["h3_cell"],
+                        "dispatched_at": t["dispatched_at"], **summary})
+        return ok({"city_id": city, "tracked": out})
+    except Exception as e:  # noqa: BLE001
+        return _server_error("interventions_failed", e, "Could not load intervention tracking.")
 
 
 # ---------------------------------------------------------------------------
@@ -391,6 +515,23 @@ _BROADCAST_WINDOW_S = 300
 _last_broadcast: dict[str, float] = {}
 
 
+def _latest_advisory(city: str) -> Optional[dict]:
+    """Freshest English advisory for a city (fixture rows in DEMO_MODE)."""
+    if DEMO_MODE:
+        # strict city match — fixture_rows falls back to ALL rows for unknown
+        # cities, and speaking another city's advisory is worse than none
+        rows = [
+            r for r in fixture_rows("advisory", city)
+            if (r.get("language") or "en") == "en" and r.get("city_id") == city
+        ]
+    else:
+        rows = (
+            _db().table("advisories").select("*").eq("city_id", city)
+            .eq("language", "en").order("issued_at", desc=True).limit(1).execute().data
+        ) or []
+    return rows[0] if rows else None
+
+
 class BroadcastBody(BaseModel):
     city: str = _CITY
     ivr: bool = False
@@ -410,17 +551,9 @@ def advisory_broadcast(body: BroadcastBody, db=Depends(get_db)) -> dict:
         return err("rate_limited", f"Broadcast already sent recently — retry in {wait}s")
     _last_broadcast[city] = now
 
-    # Pick the freshest English advisory for the city (fixture in DEMO_MODE).
-    if DEMO_MODE:
-        rows = [r for r in fixture_rows("advisory", city) if (r.get("language") or "en") == "en"]
-    else:
-        rows = (
-            _db().table("advisories").select("*").eq("city_id", city)
-            .eq("language", "en").order("issued_at", desc=True).limit(1).execute().data
-        )
-    if not rows:
+    adv = _latest_advisory(city)
+    if not adv:
         return err("no_advisory", f"No advisory available for {city}")
-    adv = rows[0]
 
     results: dict[str, Any] = {"advisory": {"ward_id": adv.get("ward_id"), "message": adv.get("message")}}
 
@@ -454,6 +587,48 @@ def advisory_broadcast(body: BroadcastBody, db=Depends(get_db)) -> dict:
             results["ivr"] = {"status": "skipped", "detail": "Twilio not configured on this server"}
 
     return ok(results)
+
+
+def _twiml(xml: str) -> Response:
+    return Response(content=xml, media_type="text/xml")
+
+
+# Inbound IVR (Twilio Voice webhook). No bearer auth — Twilio can't send one, and
+# these endpoints only speak the same public advisory text /advisory already serves.
+# Both accept GET and POST because the webhook method is configurable in Twilio.
+@app.api_route("/ivr/inbound", methods=["GET", "POST"], tags=["advisory"])
+def ivr_inbound() -> Response:
+    """Welcome menu for callers: pick a city on the keypad."""
+    from channels.ivr import render_welcome_twiml
+
+    return _twiml(render_welcome_twiml("/ivr/advisory"))
+
+
+@app.api_route("/ivr/advisory", methods=["GET", "POST"], tags=["advisory"])
+async def ivr_advisory(request: Request) -> Response:
+    """Read the chosen city's latest advisory back to the caller.
+
+    Must always return valid TwiML — an exception here becomes a dead phone
+    line mid-call, so every failure path degrades to a spoken fallback.
+    """
+    from channels.ivr import IVR_CITY_MENU, render_twiml, render_unavailable_twiml
+
+    digits = request.query_params.get("Digits", "")
+    if request.method == "POST":
+        try:
+            body = (await request.body()).decode("utf-8", "replace")
+            digits = dict(parse_qsl(body)).get("Digits", digits)
+        except Exception:  # noqa: BLE001 — malformed body → fall back to default city
+            pass
+    city_id, city_name = IVR_CITY_MENU.get(digits.strip(), IVR_CITY_MENU["1"])
+    try:
+        adv = _latest_advisory(city_id)
+    except Exception as e:  # noqa: BLE001 — DB down must not kill the call
+        logger.error("ivr advisory fetch failed for %s: %s", city_id, e, exc_info=True)
+        adv = None
+    if not adv:
+        return _twiml(render_unavailable_twiml(city_name))
+    return _twiml(render_twiml(adv, city_name=city_name))
 
 
 @app.post("/telegram/webhook", tags=["advisory"])
@@ -644,7 +819,10 @@ def comparison() -> dict:
             {"city_id": r["city_id"], "horizon_h": r.get("horizon_h", 24), "value": r["value"]}
             for r in fc if r.get("value") is not None
         ]
-        return ok(build_comparison(cities, aqi_rows, forecast_rows))
+        rec_statuses = (
+            sdb.table("enforcement_recs").select("city_id,status").limit(5000).execute().data
+        ) or []
+        return ok(build_comparison(cities, aqi_rows, forecast_rows, rec_statuses))
     except Exception as e:  # noqa: BLE001
         return _server_error("comparison_error", e, "Failed to build multi-city comparison")
 
@@ -891,6 +1069,103 @@ def clean_zones(
         return err("bad_request", str(e))
     except Exception as e:  # noqa: BLE001
         return _server_error("clean_zones_error", e, "Failed to compute clean zones")
+
+
+# Plume layer cache — wind + registry change hourly at most; keep the map snappy.
+_PLUME_TTL_S = 600
+_plume_cache: dict[str, tuple[float, dict]] = {}
+
+
+@app.get("/plume", tags=["data"])
+def plume_layer(
+    city: str = Query("delhi", description="City ID"),
+    top: int = Query(12, ge=1, le=30),
+) -> dict:
+    """Wind-oriented Gaussian plume footprints for the top emission sources.
+
+    Physics: ml/dispersion/plume.py (Briggs urban), driven by the latest real
+    wind_u/wind_v measurements. Intensity is RELATIVE (category x detection
+    confidence) — we don't know absolute emission rates and say so in `note`.
+    """
+    if DEMO_MODE:
+        data = fixture("plume", default={})
+        payload = data.get(city) if isinstance(data, dict) else None
+        # unknown city → empty layer, not an error (consistent with /coverage;
+        # keeps /admin/cities onboarding graceful)
+        return ok(payload or {"city_id": city, "wind": None, "plumes": [],
+                              "note": "no plume snapshot for this city"})
+    now = time.time()
+    hit = _plume_cache.get(f"{city}:{top}")
+    if hit and now - hit[0] < _PLUME_TTL_S:
+        return ok(hit[1])
+    try:
+        sdb = _db()
+        ts_rows = (
+            sdb.table("measurements").select("ts").eq("city_id", city)
+            .eq("variable", "wind_u").order("ts", desc=True).limit(1).execute().data
+        ) or []
+        if not ts_rows:
+            return err("no_wind", f"No wind data available for {city}")
+        ts0 = ts_rows[0]["ts"]
+
+        def _mean_wind(var: str) -> float:
+            rows = (
+                sdb.table("measurements").select("value").eq("city_id", city)
+                .eq("variable", var).eq("ts", ts0).limit(2000).execute().data
+            ) or []
+            vals = []
+            for r in rows:
+                try:
+                    v = float(r["value"])
+                except (TypeError, ValueError, KeyError):
+                    continue  # one malformed row must not kill the whole layer
+                if math.isfinite(v):
+                    vals.append(v)
+            return sum(vals) / len(vals) if vals else 0.0
+
+        raw_sources = (
+            sdb.table("emission_sources")
+            .select("id,name,type,detection_confidence,geom")
+            .eq("city_id", city).limit(1000).execute().data
+        ) or []
+        sources = []
+        for s in raw_sources:
+            g = s.get("geom")
+            coords = g.get("coordinates") if isinstance(g, dict) else None
+            if (
+                isinstance(coords, list) and len(coords) == 2
+                and isinstance(coords[0], (int, float)) and isinstance(coords[1], (int, float))
+                and -180 <= coords[0] <= 180 and -90 <= coords[1] <= 90
+                and (coords[0], coords[1]) != (0, 0)  # null-island = broken geocode
+            ):
+                sources.append({
+                    "id": s.get("id"), "name": s.get("name"), "type": s.get("type"),
+                    "detection_confidence": s.get("detection_confidence"),
+                    "lon": coords[0], "lat": coords[1],
+                })
+
+        from ml.dispersion.footprint import plume_footprints
+
+        # Day/night (Pasquill stability) must follow the WIND SNAPSHOT's clock,
+        # not the request clock — same wind must always yield the same plume.
+        try:
+            wind_dt = datetime.fromisoformat(str(ts0).replace("Z", "+00:00"))
+            if wind_dt.tzinfo is None:
+                wind_dt = wind_dt.replace(tzinfo=timezone.utc)
+        except ValueError:
+            wind_dt = datetime.now(timezone.utc)
+        ist_hour = (wind_dt.astimezone(timezone.utc) + timedelta(hours=5, minutes=30)).hour
+        data = {
+            "city_id": city, "wind_ts": ts0,
+            **plume_footprints(
+                sources, _mean_wind("wind_u"), _mean_wind("wind_v"),
+                is_day=6 <= ist_hour < 18, top=top,
+            ),
+        }
+        _plume_cache[f"{city}:{top}"] = (now, data)
+        return ok(data)
+    except Exception as e:  # noqa: BLE001
+        return _server_error("plume_failed", e, "Could not compute the plume layer right now.")
 
 
 # ---------------------------------------------------------------------------

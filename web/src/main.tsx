@@ -2,11 +2,15 @@ import React, { lazy, Suspense, useEffect, useState } from "react";
 import ReactDOM from "react-dom/client";
 import Landing from "./Landing";
 import ErrorBoundary from "./ErrorBoundary";
+import { upgradeLegacyHash } from "./router";
 import "./index.css";
 
 // The console pulls in MapLibre + Deck.gl + Recharts (~1.5 MB). Landing needs
-// none of it, so the console is code-split out and only fetched at #/console.
+// none of it, so the console is code-split out and only fetched at /console.
 const App = lazy(() => import("./App"));
+
+// Old '#/console' QR codes and bookmarks land on the clean path.
+upgradeLegacyHash();
 
 function ConsoleFallback() {
   return (
@@ -16,15 +20,15 @@ function ConsoleFallback() {
   );
 }
 
-/** Hash router: "#/console" → ops console, anything else → landing page. */
+/** Path router: "/console" → ops console, anything else → landing page. */
 function Root() {
-  const [hash, setHash] = useState(window.location.hash);
+  const [path, setPath] = useState(window.location.pathname);
   useEffect(() => {
-    const on = () => setHash(window.location.hash);
-    window.addEventListener("hashchange", on);
-    return () => window.removeEventListener("hashchange", on);
+    const on = () => setPath(window.location.pathname);
+    window.addEventListener("popstate", on);
+    return () => window.removeEventListener("popstate", on);
   }, []);
-  if (hash.startsWith("#/console")) {
+  if (path.startsWith("/console")) {
     return (
       <Suspense fallback={<ConsoleFallback />}>
         <App />

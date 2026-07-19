@@ -9,7 +9,7 @@ function Bar({ label, r, tone, note }: { label: string; r: number; tone: "blue" 
     <div className="text-xs">
       <div className="flex items-baseline justify-between gap-2">
         <span className="text-gray-600">{label}</span>
-        <span className="font-mono font-bold text-slate-800">r = {r.toFixed(2)}</span>
+        <span className="shrink-0 whitespace-nowrap font-mono font-bold text-slate-800">r = {r.toFixed(2)}</span>
       </div>
       <div className="mt-0.5 h-2 rounded bg-slate-100">
         <div className={`h-2 rounded ${tone === "blue" ? "bg-blue-600" : "bg-slate-400"}`} style={{ width }} />

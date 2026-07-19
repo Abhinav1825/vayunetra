@@ -36,13 +36,31 @@ def midpoint(line: list[list[float]]) -> tuple[float, float]:
     return lat, lng
 
 
+def live_scale(city_id: str) -> tuple[float, str]:
+    """(multiplier, source label) — real TomTom congestion when a key is set.
+
+    Free-flow scales the proxy down, standstill scales it up; without a key
+    (or coverage) the proxy passes through unchanged and says so in `source`.
+    """
+    try:
+        from connectors.traffic_live import city_congestion
+
+        live = city_congestion(city_id)
+    except Exception:  # noqa: BLE001 — live feed must never break the cron
+        live = None
+    if not live:
+        return 1.0, "osm_gtfs"
+    return 0.6 + 0.8 * float(live["congestion_ratio"]), "osm_gtfs×tomtom_live"
+
+
 def build_mobility_rows(city_id: str, hours: int = 24, start: datetime | None = None) -> list[dict]:
     layer = build_static_layers(city_id)
     start = start or datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
     rows: list[dict] = []
+    scale, src = live_scale(city_id)
     for step in range(hours):
         ts = start + timedelta(hours=step)
-        tm = time_multiplier(ts)
+        tm = time_multiplier(ts) * scale
         for road in layer["roads"]:
             lat, lng = midpoint(road["coordinates"])
             value = round(100.0 * road["traffic_weight"] * tm, 2)
@@ -54,7 +72,7 @@ def build_mobility_rows(city_id: str, hours: int = 24, start: datetime | None = 
                 "variable": "traffic",
                 "value": value,
                 "unit": "index",
-                "source": "osm_gtfs",
+                "source": src,
                 "confidence": 0.72,
             })
     return rows
