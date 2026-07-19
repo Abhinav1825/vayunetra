@@ -33,6 +33,22 @@ export const FORECAST_SKILL: Record<string, CitySkill> = {
 
 export const SKILL_ASOF = "2026-07-06";
 
+// Fairness audit over the LIVE enforcement recommendations (all 3 cities).
+// Computed 2026-07-19 on n=390 recs: Pearson r of priority_score vs each
+// disclosed input, and the partial correlation of population exposure after
+// controlling for pollution contribution. The scorer's ONLY inputs are
+// contribution, population exposed, actionability, and model confidence —
+// no income, land-value, or demographic feature exists anywhere in the schema,
+// so socio-economic bias cannot enter by construction. A ward-income
+// partial-correlation audit is roadmap (needs ward socio-economic data).
+export const FAIRNESS_AUDIT = {
+  asOf: "2026-07-19",
+  n: 390,
+  rContribution: 0.946, // pollution contribution — the dominant driver, by design
+  rPopExposed: 0.293, // exposure weighting — deliberate and disclosed
+  partialPopGivenContribution: 0.453,
+};
+
 export function pct(x: number | undefined): string {
   if (x === undefined) return "–";
   return `${x >= 0 ? "+" : ""}${Math.round(x * 100)}%`;

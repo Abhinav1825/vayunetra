@@ -14,6 +14,7 @@ import CityIntelPanel from "./CityIntelPanel";
 import TraceViewer from "./TraceViewer";
 import WhatIfPanel from "./WhatIfPanel";
 import RoiPanel from "./RoiPanel";
+import FairnessPanel from "./FairnessPanel";
 import { Panel, SegBtn } from "./ui";
 
 type LngLat = [number, number];
@@ -279,7 +280,12 @@ export default function App() {
         {tab === "citizen" && <CitizenPanel city={active} languages={city?.languages} />}
         {tab === "compare" && <ComparativePanel onSelectCity={setActive} />}
         {tab === "whatif" && <WhatIfPanel city={active} />}
-        {tab === "impact" && <RoiPanel city={active} />}
+        {tab === "impact" && (
+          <>
+            <RoiPanel city={active} />
+            <FairnessPanel />
+          </>
+        )}
       </div>
     </div>
   );

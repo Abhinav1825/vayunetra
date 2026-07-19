@@ -18,12 +18,15 @@ bbox: [80.1, 12.9, 80.4, 13.2]
 ```
 
 ### 2. The Live cURL Execution
-Run this exact payload against the live production API:
+Run this exact payload against the live production API. Auth = the public anon
+token (Bearer) **plus** the `X-Admin-Key` header — there is no separate admin JWT.
+
 ```bash
+# ADMIN_KEY and SUPABASE_ANON_KEY come from .env
 curl -X POST "https://vayunetra-c8i8.onrender.com/admin/cities" \
      -H "Content-Type: application/json" \
+     -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
      -H "X-Admin-Key: $ADMIN_KEY" \
-     -H "Authorization: Bearer <ADMIN_JWT_TOKEN>" \
      -d '{
            "city_id": "chennai",
            "name": "Chennai",
@@ -33,6 +36,15 @@ curl -X POST "https://vayunetra-c8i8.onrender.com/admin/cities" \
            "bbox": [80.1, 12.9, 80.4, 13.2]
          }'
 ```
+
+> ✅ **Rehearsed against production on 2026-07-19**: wrong key → `forbidden`;
+> correct key → `{"onboarded": "..."}`; city appears in `GET /cities` and the
+> UI dropdown immediately. Cleanup verified too.
+
+**3-line stage script:**
+1. *Say:* "Adding a city is one API call — no code, no redeploy."
+2. *Do:* run the curl → point at `{"success": true, "data": {"onboarded": "chennai"}}`.
+3. *See:* refresh the app → Chennai is in the city dropdown; tonight's cron starts ingesting it.
 
 ### 3. UI Verification
 1. Open the live Vercel web app (https://vayunetra-aqi.vercel.app).

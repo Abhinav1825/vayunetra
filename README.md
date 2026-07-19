@@ -14,7 +14,7 @@ enforcement intelligence → citizen advisory → multi-city comparison.**
 | **API (Render)** | https://vayunetra-c8i8.onrender.com/health |
 | **Try it** | Click any hexagon on the blame map → that cell's full story (blame → forecast → act). *action* tab → Evidence dossier (RAG citations) → Notice PDF. *citizen* tab → advisories in 4 languages + live Telegram/IVR broadcast. |
 
-**Live right now:** 3 cities (Delhi · Bengaluru · Mumbai) · 170k+ real measurements (OpenAQ + Open-Meteo + Sentinel-5P) · 138 attribution cells · 63 quantile forecasts · 144 advisories in 4 languages · 18 RAG-cited enforcement recommendations · signal→action latency traced end-to-end.
+**Live right now (2026-07-19):** 3 cities (Delhi · Bengaluru · Mumbai) · **449k+ real measurements** (OpenAQ + Open-Meteo + Sentinel-5P + GPW population) · 216 attribution cells · 105 quantile forecasts · 144 advisories in 4 languages · **390 RAG-cited enforcement recommendations** · 547 emission sources (487 CV-detected + 60 OSM registry) · real Sentinel-2 evidence patches in the top-priority dossiers (honestly-labeled markers for the rest) · signal→action latency traced end-to-end.
 
 **E1 Satellite CV Reproducibility (Detection-Lite v0):** 
 The live detector runs **heuristic detection-lite v0** via Earth Engine (NDVI drop → construction/bare soil; FIRMS thermal anomaly → waste burning). Detections write to `emission_sources(source_origin='cv_detected')` via [scripts/run_e1_inference_live.py](scripts/run_e1_inference_live.py) (restored after a cron wipe — the daily registry refresh is now scoped so restored rows persist).

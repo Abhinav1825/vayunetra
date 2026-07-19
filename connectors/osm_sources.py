@@ -7,8 +7,9 @@ the registry, so sites auto-add/remove as OSM changes (cron-able).
 
   python -m connectors.osm_sources --city mumbai             # fetch + summary
   python -m connectors.osm_sources --city mumbai --push      # replace registry rows
-  # NOTE: --push clears the city's enforcement_recs first (FK) — regenerate with:
-  #   python scripts/bootstrap_live.py --skip-kb --cities mumbai
+  # NOTE: --push clears recs referencing OSM sources first (FK). The daily cron
+  # regenerates ALL recs right after (unconditional step in ingest.yml); manual
+  # equivalent: run_enforcement(city, write_to_db=True).
 """
 from __future__ import annotations
 
@@ -188,11 +189,24 @@ def rows_from_elements(city_id: str, elements: list[dict], h3_res: int = 8) -> l
 
 def push_to_supabase(city_id: str, rows: list[dict]) -> None:
     """Replace the city's registry. FK order: enforcement_recs reference sources,
-    so the city's recs are cleared first — regenerate them via bootstrap_live."""
+    so recs pointing at OSM rows are cleared first — regenerate via bootstrap_live."""
     from core.supa import client
 
     db = client()
-    db.table("enforcement_recs").delete().eq("city_id", city_id).execute()
+    # Scope the FK clear to recs that reference OSM-origin sources only.
+    # The old blanket delete wiped every rec (incl. cv_detected-backed ones);
+    # combined with the pipeline's spike gate skipping enforcement on calm
+    # days, that left the live worklist empty until the next spike.
+    # (Row-count note: OSM sources are capped at ~20/city by CAP_PER_TYPE, far
+    # under the REST client's 1000-row page — no pagination needed here.)
+    osm_ids = [
+        r["id"] for r in (
+            db.table("emission_sources").select("id")
+            .eq("city_id", city_id).eq("source_origin", "osm").execute().data or []
+        )
+    ]
+    if osm_ids:
+        db.table("enforcement_recs").delete().eq("city_id", city_id).in_("source_id", osm_ids).execute()
     # Replace ONLY OSM-origin rows: the daily refresh was wiping Abhinav's E1
     # cv_detected rows (and any registry rows) along with its own.
     db.table("emission_sources").delete().eq("city_id", city_id).eq("source_origin", "osm").execute()
@@ -202,7 +216,7 @@ def push_to_supabase(city_id: str, rows: list[dict]) -> None:
         stripped = [{k: v for k, v in r.items() if k != "geom"} for r in rows]
         db.table("emission_sources").insert(stripped).execute()
     print(f"{city_id}: replaced registry with {len(rows)} OSM sources "
-          f"(enforcement_recs cleared — run scripts/bootstrap_live.py to regenerate)")
+          f"(cleared recs referencing {len(osm_ids)} OSM sources — the cron regenerates recs right after)")
 
 
 def main() -> None:

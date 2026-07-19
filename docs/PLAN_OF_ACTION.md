@@ -14,10 +14,10 @@ items listed below. Stage 2 is ~65% done. §2/§3 items below are annotated ✅/
 **Your personal checklist ([TASKS_OMKAR](TASKS_OMKAR.md) / [TASKS_ABHINAV](TASKS_ABHINAV.md) /
 [TASKS_SEJAL](TASKS_SEJAL.md)) carries the same statuses + "if you already started X" instructions — read yours first.**
 
-### 🔴 Critical path (in order)
-1. **DEMO VIDEO (≤3 min)** — the only missing *required* deliverable. Owner: **Sejal** (Omkar records screen flows). Do this before any Stage-2 code.
-2. **`OPENAQ_API_KEY` GitHub Actions secret** — hourly ingest silently fetches nothing without it (openmeteo works, openaq stale). Owner: **Abhinav/Omkar**, 1 minute.
-3. **E5 optimiser** — fully unblocked (E3 engine + What-If UI are live); the last big differentiator. Owner: **Abhinav**.
+### 🔴 Critical path (updated 2026-07-19)
+1. **DEMO VIDEO (≤3 min)** — the only missing *required* deliverable. Owner: **Sejal** (Omkar records screen flows). Everything else below is ✅.
+2. ~~`OPENAQ_API_KEY` secret~~ ✅ **done** (openaq measurements fresh daily).
+3. ~~E5 optimiser~~ ✅ **built & live** (`/optimize`, ranked packages in the What-If UI).
 
 ### 🔁 Re-scopes (decided 2026-07-10 — reasons in §3 annotations)
 - **E1 Satellite CV:** full CNN → **"detection-lite v0"** (Earth-Engine heuristic detector: bare-soil/NDVI change for construction, thermal anomaly for burning → `emission_sources(source_origin='cv_detected')` with honest `detection_confidence`). CNN = cited roadmap. *If you already started the CNN and are >80% done, finish it; otherwise switch.*
@@ -156,27 +156,29 @@ Tiers: 🔴 **Hard** (deep/novel ML) · 🟡 **Medium** (engineering/integration
 - [x] **GNN/TFT forecast upgrade** ✅ *(evaluated on Colab T4 with identical walk-forward folds — LightGBM won 3/3 horizons → KEPT the baseline per this plan's own rule; recorded in evaluate.ipynb §7 + notebooks/colab_tft_forecast.ipynb)*
 - [x] **Forecast + dispersion hooks for E3** ✅ *(went further: the full E3 engine is built — `ml/simulator/counterfactual.py`, live on `/simulate`, with cited intervention magnitudes + GPW population + real tonnes-avoided)*
 - [x] **Attribution v2 polish** ✅ *(hybrid GBM+SHAP, R² gate, calibrated confidence, SHAP tooltips)*
-- [ ] 🆕 **Agent Trace Viewer + "run pipeline live" button** *(added v3.3 — makes the multi-agent architecture visible; /traces + /agent/query already exist)* 🟢
+- [x] 🆕 **Agent Trace Viewer + "run pipeline live" button** ✅ *(live: `web/src/TraceViewer.tsx` — animated multi-agent timeline + "Run agents live")*
 
-### 3B. Abhinav — Satellite-CV, optimiser & rigour (Stage 2) — ⚠️ READ THE RE-SCOPES
-- [ ] 🔁 **E1 — RESCOPED to "detection-lite v0"**: Earth-Engine heuristic detector (bare-soil/NDVI change → construction; thermal anomaly → burning) → `emission_sources(source_origin='cv_detected', detection_confidence=…)`. The trained CNN is now **cited roadmap**, not scope. *If your CNN is already >80% done, finish it; otherwise switch — E6 depends on detections existing at all.* 🟡
+### 3B. Abhinav — Satellite-CV, optimiser & rigour (Stage 2) — ✅ COMPLETE (verified 2026-07-19)
+- [x] 🔁 **E1 — detection-lite v0** ✅ *(live: 487 `cv_detected` rows via Earth-Engine heuristics, honest confidence; U-Net = cited CNN-in-training roadmap — PR #14)*
 - [x] **E3 — What-if engine** ✅ *(built by Omkar as the "hooks" item — live on /simulate. Nothing to build here; build E5 ON TOP of `ml.simulator.simulate_intervention()`.)*
-- [ ] 🔴 **E5 — Prescriptive optimiser** — **YOUR TOP PRIORITY, fully unblocked** (engine + What-If UI both live). Greedy/knapsack over `simulate_intervention()` → `/optimize` top-3 packages under inspector-hours. The last big feature differentiator.
-- [x] ❌ **E4 — CUT** (v3.3 decision, per the plan's own cut order — do not spend time here)
-- [ ] **Quantified fairness audit** + evaluate.ipynb v2 aggregation. 🟡 *(small: §§7-10 already exist — add fairness + E-feature metrics)*
-- [ ] **Live multi-city onboarding demo** — endpoint exists & proven; prepare the on-stage choreography (city YAML → POST → it appears). 🟢
-- [ ] ⚠️ **Op task:** add `OPENAQ_API_KEY` to GitHub Actions secrets (hourly ingest silently no-ops without it).
+- [x] 🔴 **E5 — Prescriptive optimiser** ✅ *(live: `ml/simulator/optimizer.py` → `/optimize`, ranked packages in the What-If UI)*
+- [x] ❌ **E4 — CUT** (v3.3 decision — IsolationForest built anyway + validated in evaluate.ipynb, not scope)
+- [x] **Quantified fairness audit** ✅ *(evaluate.ipynb §11 + REAL live-rec audit surfaced in the UI FairnessPanel — n=390, contribution r=0.95 dominant, no socio-economic inputs by construction)*
+- [x] **Live multi-city onboarding demo** ✅ *(rehearsed against production 2026-07-19: forbidden→onboard→appears→cleanup; ADMIN_KEY confirmed on Render; 3-line stage script in ONBOARDING.md)*
+- [x] ⚠️ **Op task: `OPENAQ_API_KEY` secret** ✅ *(set — openaq data fresh daily)*
+- ⚠️ **Ops note (2026-07-19):** the daily cron once left the worklist EMPTY (OSM refresh cleared recs; spike gate skipped regeneration on a calm day). Fixed: OSM clear is now scoped to OSM-referencing recs + the cron regenerates enforcement **unconditionally** every day.
 
-### 3C. Sejal — Dense coverage, evidence & impact (Stage 2) — mostly shipped in PR #8 🎉
+### 3C. Sejal — Dense coverage, evidence & impact (Stage 2) — ✅ COMPLETE except the video (verified 2026-07-19)
 - [x] **E2 — Dense-coverage** ✅ *(AOD→PM2.5 + downscaling CNN + toggle shipped; on main since: lean no-torch fallback + live fields anchor on REAL measurements — rebase, don't revert)*. 🔁 *Real-data Kaggle training = **stretch**, not blocker (shipped version is honestly labeled "synthetic-field validation").*
-- [ ] 🔁 **E6 — Multimodal evidence** — **wait for Abhinav's detection-lite** (it needs detections); next in cut order if time runs out. 🔴/🟡
+- [x] 🔁 **E6 — Multimodal evidence** ✅ *(487 image chunks in `kb_chunks`; top rec-referenced sources carry REAL Sentinel-2 RGB composites (`scripts/ingest_e6_real_patches.py`), rest are honestly-labeled markers; live dossiers show the patch — verified on production)*
 - [x] **E7 — Health & carbon** ✅ *(cited factors — now incl. WHO AirQ+ + Balakrishnan/Lancet-2019 anchors — ImpactCards + ROI panel live)*
-- [x] **What-if UI + SHAP + detected-sources toggle** ✅ *(Fairness panel: blocked on Abhinav's audit — build after it)*
-- [ ] **Deck + video v2** — deck must absorb `docs/DECK_NOTES_ADDITIONS.md` (validation numbers, positioning ladder); **video v1 first — it's the Stage-1 critical path**. 🟢/🟡
-- [ ] 🆕 **Telegram two-way subscribe** *(added v3.3, post-merge: `/start` → pick city → auto-alerts; turns the demo channel into a product — judges can subscribe their own phone)* 🟡
+- [x] **What-if UI + SHAP + detected-sources toggle** ✅ · **Fairness panel** ✅ *(live in the impact tab — real audit on n=390 recs)*
+- [ ] **Deck ✅ / video ❌** — deck absorbed the validation numbers + optimiser + ₹/lives/CO₂e (`PITCH_DECK.html`); **the ≤3-min video is the LAST remaining deliverable — record at the end against the live site.** 🔴
+- [x] 🆕 **Telegram two-way subscribe** ✅ *(webhook registered → production `/telegram/webhook`; `/start` → city picker → subscribe flow proven end-to-end 2026-07-19; `advisory_subscribers` live — judges can subscribe their own phone)*
 
-### ✅ Stage 2 — Definition of Done
-- [ ] CV-detected sources auto-populate enforcement · "stations↔dense 1km" works · what-if **and** optimiser run live with ₹/lives/CO₂e + ranked packages · a dossier shows a real satellite patch · fairness ≈0 + ROI dashboard · all E-features in `evaluate.ipynb` + deck/video; dry-run scores 5/5.
+### ✅ Stage 2 — Definition of Done (status 2026-07-19)
+- [x] CV-detected sources auto-populate enforcement ✅ *(390 recs over 547 sources incl. 487 cv_detected)* · "stations↔dense 1km" works ✅ · what-if **and** optimiser run live with ₹/lives/CO₂e + ranked packages ✅ · a dossier shows a real satellite patch ✅ *(verified on production)* · fairness audit + ROI dashboard ✅ · all E-features in `evaluate.ipynb` + deck ✅
+- [ ] **video** ❌ + judging-morning **dry-run 5/5** ⏳ — the only two boxes left.
 
 ---
 
