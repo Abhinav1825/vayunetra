@@ -300,18 +300,34 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* CTA */}
+      {/* CTA + QR (judges: scan with your phone) */}
       <section className="border-t border-slate-800/60">
-        <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-6 px-6 py-14 sm:flex-row sm:items-center">
+        <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-8 px-6 py-14 lg:flex-row lg:items-center">
           <div>
             <h2 className="text-xl font-bold tracking-tight text-white sm:text-2xl">See it running on live data.</h2>
             <p className="mt-1 text-[14px] text-slate-400">Three cities, real measurements, no sign-up.</p>
+            <a href="#/console"
+              className="mt-5 inline-flex items-center gap-2 rounded-md bg-white px-5 py-2.5 text-sm font-semibold text-slate-900 transition-colors hover:bg-slate-200">
+              Open the console
+              <Icon d={IC.arrow} className="h-4 w-4" />
+            </a>
           </div>
-          <a href="#/console"
-            className="flex items-center gap-2 rounded-md bg-white px-5 py-2.5 text-sm font-semibold text-slate-900 transition-colors hover:bg-slate-200">
-            Open the console
-            <Icon d={IC.arrow} className="h-4 w-4" />
-          </a>
+          <div className="flex flex-wrap gap-4">
+            <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4 text-center">
+              <div className="mx-auto w-fit rounded-lg bg-white p-2">
+                <img src="/qr-app.svg" alt="QR code — open the VayuNetra app" className="h-28 w-28" width={112} height={112} />
+              </div>
+              <p className="mt-2 text-xs font-semibold text-slate-300">Open on your phone</p>
+              <p className="font-mono text-[11px] text-slate-500">vayunetra-aqi.vercel.app</p>
+            </div>
+            <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4 text-center">
+              <div className="mx-auto w-fit rounded-lg bg-white p-2">
+                <img src="/qr-telegram.svg" alt="QR code — subscribe to air-quality alerts on Telegram" className="h-28 w-28" width={112} height={112} />
+              </div>
+              <p className="mt-2 text-xs font-semibold text-slate-300">Subscribe on Telegram</p>
+              <p className="font-mono text-[11px] text-slate-500">/start → pick your city</p>
+            </div>
+          </div>
         </div>
       </section>
 

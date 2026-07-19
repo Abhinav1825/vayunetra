@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "./api";
+import { aqiCategory } from "./aqi";
 import { Panel, SegBtn } from "./ui";
 
 type Advisory = {
@@ -19,6 +20,16 @@ type BroadcastResult = {
   ivr?: { status: string; detail?: string; sid?: string };
 };
 
+type CleanZone = {
+  h3_cell: string;
+  zone_id: string;
+  pm25: number;
+  aqi: number;
+  maps_url: string;
+};
+
+type CleanZones = { basis?: string; zones: CleanZone[] };
+
 export default function CitizenPanel({ city, languages }: { city: string; languages?: string[] }) {
   const choices = useMemo(() => Array.from(new Set([...(languages ?? []), ...ALL_LANGS])), [languages]);
   const [lang, setLang] = useState(choices[0] ?? "en");
@@ -26,6 +37,12 @@ export default function CitizenPanel({ city, languages }: { city: string; langua
   const [channel, setChannel] = useState("pwa");
   const [bcast, setBcast] = useState<"idle" | "confirm" | "sending" | "done" | "error">("idle");
   const [bcastMsg, setBcastMsg] = useState("");
+  const [cleanZones, setCleanZones] = useState<CleanZones | null>(null);
+
+  useEffect(() => {
+    setCleanZones(null);
+    api<CleanZones>(`/clean-zones?city=${city}&top=4`).then(setCleanZones).catch(() => setCleanZones({ zones: [] }));
+  }, [city]);
 
   useEffect(() => {
     if (!choices.includes(lang)) setLang(choices[0] ?? "en");
@@ -103,6 +120,47 @@ export default function CitizenPanel({ city, languages }: { city: string; langua
             </div>
           ))}
           {visible.length === 0 && <div className="text-xs text-gray-500">No advisory in this language/channel yet</div>}
+        </div>
+      )}
+
+      {/* 🌿 Cleanest zones right now — the flip side of the blame map: where
+          to go, computed from the E2 dense 1km field (not a hardcoded list). */}
+      {cleanZones && cleanZones.zones.length > 0 && (
+        <div className="mt-3 border-t border-gray-100 pt-2">
+          <div className="flex items-baseline justify-between">
+            <div className="text-[13px] font-bold tracking-tight text-slate-800">🌿 Cleanest air right now</div>
+            <span className="text-[11px] text-slate-400">lowest ~1km cells</span>
+          </div>
+          <div className="mt-1.5 grid grid-cols-2 gap-1.5">
+            {cleanZones.zones.map((z) => {
+              const cat = aqiCategory(z.aqi);
+              return (
+                <a
+                  key={z.h3_cell}
+                  href={z.maps_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-lg border border-slate-200 p-2 transition-colors hover:border-emerald-300 hover:bg-emerald-50/50"
+                  aria-label={`Open ${z.zone_id} in Google Maps — AQI ${z.aqi}, ${cat.label}`}
+                >
+                  <div className="flex items-center justify-between gap-1">
+                    <span
+                      className="rounded px-1.5 py-0.5 text-[11px] font-bold"
+                      style={{ background: cat.color, color: cat.text }}
+                    >
+                      {z.aqi}
+                    </span>
+                    <span className="text-[11px] text-slate-400">{cat.label}</span>
+                  </div>
+                  <div className="mt-1 font-mono text-xs font-semibold text-slate-700">{z.zone_id}</div>
+                  <div className="text-[11px] text-emerald-700">Directions ↗</div>
+                </a>
+              );
+            })}
+          </div>
+          <div className="mt-1 text-[11px] leading-4 text-slate-400">
+            Estimated from the dense 1 km model field anchored on live station data — a modeled guide, not a measurement.
+          </div>
         </div>
       )}
 

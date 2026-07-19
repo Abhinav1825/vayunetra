@@ -64,6 +64,23 @@ function cleanExcerpt(text: string): string {
   return s.length > 180 ? `${s.slice(0, 180)}…` : s;
 }
 
+/** Source category parsed from the rationale's leading clause
+ * ("Construction dust contributes…" / "Industrial emissions contributes…"). */
+function recCategory(rationale: string): "construction" | "industrial" | "waste" | "other" {
+  const r = rationale.toLowerCase();
+  if (r.startsWith("construction")) return "construction";
+  if (r.startsWith("industrial")) return "industrial";
+  if (r.startsWith("waste") || r.includes("open burning")) return "waste";
+  return "other";
+}
+
+const CATEGORY_FILTERS = [
+  { id: "all", label: "All" },
+  { id: "construction", label: "Construction" },
+  { id: "industrial", label: "Industrial" },
+  { id: "waste", label: "Waste" },
+] as const;
+
 /** Several chunks of one document retrieve as near-identical citations — show each rule once. */
 function dedupeCitations(citations: Citation[]): Citation[] {
   const seen = new Set<string>();
@@ -82,11 +99,14 @@ export default function EnforcementPanel({ city, focusCell }: { city: string; fo
   const [open, setOpen] = useState<number | null>(null);
   const [dossier, setDossier] = useState<Dossier | null>(null);
   const [busy, setBusy] = useState<number | null>(null);
+  const [filter, setFilter] = useState<(typeof CATEGORY_FILTERS)[number]["id"]>("all");
+  const [query, setQuery] = useState("");
 
   useEffect(() => {
     setRows(null);
     setOpen(null);
-    api<Rec[]>(`/enforcement?city=${city}&limit=8`).then(setRows).catch(() => setRows([]));
+    // fetch a wide slice so category filters have something to filter
+    api<Rec[]>(`/enforcement?city=${city}&limit=40`).then(setRows).catch(() => setRows([]));
   }, [city]);
 
   // With a focused hexagon, closest actions come first — the story's step 3.
@@ -95,19 +115,27 @@ export default function EnforcementPanel({ city, focusCell }: { city: string; fo
   // a worklist that repeats "44% · 15,000" five times reads as noise.
   const ordered = useMemo(() => {
     if (!rows) return null;
+    const q = query.trim().toLowerCase();
+    const filtered = rows.filter(
+      (r) =>
+        (filter === "all" || recCategory(r.rationale) === filter) &&
+        (!q || r.rationale.toLowerCase().includes(q)),
+    );
     const seen = new Map<string, Rec & { km?: number | null; similar?: number }>();
-    for (const r of rows) {
+    for (const r of filtered) {
       const key = `${r.h3_cell ?? "?"}|${Math.round(r.contribution * 100)}|${r.pop_exposed}`;
       const kept = seen.get(key);
       if (kept) kept.similar = (kept.similar ?? 0) + 1;
       else seen.set(key, { ...r });
     }
     const collapsed = [...seen.values()];
-    if (!focusCell) return collapsed;
-    return collapsed
-      .map((r) => ({ ...r, km: r.h3_cell ? cellKm(focusCell, r.h3_cell) : null }))
-      .sort((a, b) => (a.km ?? 1e9) - (b.km ?? 1e9));
-  }, [rows, focusCell]);
+    const sorted = focusCell
+      ? collapsed
+          .map((r) => ({ ...r, km: r.h3_cell ? cellKm(focusCell, r.h3_cell) : null }))
+          .sort((a, b) => (a.km ?? 1e9) - (b.km ?? 1e9))
+      : collapsed;
+    return sorted.slice(0, 10); // keep the list scannable
+  }, [rows, focusCell, filter, query]);
 
   function toggleDossier(id: number) {
     if (open === id) {
@@ -142,6 +170,28 @@ export default function EnforcementPanel({ city, focusCell }: { city: string; fo
         ) : undefined
       }
     >
+      <div className="flex flex-wrap items-center gap-1.5">
+        {CATEGORY_FILTERS.map((f) => (
+          <button
+            key={f.id}
+            onClick={() => setFilter(f.id)}
+            className={`rounded-md px-2 py-1 text-xs font-medium transition-colors ${
+              filter === f.id ? "bg-blue-600 text-white shadow-sm" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            }`}
+          >
+            {f.label}
+          </button>
+        ))}
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search recommendations…"
+          aria-label="Search enforcement recommendations"
+          className="min-w-0 flex-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-400"
+        />
+      </div>
+
       {ordered === null ? (
         <div className="mt-2 space-y-2">
           {[0, 1, 2].map((i) => (
@@ -256,7 +306,26 @@ export default function EnforcementPanel({ city, focusCell }: { city: string; fo
               )}
             </div>
           ))}
-          {ordered.length === 0 && <div className="text-xs text-gray-500">No active recommendations</div>}
+          {ordered.length === 0 && (
+            <div className="py-2 text-center text-xs text-gray-500">
+              {filter !== "all" || query ? (
+                <>
+                  No recommendations match this filter.{" "}
+                  <button
+                    className="font-medium text-blue-600 hover:underline"
+                    onClick={() => {
+                      setFilter("all");
+                      setQuery("");
+                    }}
+                  >
+                    Clear filters
+                  </button>
+                </>
+              ) : (
+                "No active recommendations"
+              )}
+            </div>
+          )}
         </div>
       )}
     </Panel>

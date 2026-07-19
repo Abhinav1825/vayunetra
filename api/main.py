@@ -782,53 +782,115 @@ def coverage(city: str = Query("delhi", description="City ID")) -> dict:
         data = fixture("coverage", default={})
         picked = data.get(city) if isinstance(data, dict) else None
         return ok(picked or {"cells": [], "city_id": city})
-    bbox = _city_bbox(city)
-    if not bbox:
-        return err("bad_request", f"unknown city bbox: {city}")
-    from ml.coverage import build_dense_field
     try:
-        # Anchor the field on REAL data: latest PM2.5 per instrumented cell and
-        # the real source registry. Without this the assembler falls back to
-        # synthetic anchors (a fabricated field) — acceptable for fixtures only.
-        from core.spatial.h3_utils import cell_to_latlng
-
-        db = _db()
-        rows = (
-            db.table("measurements").select("h3_cell,ts,value")
-            .eq("city_id", city).eq("variable", "pm25")
-            .order("ts", desc=True).limit(3000).execute().data
-        )
-        latest: dict[str, float] = {}
-        for r in rows:
-            if r.get("value") is not None:
-                latest.setdefault(r["h3_cell"], float(r["value"]))
-        anchors = []
-        for cell_id, val in latest.items():
-            try:
-                lat, lng = cell_to_latlng(cell_id)
-                anchors.append({"lat": lat, "lng": lng, "pm25": val})
-            except Exception:  # noqa: BLE001 — malformed cell id
-                continue
-        src_rows = (
-            db.table("emission_sources").select("geom,detection_confidence")
-            .eq("city_id", city).execute().data
-        )
-        sources = [
-            {"coordinates": (s.get("geom") or {}).get("coordinates"),
-             "detection_confidence": s.get("detection_confidence")}
-            for s in src_rows if (s.get("geom") or {}).get("coordinates")
-        ]
-        base = sum(latest.values()) / len(latest) if latest else 95.0
-        data = build_dense_field(
-            city, bbox,
-            anchors=anchors or None,
-            sources=sources or None,
-            base_pm25=base,
-        )
-        data["anchors_from"] = "live_measurements" if anchors else "synthetic_fallback"
-        return ok(data)
+        return ok(_live_dense_field(city))
+    except ValueError as e:
+        return err("bad_request", str(e))
     except Exception as e:  # noqa: BLE001
         return _server_error("coverage_error", e, "Failed to compute coverage field")
+
+
+def _live_dense_field(city: str) -> dict:
+    """E2 dense PM2.5 field anchored on REAL data (latest per-cell PM2.5 +
+    the live source registry). Shared by /coverage and /clean-zones. Without
+    real anchors the assembler falls back to synthetic ones — acceptable for
+    fixtures only, so the response labels which basis was used."""
+    bbox = _city_bbox(city)
+    if not bbox:
+        raise ValueError(f"unknown city bbox: {city}")
+    from core.spatial.h3_utils import cell_to_latlng
+    from ml.coverage import build_dense_field
+
+    db = _db()
+    rows = (
+        db.table("measurements").select("h3_cell,ts,value")
+        .eq("city_id", city).eq("variable", "pm25")
+        .order("ts", desc=True).limit(3000).execute().data
+    ) or []
+    latest: dict[str, float] = {}
+    for r in rows:
+        if r.get("value") is not None:
+            latest.setdefault(r["h3_cell"], float(r["value"]))
+    anchors = []
+    for cell_id, val in latest.items():
+        try:
+            lat, lng = cell_to_latlng(cell_id)
+            anchors.append({"lat": lat, "lng": lng, "pm25": val})
+        except Exception:  # noqa: BLE001 — malformed cell id
+            continue
+    src_rows = (
+        db.table("emission_sources").select("geom,detection_confidence")
+        .eq("city_id", city).execute().data
+    ) or []
+    sources = [
+        {"coordinates": (s.get("geom") or {}).get("coordinates"),
+         "detection_confidence": s.get("detection_confidence")}
+        for s in src_rows if (s.get("geom") or {}).get("coordinates")
+    ]
+    base = sum(latest.values()) / len(latest) if latest else 95.0
+    data = build_dense_field(
+        city, bbox,
+        anchors=anchors or None,
+        sources=sources or None,
+        base_pm25=base,
+    )
+    data["anchors_from"] = "live_measurements" if anchors else "synthetic_fallback"
+    return data
+
+
+def _zones_from_field(city: str, field: dict, top: int) -> list[dict]:
+    """Lowest-PM2.5 cells of a dense field -> 'cleanest zones' cards."""
+    from core.spatial.h3_utils import cell_to_latlng
+    from ml.simulator.counterfactual import pm25_to_aqi
+
+    cells = [c for c in (field.get("cells") or []) if c.get("pm25") is not None]
+    cells.sort(key=lambda c: float(c["pm25"]))
+    zones = []
+    for c in cells[:top]:
+        try:
+            lat, lng = cell_to_latlng(c["h3_cell"])
+        except Exception:  # noqa: BLE001 — malformed cell id
+            continue
+        pm25 = round(float(c["pm25"]), 1)
+        zones.append({
+            "h3_cell": c["h3_cell"],
+            "zone_id": f"zone-{c['h3_cell'].replace('f', '')[-4:]}",
+            "pm25": pm25,
+            "aqi": pm25_to_aqi(pm25),
+            "lat": round(lat, 5),
+            "lng": round(lng, 5),
+            "maps_url": f"https://www.google.com/maps?q={round(lat, 5)},{round(lng, 5)}",
+        })
+    return zones
+
+
+@app.get("/clean-zones", tags=["advisory"])
+def clean_zones(
+    city: str = Query("delhi", description="City ID"),
+    top: int = Query(5, ge=1, le=20),
+    db=Depends(get_db),
+) -> dict:
+    """Cleanest-air zones RIGHT NOW — the lowest-PM2.5 ~1km cells of the E2
+    dense field (anchored on live station data). The citizen-facing flip side
+    of the blame map: not just where the air is bad, but where to go instead.
+    Honest basis: model-estimated field, labeled with its anchor source."""
+    if DEMO_MODE:
+        data = fixture("coverage", default={})
+        field = data.get(city) if isinstance(data, dict) else None
+        field = field or {"cells": [], "anchors_from": "demo_fixture"}
+        return ok({"city_id": city, "basis": "demo_fixture",
+                   "zones": _zones_from_field(city, field, top)})
+    try:
+        field = _live_dense_field(city)
+        return ok({
+            "city_id": city,
+            "basis": f"E2 dense 1km field, anchors: {field.get('anchors_from')}",
+            "zones": _zones_from_field(city, field, top),
+        })
+    except ValueError as e:
+        return err("bad_request", str(e))
+    except Exception as e:  # noqa: BLE001
+        return _server_error("clean_zones_error", e, "Failed to compute clean zones")
 
 
 # ---------------------------------------------------------------------------
