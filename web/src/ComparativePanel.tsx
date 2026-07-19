@@ -47,7 +47,7 @@ export default function ComparativePanel({ onSelectCity }: { onSelectCity: (city
   }));
 
   return (
-    <Panel title="Multi-City Compare" tag="A5">
+    <Panel title="Multi-City Compare">
       {failed && !data ? (
         <EmptyState message="Couldn't load the multi-city comparison." tone="error" onRetry={load} />
       ) : (

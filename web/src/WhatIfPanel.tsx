@@ -101,7 +101,7 @@ export default function WhatIfPanel({ city }: { city: string }) {
   const bestDelta = deltas.length ? Math.min(...deltas) : 0;
 
   return (
-    <Panel title="What-if Simulator" tag="E3 + E7">
+    <Panel title="What-if Simulator">
       <div className="text-xs text-gray-600">
         Counterfactual over attribution × forecast, with cited health &amp; carbon impact.
       </div>

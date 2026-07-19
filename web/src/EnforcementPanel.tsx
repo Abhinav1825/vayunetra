@@ -161,7 +161,6 @@ export default function EnforcementPanel({ city, focusCell }: { city: string; fo
   return (
     <Panel
       title="Enforcement Worklist"
-      tag="A3"
       right={
         focusCell ? (
           <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[11px] font-medium text-blue-700">
