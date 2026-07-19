@@ -332,8 +332,9 @@ def enforcement_notice_pdf(rec_id: int, db=Depends(get_db)) -> Response:
         from agents.enforcement import build_dossier
         dossier = build_dossier(rec_id)
         text = dossier.get("suggested_notice_text") or f"ENFORCEMENT NOTICE\n\nRecommendation #{rec_id}"
+    patch_image = (dossier.get("satellite_patch") or {}).get("image_ref")
     return Response(
-        content=notice_pdf_bytes(text),
+        content=notice_pdf_bytes(text, image_data_uri=patch_image),
         media_type="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="notice_{rec_id}.pdf"'},
     )

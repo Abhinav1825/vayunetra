@@ -15,7 +15,9 @@ with zero extra packages. Features:
 """
 from __future__ import annotations
 
+import base64
 import re
+import struct
 
 # --- Adobe AFM advance widths (per 1000 em) for printable ASCII 32..126 -------
 _HELV = [278, 278, 355, 556, 556, 889, 667, 191, 333, 333, 389, 584, 278, 333, 278, 278,
@@ -81,6 +83,40 @@ def _wrap(text: str, size: float, max_w: float, bold: bool = False) -> list[str]
 
 def _pdf_esc(s: str) -> str:
     return s.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
+
+
+def _jpeg_from_data_uri(uri: str | None) -> tuple[bytes, int, int, int] | None:
+    """Decode a base64 JPEG data URI → (bytes, width, height, n_components).
+
+    Dimensions come from the SOF0/1/2 marker so the image can be scaled with
+    the right aspect ratio. Returns None for anything that isn't a sane JPEG.
+    """
+    if not uri or "base64," not in uri:
+        return None
+    try:
+        raw = base64.b64decode(uri.split("base64,", 1)[1], validate=False)
+    except Exception:  # noqa: BLE001 — a broken URI just means "no image"
+        return None
+    if len(raw) < 4 or raw[:2] != b"\xff\xd8":
+        return None
+    i = 2
+    while i + 9 < len(raw):
+        if raw[i] != 0xFF:
+            i += 1
+            continue
+        marker = raw[i + 1]
+        if marker in (0xC0, 0xC1, 0xC2):  # baseline / extended / progressive SOF
+            h, w = struct.unpack(">HH", raw[i + 5 : i + 9])
+            ncomp = raw[i + 9]
+            if w > 0 and h > 0:
+                return raw, w, h, ncomp
+            return None
+        if marker in (0xD8, 0x01) or 0xD0 <= marker <= 0xD7:
+            i += 2
+            continue
+        (seglen,) = struct.unpack(">H", raw[i + 2 : i + 4])
+        i += 2 + seglen
+    return None
 
 
 def _parse(text: str):
@@ -191,9 +227,15 @@ class _Doc:
         self.pages.append("\n".join(self.ops))
 
 
-def notice_pdf_bytes(text: str) -> bytes:
-    """Render an enforcement-notice PDF (bytes) from plain/structured notice text."""
+def notice_pdf_bytes(text: str, image_data_uri: str | None = None) -> bytes:
+    """Render an enforcement-notice PDF (bytes) from plain/structured notice text.
+
+    `image_data_uri` (base64 JPEG) is embedded where the notice text carries the
+    `[[SATELLITE_IMAGE]]` marker — the actual satellite patch, in the document,
+    like a real evidence annexure.
+    """
     title, meta, blocks = _parse(_ascii(text))
+    img = _jpeg_from_data_uri(image_data_uri)
     d = _Doc()
     d.start_page()
 
@@ -201,8 +243,8 @@ def notice_pdf_bytes(text: str) -> bytes:
     d.rect(0, d.H - 76, d.W, 76, NAVY)
     d.rect(0, d.H - 80, d.W, 4, ACCENT)
     d.text(d.M, d.H - 40, "VAYUNETRA", 22, True, WHITE)
-    d.text(d.M, d.H - 58, "AI-Powered Air Quality Enforcement", 9.5, False, (0.80, 0.85, 0.92))
-    tag = "OFFICIAL NOTICE"
+    d.text(d.M, d.H - 58, "Urban Air Quality Intelligence - Enforcement Cell", 9.5, False, (0.80, 0.85, 0.92))
+    tag = "DRAFT FOR OFFICER REVIEW"
     d.text(d.W - d.M - _text_w(tag, 9, True), d.H - 40, tag, 9, True, (0.80, 0.85, 0.92))
 
     # Title
@@ -228,13 +270,23 @@ def notice_pdf_bytes(text: str) -> bytes:
     # Sections
     for head, body in blocks:
         if head:
-            d.ensure(26)
+            d.ensure(64)  # never orphan a heading at the page foot
             d.text(d.M, d.y, head.upper(), 11, True, NAVY)
             d.line(d.M, d.M + min(_text_w(head.upper(), 11, True), 130), d.y - 4, ACCENT, 1.4)
             d.y -= 19
         for ln in body:
             if ln == "":
                 d.y -= 5
+            elif ln == "[[SATELLITE_IMAGE]]":
+                if img:
+                    _raw, iw, ih, _nc = img
+                    w = min(250.0, d.cw * 0.55)
+                    h = w * ih / iw
+                    d.ensure(h + 14)
+                    d.y -= 4
+                    d.box(d.M - 1, d.y - h - 1, w + 2, h + 2, BORDER, 0.8)
+                    d.ops.append(f"q {w:.2f} 0 0 {h:.2f} {d.M:.2f} {d.y - h:.2f} cm /Im1 Do Q")
+                    d.y -= h + 10
             elif ln.startswith("- "):
                 d.bullet(ln[2:])
             elif ln.lower().startswith("this is a system-generated"):
@@ -245,24 +297,36 @@ def notice_pdf_bytes(text: str) -> bytes:
         d.y -= 9
 
     d.finish()
-    return _assemble(d.pages)
+    return _assemble(d.pages, img)
 
 
-def _assemble(pages: list[str]) -> bytes:
+def _assemble(pages: list[str], img: tuple[bytes, int, int, int] | None = None) -> bytes:
     objs: dict[int, bytes] = {}
     objs[1] = b"<< /Type /Catalog /Pages 2 0 R >>"
     kids = " ".join(f"{5 + 2 * k} 0 R" for k in range(len(pages)))
     objs[2] = f"<< /Type /Pages /Kids [{kids}] /Count {len(pages)} >>".encode()
     objs[3] = b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>"
     objs[4] = b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>"
+    img_no = 5 + 2 * len(pages)
+    xobj = f" /XObject << /Im1 {img_no} 0 R >>" if img else ""
     for k, content in enumerate(pages):
         page_no, c_no = 5 + 2 * k, 6 + 2 * k
         objs[page_no] = (
             f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] "
-            f"/Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents {c_no} 0 R >>"
+            f"/Resources << /Font << /F1 3 0 R /F2 4 0 R >>{xobj} >> /Contents {c_no} 0 R >>"
         ).encode()
         body = content.encode("latin-1", "replace")
         objs[c_no] = b"<< /Length " + str(len(body)).encode() + b" >>\nstream\n" + body + b"\nendstream"
+    if img:
+        raw, iw, ih, ncomp = img
+        cs = b"/DeviceGray" if ncomp == 1 else b"/DeviceRGB"
+        objs[img_no] = (
+            b"<< /Type /XObject /Subtype /Image /Width " + str(iw).encode()
+            + b" /Height " + str(ih).encode()
+            + b" /ColorSpace " + cs
+            + b" /BitsPerComponent 8 /Filter /DCTDecode /Length " + str(len(raw)).encode()
+            + b" >>\nstream\n" + raw + b"\nendstream"
+        )
 
     out = b"%PDF-1.4\n"
     offsets: dict[int, int] = {}
