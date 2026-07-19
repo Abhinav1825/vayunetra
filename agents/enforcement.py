@@ -513,6 +513,10 @@ def build_dossier(rec_id: int, city_id: str = "delhi") -> dict:
         }
         satellite_patch = find_image_patch(type("_NoDb", (), {"table": lambda *_: _NoRows()})(), rec, demo_source)
 
+        fc_all = json.loads((FIXTURES / "forecast.json").read_text()) if (FIXTURES / "forecast.json").exists() else []
+        fc_rows = [r for r in fc_all if r.get("h3_cell") == rec.get("h3_cell")] or fc_all[:3]
+        projection = _impact_projection(rec, fc_rows)
+
         return {
             "rec_id": rec_id,
             "city_id": city_id,
@@ -523,7 +527,8 @@ def build_dossier(rec_id: int, city_id: str = "delhi") -> dict:
             "status": rec.get("status", "proposed"),
             "citations": full_citations,
             "satellite_patch": satellite_patch,
-            "suggested_notice_text": _build_notice_text(rec, full_citations, satellite_patch, demo_source),
+            "impact_projection": projection,
+            "suggested_notice_text": _build_notice_text(rec, full_citations, satellite_patch, demo_source, projection),
             "generated_at": datetime.now(timezone.utc).isoformat(),
         }
 
@@ -554,6 +559,12 @@ def build_dossier(rec_id: int, city_id: str = "delhi") -> dict:
     # Live dossiers may only show REAL ingested image evidence — never a
     # generated placeholder dressed up as satellite imagery.
     satellite_patch = find_image_patch(db, rec, source, allow_placeholder=False)
+    fc_rows = (
+        db.table("forecasts").select("horizon_h,value,issued_at")
+        .eq("city_id", rec["city_id"]).eq("h3_cell", rec["h3_cell"])
+        .order("issued_at", desc=True).limit(30).execute().data
+    ) or []
+    projection = _impact_projection(rec, fc_rows)
     return {
         "rec_id": rec_id,
         "city_id": rec["city_id"],
@@ -564,7 +575,8 @@ def build_dossier(rec_id: int, city_id: str = "delhi") -> dict:
         "status": rec.get("status", "proposed"),
         "citations": full_citations,
         "satellite_patch": satellite_patch,
-        "suggested_notice_text": _build_notice_text(rec, full_citations, satellite_patch, source),
+        "impact_projection": projection,
+        "suggested_notice_text": _build_notice_text(rec, full_citations, satellite_patch, source, projection),
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }
 
@@ -614,11 +626,58 @@ def _clean_provision_quote(excerpt: str, max_len: int = 220) -> str:
     return ""
 
 
+def _impact_projection(rec: dict, forecast_rows: list[dict]) -> dict | None:
+    """Modeled compliance impact for the notice chart: the cell's central
+    forecast vs the same forecast with this source's share rolled back — the
+    exact linear-rollback model /simulate uses, labeled as modeled."""
+    try:
+        contrib = float(rec.get("contribution") or 0)
+    except (TypeError, ValueError):
+        return None
+    if contrib <= 0.02 or not forecast_rows:
+        return None
+    by_h: dict[int, float] = {}
+    for r in forecast_rows:
+        try:
+            h = int(r.get("horizon_h") or 0)
+            v = float(r.get("value"))
+        except (TypeError, ValueError):
+            continue
+        if h in (24, 48, 72) and h not in by_h:
+            by_h[h] = v
+    if not by_h:
+        return None
+    return {
+        "contribution_pct": round(contrib * 100, 1),
+        "horizons": [
+            {"h": h, "base": round(v, 1), "with_compliance": round(v * (1 - contrib), 1)}
+            for h, v in sorted(by_h.items())
+        ],
+    }
+
+
+def _projection_section(projection: dict | None) -> str:
+    if not projection or not projection.get("horizons"):
+        return ""
+    parts = " · ".join(
+        f"+{h['h']}h: {h['base']} → {h['with_compliance']}" for h in projection["horizons"]
+    )
+    return (
+        "\n"
+        "PROJECTED IMPACT OF COMPLIANCE:\n"
+        f"Modeled linear rollback of this source's {projection['contribution_pct']}% share "
+        "on the cell's central PM2.5 forecast (ug/m3) — a screening estimate, not a guarantee.\n"
+        "[[IMPACT_CHART]]\n"
+        f"{parts}\n"
+    )
+
+
 def _build_notice_text(
     rec: dict,
     citations: list[dict],
     satellite_patch: dict | None = None,
     source: dict | None = None,
+    projection: dict | None = None,
 ) -> str:
     """Generate a draft enforcement notice.
 
@@ -701,6 +760,7 @@ def _build_notice_text(
         "APPLICABLE REGULATIONS:\n"
         f"{reg}\n"
         f"{visual}"
+        f"{_projection_section(projection)}"
         "\n"
         "REQUIRED ACTION:\n"
         "The occupier shall undertake immediate corrective measures and demonstrate "

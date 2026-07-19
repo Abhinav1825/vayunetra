@@ -37,7 +37,7 @@ _HELVB = [278, 333, 474, 556, 556, 889, 722, 238, 333, 333, 389, 584, 278, 333, 
 _TRANS = {
     "—": "-", "–": "-", "‒": "-", "−": "-",
     "‘": "'", "’": "'", "“": '"', "”": '"',
-    "•": "-", "·": "-", "…": "...", " ": " ", "₹": "Rs ",
+    "•": "-", "·": "-", "…": "...", " ": " ", "₹": "Rs ", "→": "->", "≥": ">=", "≤": "<=",
 }
 
 # Palette
@@ -227,12 +227,62 @@ class _Doc:
         self.pages.append("\n".join(self.ops))
 
 
-def notice_pdf_bytes(text: str, image_data_uri: str | None = None) -> bytes:
+BAR_BASE = (0.83, 0.20, 0.20)     # forecast, no action
+BAR_COMP = (0.05, 0.55, 0.38)     # with compliance
+AXIS = (0.62, 0.65, 0.70)
+
+
+def _draw_impact_chart(d: "_Doc", chart: dict) -> None:
+    """Grouped bars per horizon: cell forecast vs modeled-compliance forecast."""
+    horizons = chart.get("horizons") or []
+    if not horizons:
+        return
+    ch_h, legend_h = 92.0, 16.0
+    d.ensure(ch_h + legend_h + 26)
+    top = d.y
+    base_y = top - ch_h
+    max_v = max(max(h["base"], h["with_compliance"]) for h in horizons) or 1.0
+
+    # y gridlines at 0 / half / max, with labels
+    for frac in (0.0, 0.5, 1.0):
+        gy = base_y + ch_h * 0.82 * frac
+        d.line(d.M + 30, d.W - d.M, gy, RULE, 0.5)
+        label = f"{round(max_v * frac)}"
+        d.text(d.M + 26 - _text_w(label, 7), gy - 2.4, label, 7, False, GRAY)
+    d.text(d.M + 26 - _text_w("ug/m3", 6.5), base_y + ch_h * 0.82 + 10, "ug/m3", 6.5, False, GRAY)
+
+    group_w = (d.cw - 60) / len(horizons)
+    bar_w = min(34.0, group_w / 3)
+    for i, h in enumerate(horizons):
+        gx = d.M + 40 + i * group_w + (group_w - 2 * bar_w - 6) / 2
+        for k, (val, color) in enumerate(((h["base"], BAR_BASE), (h["with_compliance"], BAR_COMP))):
+            bh = ch_h * 0.82 * (float(val) / max_v)
+            bx = gx + k * (bar_w + 6)
+            d.rect(bx, base_y, bar_w, bh, color)
+            lbl = f"{round(float(val))}"
+            d.text(bx + (bar_w - _text_w(lbl, 7.5, True)) / 2, base_y + bh + 3, lbl, 7.5, True, DARK)
+        xl = f"+{h['h']}h"
+        d.text(d.M + 40 + i * group_w + (group_w - _text_w(xl, 8)) / 2 - 3, base_y - 11, xl, 8, False, GRAY)
+
+    # baseline + legend
+    d.line(d.M + 30, d.W - d.M, base_y, AXIS, 0.8)
+    ly = base_y - 26
+    d.rect(d.M + 40, ly, 7, 7, BAR_BASE)
+    d.text(d.M + 51, ly, "forecast, no action", 8, False, DARK)
+    lx2 = d.M + 51 + _text_w("forecast, no action", 8) + 18
+    d.rect(lx2, ly, 7, 7, BAR_COMP)
+    d.text(lx2 + 11, ly, "with source compliance (modeled)", 8, False, DARK)
+    d.y = ly - 14
+
+
+def notice_pdf_bytes(text: str, image_data_uri: str | None = None, impact_chart: dict | None = None) -> bytes:
     """Render an enforcement-notice PDF (bytes) from plain/structured notice text.
 
     `image_data_uri` (base64 JPEG) is embedded where the notice text carries the
     `[[SATELLITE_IMAGE]]` marker — the actual satellite patch, in the document,
-    like a real evidence annexure.
+    like a real evidence annexure. `impact_chart` (the dossier's
+    impact_projection dict) is drawn as a grouped bar chart at the
+    `[[IMPACT_CHART]]` marker: forecast without action vs with compliance.
     """
     title, meta, blocks = _parse(_ascii(text))
     img = _jpeg_from_data_uri(image_data_uri)
@@ -277,6 +327,9 @@ def notice_pdf_bytes(text: str, image_data_uri: str | None = None) -> bytes:
         for ln in body:
             if ln == "":
                 d.y -= 5
+            elif ln == "[[IMPACT_CHART]]":
+                if impact_chart and impact_chart.get("horizons"):
+                    _draw_impact_chart(d, impact_chart)
             elif ln == "[[SATELLITE_IMAGE]]":
                 if img:
                     _raw, iw, ih, _nc = img

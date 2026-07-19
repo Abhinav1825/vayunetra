@@ -97,3 +97,43 @@ def test_pdf_renders_without_image_too():
     pdf = notice_pdf_bytes(text, image_data_uri="data:image/jpeg;base64,broken")
     assert pdf.startswith(b"%PDF")
     assert b"/DCTDecode" not in pdf
+
+
+# --- impact projection + chart ------------------------------------------------
+
+def test_impact_projection_math_and_gates():
+    from agents.enforcement import _impact_projection
+
+    fc = [
+        {"horizon_h": 24, "value": 80.0},
+        {"horizon_h": 48, "value": 60.0},
+        {"horizon_h": 72, "value": 50.0},
+        {"horizon_h": 24, "value": 999.0},  # older duplicate — first wins
+    ]
+    p = _impact_projection({"contribution": 0.25}, fc)
+    assert p["contribution_pct"] == 25.0
+    assert p["horizons"][0] == {"h": 24, "base": 80.0, "with_compliance": 60.0}
+    assert len(p["horizons"]) == 3
+    # gates: negligible share or no forecasts -> no chart, no fake numbers
+    assert _impact_projection({"contribution": 0.01}, fc) is None
+    assert _impact_projection({"contribution": 0.25}, []) is None
+
+
+def test_notice_text_carries_projection_section():
+    from agents.enforcement import _impact_projection
+
+    p = _impact_projection(REC, [{"horizon_h": 24, "value": 41.0}, {"horizon_h": 48, "value": 29.0}])
+    text = _build_notice_text(REC, CITATIONS, PATCH, SOURCE, p)
+    assert "PROJECTED IMPACT OF COMPLIANCE:" in text
+    assert "[[IMPACT_CHART]]" in text
+    assert "screening estimate, not a guarantee" in text
+
+
+def test_pdf_draws_impact_chart():
+    from agents.enforcement import _impact_projection
+
+    p = _impact_projection(REC, [{"horizon_h": 24, "value": 41.0}, {"horizon_h": 72, "value": 28.0}])
+    text = _build_notice_text(REC, CITATIONS, None, SOURCE, p)
+    pdf = notice_pdf_bytes(text, impact_chart=p)
+    assert pdf.startswith(b"%PDF")
+    assert b"with source compliance" in pdf  # legend text present in content stream
