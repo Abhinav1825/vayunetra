@@ -1,7 +1,7 @@
 # VayuNetra — 3-Minute Demo Video Script
 
 **Total runtime: 3:00 · three speakers · one minute each**
-Order: **Omkar (the science) → Abhinav (the action) → Sejal (the reach + close)** — it mirrors the product loop: *trace → act → protect*.
+Three presenters, one minute each. The split below (Omkar → Abhinav → Sejal) is a suggested order that follows the product loop *trace → act → protect* — any of the three can take any segment.
 
 Every beat below has a timestamp, the exact screen to show, and the exact words to say. The spoken lines are written for natural Indian-English delivery at ~140 words/minute — read them aloud twice before recording; if a line feels stiff in your mouth, reword it, but **keep every number exactly as written** (they are all verified against the live app).
 

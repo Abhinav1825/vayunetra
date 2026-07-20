@@ -4,7 +4,7 @@
 > If you have a doubt about any feature during prep, demo, or judging — the answer should be here. If it isn't, it's a bug in this document.
 
 - Live app: **https://vayunetra-aqi.vercel.app** · API: **https://vayunetra-c8i8.onrender.com** · Telegram: **@aqivayu_bot**
-- Team: **Omkar Kadam** (AI/ML core) · **Sejal Kumbhar** (product + reach) · **Abhinav Prasad** (agents + backend)
+- Team: **Omkar Kadam · Sejal Kumbhar · Abhinav Prasad** — Full-Stack AI Engineers (models · agents & API · app & channels)
 - Built for ET AI Hackathon 2026, Problem Statement 5: *AI-Powered Urban Air Quality Intelligence for Smart City Intervention.*
 
 ---
