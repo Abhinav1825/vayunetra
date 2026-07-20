@@ -1347,7 +1347,7 @@ async def websocket_live(ws: WebSocket, city: str = "delhi"):
     except WebSocketDisconnect:
         pass
     except Exception as e:
-        print(f"WebSocket error: {e}")
+        logger.error("websocket stream error: %s", e, exc_info=True)
         try:
             await ws.close()
         except Exception:
