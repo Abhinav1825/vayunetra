@@ -130,11 +130,10 @@ demo/         17 offline fixtures    supabase/migrations/  schema+RLS    eval/  
 
 ## Team
 
-| | Lane | Owns |
-|---|---|---|
-| **Omkar Kadam** | AI/ML core | Source attribution · forecasting · counterfactual simulator · validation |
-| **Sejal Kumbhar** | Product + reach | Console frontend · advisory + multi-city agents · citizen channels · impact models |
-| **Abhinav Prasad** | Agents + backend | Orchestrator graph · enforcement + RAG · API + deploys · satellite CV |
+**Omkar Kadam · Sejal Kumbhar · Abhinav Prasad** — Full-Stack AI Engineers.
+
+Three engineers, one shared codebase — each worked across the whole stack: the ML models, the
+agent graph & API, and the app & citizen channels.
 
 ## Where we sit in India's air-quality stack
 
