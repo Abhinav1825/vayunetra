@@ -146,33 +146,41 @@ def find_image_patch(
     """
     source_id = rec.get("source_id")
     city_id = rec.get("city_id")
-    rows = (
-        db.table("kb_chunks")
-        .select("id,doc_id,title,source_url,chunk_text,image_ref,metadata")
-        .eq("modality", "image")
-        .limit(500)
-        .execute()
-        .data
-    )
+    sel = "id,doc_id,title,source_url,chunk_text,image_ref,metadata"
 
-    def score(row: dict[str, Any]) -> int:
-        meta = _metadata(row)
-        if source_id is not None and str(meta.get("source_id")) == str(source_id):
-            return 3
-        if city_id and meta.get("city_id") == city_id:
-            return 1
-        return 0
+    def _first_with_image(query: Any) -> dict[str, Any] | None:
+        try:
+            data = query.execute().data or []
+        except Exception:
+            return None
+        return next((r for r in data if r.get("image_ref")), None)
 
-    ranked = sorted((r for r in rows if r.get("image_ref")), key=score, reverse=True)
-    if ranked and score(ranked[0]) > 0:
-        row = ranked[0]
+    # Targeted fetch: the source's own patch first (exact match), then any
+    # patch for the city. Filtering server-side keeps a dossier to a single
+    # image row instead of scanning every image in kb_chunks — patches are
+    # ~70 KB each, so pulling all of them would make every dossier crawl.
+    row = None
+    exact = False
+    if source_id is not None:
+        row = _first_with_image(
+            db.table("kb_chunks").select(sel)
+            .eq("modality", "image").eq("metadata->>source_id", str(source_id)).limit(3)
+        )
+        exact = row is not None
+    if row is None and city_id:
+        row = _first_with_image(
+            db.table("kb_chunks").select(sel)
+            .eq("modality", "image").eq("metadata->>city_id", str(city_id)).limit(5)
+        )
+
+    if row is not None:
         meta = _metadata(row)
         return {
             "title": row.get("title") or "Sentinel-2 patch",
             "image_ref": row.get("image_ref"),
             "source_url": row.get("source_url"),
             "excerpt": row.get("chunk_text"),
-            "similarity": 1.0 if str(meta.get("source_id")) == str(source_id) else 0.72,
+            "similarity": 1.0 if exact else 0.72,
             "metadata": meta,
         }
 
