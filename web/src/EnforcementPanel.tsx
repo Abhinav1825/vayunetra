@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { useEffect, useMemo, useState } from "react";
 import { cellToLatLng } from "h3-js";
 import { api, downloadFile } from "./api";
@@ -7,6 +8,13 @@ import { Panel } from "./ui";
 type Rec = {
   id: number;
   h3_cell?: string;
+=======
+import { useEffect, useState } from "react";
+import { api } from "./api";
+
+type Rec = {
+  id: number;
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
   priority_score: number;
   contribution: number;
   pop_exposed: number;
@@ -15,6 +23,7 @@ type Rec = {
   rubric_score?: { total?: number };
 };
 
+<<<<<<< HEAD
 /** Rough km between two H3 cells (equirectangular — fine at city scale). */
 function cellKm(a: string, b: string): number | null {
   try {
@@ -334,5 +343,33 @@ export default function EnforcementPanel({ city, focusCell }: { city: string; fo
         </div>
       )}
     </Panel>
+=======
+export default function EnforcementPanel({ city }: { city: string }) {
+  const [rows, setRows] = useState<Rec[]>([]);
+
+  useEffect(() => {
+    api<Rec[]>(`/enforcement?city=${city}&limit=5`).then(setRows).catch(() => setRows([]));
+  }, [city]);
+
+  return (
+    <div className="rounded-lg bg-white/95 p-3 text-sm shadow">
+      <div className="font-semibold">Enforcement Worklist</div>
+      <div className="mt-2 space-y-2">
+        {rows.map((r) => (
+          <div key={r.id} className="rounded-md border border-gray-200 p-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-medium">Priority {Math.round(r.priority_score * 100)}</span>
+              <span className="text-xs text-gray-500">rubric {r.rubric_score?.total ?? "--"}/10</span>
+            </div>
+            <div className="mt-1 text-xs text-gray-700">{r.rationale}</div>
+            <div className="mt-1 text-xs text-gray-500">
+              {Math.round(r.contribution * 100)}% contribution · {r.pop_exposed.toLocaleString()} exposed
+            </div>
+          </div>
+        ))}
+        {rows.length === 0 && <div className="text-xs text-gray-500">No active recommendations</div>}
+      </div>
+    </div>
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
   );
 }

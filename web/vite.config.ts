@@ -1,5 +1,6 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+<<<<<<< HEAD
 import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig({
@@ -33,5 +34,10 @@ export default defineConfig({
       },
     }),
   ],
+=======
+
+export default defineConfig({
+  plugins: [react()],
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
   server: { port: 5173 },
 });

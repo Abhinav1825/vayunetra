@@ -4,7 +4,10 @@ from __future__ import annotations
 import argparse
 import asyncio
 import os
+<<<<<<< HEAD
 from typing import Any
+=======
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
 
 import core.env  # noqa: F401  (loads .env)
 
@@ -31,6 +34,7 @@ async def send_telegram_advisory(advisory: dict, chat_id: str | None = None) -> 
     if not chat_id:
         raise RuntimeError("TELEGRAM_CHAT_ID is missing; message the bot once, then set the chat id")
 
+<<<<<<< HEAD
     msg = await send_telegram_message(chat_id, format_telegram_message(advisory))
     return {"chat_id": str(chat_id), "message_id": msg.message_id}
 
@@ -143,6 +147,13 @@ async def handle_subscription_update(update: dict, db: Any) -> dict:
 
     await send_telegram_message(str(chat_id), "Send /start to choose Delhi, Bengaluru, or Mumbai alerts.")
     return {"status": "help_sent", "chat_id": str(chat_id)}
+=======
+    from telegram import Bot
+
+    bot = Bot(token=token)
+    msg = await bot.send_message(chat_id=chat_id, text=format_telegram_message(advisory))
+    return {"chat_id": str(chat_id), "message_id": msg.message_id}
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
 
 
 def main() -> None:

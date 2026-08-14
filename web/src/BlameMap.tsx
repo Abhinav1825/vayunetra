@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
 import { MapboxOverlay } from "@deck.gl/mapbox";
 import { H3HexagonLayer } from "@deck.gl/geo-layers";
+<<<<<<< HEAD
 import { GeoJsonLayer, PolygonLayer, ScatterplotLayer } from "@deck.gl/layers";
 import { api } from "./api";
 import { colorFor, dominantSource, pm25Color, satColor, type Shares } from "./sources";
@@ -103,6 +104,19 @@ export const DRIVER_LABELS: Record<string, string> = {
 };
 
 export type MapMode = "blame" | "satellite" | "coverage";
+=======
+import { api } from "./api";
+import { colorFor, dominantSource, satColor, type Shares } from "./sources";
+
+type AttrCell = {
+  h3_cell: string;
+  shares: Shares;
+  confidence: number;
+  evidence?: { no2?: number; no2_sat?: number; pm10_pm25_ratio?: number; [k: string]: unknown };
+};
+
+export type MapMode = "blame" | "satellite";
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
 
 // Clean light raster basemap (CARTO, free, no API key) — colored hexagons pop on it.
 const BASEMAP = {
@@ -134,6 +148,7 @@ function tooltip(c: AttrCell, mode: MapMode) {
     .map(([k, v]) => `${k.replace("_", " ")} ${Math.round(v * 100)}%`)
     .join("<br/>");
   const ev = c.evidence ?? {};
+<<<<<<< HEAD
   const drivers = (ev.shap_drivers ?? [])
     .map((d) => `${DRIVER_LABELS[d.feature] ?? d.feature} +${d.contribution.toFixed(1)}`)
     .join(" · ");
@@ -141,6 +156,11 @@ function tooltip(c: AttrCell, mode: MapMode) {
     html:
       `<b>${dominantSource(c.shares).replace("_", " ")}</b> · conf ${c.confidence}<br/>${top}` +
       (drivers ? `<br/><span style="color:#4ade80">SHAP drivers: ${drivers} µg/m³</span>` : "") +
+=======
+  return {
+    html:
+      `<b>${dominantSource(c.shares).replace("_", " ")}</b> · conf ${c.confidence}<br/>${top}` +
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
       `<br/><span style="color:#888">NO₂ ${ev.no2 ?? "–"} · sat ${(ev.no2_sat ?? 0).toExponential?.(1) ?? "–"} · PM10/PM2.5 ${ev.pm10_pm25_ratio ?? "–"}</span>`,
     style: { fontSize: "12px" },
   };
@@ -150,6 +170,7 @@ export default function BlameMap({
   city,
   center,
   mode,
+<<<<<<< HEAD
   selected,
   onSelect,
   onCellsLoaded,
@@ -159,10 +180,13 @@ export default function BlameMap({
   showFreight = false,
   coverageCells = [],
   coverageKind = "dense",
+=======
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
 }: {
   city: string;
   center: [number, number];
   mode: MapMode;
+<<<<<<< HEAD
   selected?: string | null;
   onSelect?: (cell: AttrCell | null) => void;
   onCellsLoaded?: (cells: AttrCell[]) => void;
@@ -172,11 +196,14 @@ export default function BlameMap({
   showFreight?: boolean;
   coverageCells?: CoverageCell[];
   coverageKind?: "stations" | "dense";
+=======
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const overlayRef = useRef<MapboxOverlay | null>(null);
   const [cells, setCells] = useState<AttrCell[]>([]);
+<<<<<<< HEAD
   const [sources, setSources] = useState<EmissionSource[]>([]);
   const [plume, setPlume] = useState<PlumeData | null>(null);
   const [wards, setWards] = useState<WardCollection | null>(null);
@@ -279,10 +306,33 @@ export default function BlameMap({
 
   useEffect(() => {
     const blame = new H3HexagonLayer<AttrCell>({
+=======
+
+  useEffect(() => {
+    if (!containerRef.current || mapRef.current) return;
+    const map = new maplibregl.Map({ container: containerRef.current, style: BASEMAP, center, zoom: ZOOM });
+    const overlay = new MapboxOverlay({ interleaved: false, layers: [] });
+    map.addControl(overlay);
+    mapRef.current = map;
+    overlayRef.current = overlay;
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    mapRef.current?.flyTo({ center, zoom: ZOOM });
+  }, [center]);
+
+  useEffect(() => {
+    api<AttrCell[]>(`/attribution?city=${city}`).then(setCells).catch(() => setCells([]));
+  }, [city]);
+
+  useEffect(() => {
+    const layer = new H3HexagonLayer<AttrCell>({
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
       id: "blame",
       data: cells,
       getHexagon: (d) => d.h3_cell,
       getFillColor: (d) => (mode === "satellite" ? satColor(d.evidence?.no2_sat ?? 0) : colorFor(d.shares)),
+<<<<<<< HEAD
       getLineColor: (d) => (d.h3_cell === selected ? [30, 64, 175, 255] : [255, 255, 255, 90]),
       getLineWidth: (d) => (d.h3_cell === selected ? 3 : 1),
       lineWidthMinPixels: 1,
@@ -442,4 +492,19 @@ export default function BlameMap({
       )}
     </div>
   );
+=======
+      getLineColor: [255, 255, 255, 90],
+      lineWidthMinPixels: 1,
+      extruded: false,
+      pickable: true,
+      updateTriggers: { getFillColor: mode },
+    });
+    overlayRef.current?.setProps({
+      layers: [layer],
+      getTooltip: ({ object }: { object?: AttrCell }) => (object ? tooltip(object, mode) : null),
+    });
+  }, [cells, mode]);
+
+  return <div ref={containerRef} className="h-full w-full" />;
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
 }

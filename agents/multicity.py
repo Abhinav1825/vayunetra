@@ -1,16 +1,23 @@
+<<<<<<< HEAD
 """Agent 5 - Multi-City Comparative Intelligence (Sejal).
 
 Stage-2 (E7): each city card also carries its annual PM2.5 health burden
 (premature deaths/yr + ₹) so cities are comparable by *impact*, not just AQI —
 computed from cited long-term CRF × cited city population/PM2.5 (ml.impact).
 """
+=======
+"""Agent 5 - Multi-City Comparative Intelligence (Sejal)."""
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
 from __future__ import annotations
 
 from collections import Counter
 
+<<<<<<< HEAD
 from ml.impact import city_roi
 from ml.impact import factors as impact_factors
 
+=======
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
 
 def average(rows: list[dict], key: str) -> float:
     vals = [float(r[key]) for r in rows if r.get(key) is not None]
@@ -45,6 +52,7 @@ def playbook_for(source: str, trend: str) -> list[str]:
     return ["maintain monitoring", "compare against similar H3 signatures", "keep advisory ready"]
 
 
+<<<<<<< HEAD
 def build_comparison(
     cities: list[dict],
     aqi_rows: list[dict],
@@ -55,6 +63,10 @@ def build_comparison(
     status_by_city: dict[str, Counter] = {}
     for r in rec_status_rows or []:
         status_by_city.setdefault(r.get("city_id", ""), Counter())[r.get("status") or "proposed"] += 1
+=======
+def build_comparison(cities: list[dict], aqi_rows: list[dict], forecast_rows: list[dict]) -> dict:
+    cards = []
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
     for city in cities:
         cid = city["city_id"]
         city_aqi = [r for r in aqi_rows if r.get("city_id") == cid]
@@ -63,10 +75,13 @@ def build_comparison(
         forecast_pm25 = average(city_fc, "value") or current_pm25
         source = dominant_source(city_aqi)
         trend = trend_label(forecast_pm25, current_pm25)
+<<<<<<< HEAD
         # E7: annual health burden for this city (cited long-term CRF + population).
         pop = impact_factors.population_for(cid)
         annual = impact_factors.annual_pm25_for(cid)
         roi = city_roi(cid, annual_pm25=annual.value, population=pop.value)
+=======
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
         cards.append({
             "city_id": cid,
             "name": city["name"],
@@ -76,6 +91,7 @@ def build_comparison(
             "dominant_source": source,
             "signature_match": "construction-winter" if source == "construction_dust" else f"{source}-signature",
             "playbook": playbook_for(source, trend),
+<<<<<<< HEAD
             # Compliance posture: real enforcement-rec statuses. Honest zero
             # state — no real-world intervention has been dispatched yet.
             "compliance": {
@@ -88,11 +104,14 @@ def build_comparison(
                 "attributable_deaths_per_year": roi["attributable_deaths_per_year"],
                 "annual_health_burden_inr": roi["annual_health_burden_inr"],
             },
+=======
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
         })
     return {
         "summary": {
             "cities_compared": len(cards),
             "highest_risk_city": max(cards, key=lambda r: r["forecast_24h_pm25"])["city_id"] if cards else None,
+<<<<<<< HEAD
             "highest_burden_city": max(
                 cards, key=lambda r: r["health"]["attributable_deaths_per_year"])["city_id"] if cards else None,
             # computed from the live dominant sources, not a canned line
@@ -104,6 +123,9 @@ def build_comparison(
             ),
             "impact_basis": "annual burden via long-term CRF (WHO HRAPIE / Chen & Hoek 2020) "
                             "× cited city population & annual PM2.5 (UN WUP 2018, IQAir 2023)",
+=======
+            "shared_pattern": "traffic + construction dominate the Stage-1 demo snapshot",
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
         },
         "cities": cards,
     }

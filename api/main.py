@@ -11,6 +11,7 @@ Run:
 from __future__ import annotations
 
 import base64
+<<<<<<< HEAD
 import hmac
 import json
 import logging
@@ -27,6 +28,20 @@ from fastapi import FastAPI, Header, HTTPException, Query, Depends, Request, Web
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field
+=======
+import json
+import os
+import time
+import asyncio
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Optional
+
+from fastapi import FastAPI, HTTPException, Query, Request, Depends, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from pydantic import BaseModel
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
 
 import core.env  # noqa: F401  (loads .env)
 from core.schemas import err, ok
@@ -34,6 +49,7 @@ from core.schemas import err, ok
 DEMO_MODE = os.getenv("DEMO_MODE", "true").lower() == "true"
 FIXTURES = Path(__file__).resolve().parent.parent / "demo" / "fixtures"
 
+<<<<<<< HEAD
 logging.basicConfig(
     level=os.getenv("LOG_LEVEL", "info").upper(),
     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
@@ -53,6 +69,8 @@ def _server_error(code: str, exc: Exception, user_message: str) -> dict:
 # Not a hard 3-city whitelist, so /admin/cities onboarding keeps working.
 _CITY = Field("delhi", min_length=1, max_length=40, pattern=r"^[a-z][a-z0-9_-]*$")
 
+=======
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
 app = FastAPI(
     title="VayuNetra API",
     version="1.0.0",
@@ -61,12 +79,18 @@ app = FastAPI(
         "Multi-agent system: Attribution · Forecast · Enforcement · Advisory · Multi-City."
     ),
 )
+<<<<<<< HEAD
 # Locked to the deployed frontend + local dev; extend via ALLOWED_ORIGINS (comma-separated).
 _DEFAULT_ORIGINS = "https://vayunetra-aqi.vercel.app,http://localhost:5173,http://localhost:4173"
 ALLOWED_ORIGINS = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", _DEFAULT_ORIGINS).split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
+=======
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # TODO Abhinav: lock to Vercel origin in prod
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -106,9 +130,13 @@ def _validated_token(credentials: HTTPAuthorizationCredentials | None) -> str | 
 
     payload = _decode_bearer_payload(token)
     role = payload.get("role", "")
+<<<<<<< HEAD
     # "anon" is accepted for public read-only dashboard access; PostgREST RLS
     # still governs exactly which rows an anonymous caller may read.
     if role not in ("anon", "authenticated", "service_role", "admin"):
+=======
+    if role not in ("authenticated", "service_role", "admin"):
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
         raise HTTPException(status_code=403, detail="Insufficient role privileges")
     return token
 
@@ -168,6 +196,10 @@ def cities(db=Depends(get_db)) -> dict:
 @app.get("/aqi/current", tags=["data"])
 def aqi_current(
     city: str = Query(..., description="City ID, e.g. 'delhi'"),
+<<<<<<< HEAD
+=======
+    bbox: Optional[str] = Query(None, description="Bounding box: lon_min,lat_min,lon_max,lat_max"),
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
     db=Depends(get_db)
 ) -> dict:
     """Latest per-cell AQI measurements for a city."""
@@ -194,6 +226,7 @@ def aqi_current(
     return ok(list(latest.values()))
 
 
+<<<<<<< HEAD
 # Trailing PM2.5 history cache — hourly buckets change once an hour at most.
 _HISTORY_TTL_S = 600
 _history_cache: dict[str, tuple[float, list]] = {}
@@ -240,6 +273,8 @@ def pm25_history(
         return _server_error("history_failed", e, "Could not load PM2.5 history right now.")
 
 
+=======
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
 # ---------------------------------------------------------------------------
 # Attribution
 # ---------------------------------------------------------------------------
@@ -364,6 +399,7 @@ def enforcement_dossier(rec_id: int, db=Depends(get_db)) -> dict:
         dossier = build_dossier(rec_id)
         return ok(dossier)
     except Exception as e:
+<<<<<<< HEAD
         return _server_error("dossier_error", e, "Failed to build evidence dossier")
 
 
@@ -477,6 +513,24 @@ def interventions(city: str = Query("delhi", description="City ID")) -> dict:
         return ok({"city_id": city, "tracked": out})
     except Exception as e:  # noqa: BLE001
         return _server_error("interventions_failed", e, "Could not load intervention tracking.")
+=======
+        return err("dossier_error", str(e))
+
+
+@app.post("/enforcement/{rec_id}/status", tags=["enforcement"])
+def enforcement_update_status(rec_id: int, body: dict, db=Depends(get_db)) -> dict:
+    """Update enforcement rec status (approved / dispatched / dismissed)."""
+    new_status = body.get("status")
+    valid_statuses = {"proposed", "approved", "dispatched", "dismissed"}
+    if new_status not in valid_statuses:
+        return err("bad_request", f"status must be one of {valid_statuses}")
+
+    if DEMO_MODE:
+        return ok({"rec_id": rec_id, "status": new_status, "demo": True})
+
+    db.table("enforcement_recs").update({"status": new_status}).eq("id", rec_id).execute()
+    return ok({"rec_id": rec_id, "status": new_status})
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
 
 
 # ---------------------------------------------------------------------------
@@ -513,6 +567,7 @@ def advisory(
     return ok(q.execute().data)
 
 
+<<<<<<< HEAD
 # In-memory broadcast throttle: the button is on a public page, so cap real-world
 # side effects (Telegram messages / phone calls) to one broadcast per window.
 _BROADCAST_WINDOW_S = 300
@@ -731,6 +786,8 @@ def compound_alerts(city: str = Query("delhi", description="City ID"), db=Depend
     })
 
 
+=======
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
 # ---------------------------------------------------------------------------
 # Sejal Stage-1 static layers, mobility, comparison, and latency widgets
 # ---------------------------------------------------------------------------
@@ -741,6 +798,7 @@ def static_layers(city: str = Query(..., description="City ID")) -> dict:
     if DEMO_MODE:
         data = fixture_rows("static_layers", city)
         return ok(data[0] if isinstance(data, list) and data else data)
+<<<<<<< HEAD
     sdb = _db()
     sources = sdb.table("emission_sources").select("*").eq("city_id", city).execute().data or []
     # Real vulnerability zones (OSM hospitals/schools/elder-care × GPW population,
@@ -754,6 +812,10 @@ def static_layers(city: str = Query(..., description="City ID")) -> dict:
     for v in vuln:
         v["ward_id"] = v["zone_id"]
     return ok({"city_id": city, "emission_sources": sources, "vulnerability": vuln, "roads": []})
+=======
+    sources = _db().table("emission_sources").select("*").eq("city_id", city).execute().data
+    return ok({"city_id": city, "emission_sources": sources, "vulnerability": [], "roads": []})
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
 
 
 @app.get("/mobility", tags=["data"])
@@ -776,6 +838,7 @@ def mobility(city: str = Query(..., description="City ID")) -> dict:
 
 @app.get("/comparison", tags=["data"])
 def comparison() -> dict:
+<<<<<<< HEAD
     """Agent 5 multi-city comparison: trends, signatures, and playbook recommendations.
 
     Live mode runs the real ``build_comparison`` over current measurements +
@@ -829,6 +892,10 @@ def comparison() -> dict:
         return ok(build_comparison(cities, aqi_rows, forecast_rows, rec_statuses))
     except Exception as e:  # noqa: BLE001
         return _server_error("comparison_error", e, "Failed to build multi-city comparison")
+=======
+    """Agent 5 multi-city comparison: trends, signatures, and playbook recommendations."""
+    return ok(fixture("comparison", default={"summary": {}, "cities": []}))
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
 
 
 @app.get("/latency", tags=["system"])
@@ -851,9 +918,15 @@ def latency_widget(city: Optional[str] = Query(None, description="City ID")) -> 
 # ---------------------------------------------------------------------------
 
 class AgentQueryBody(BaseModel):
+<<<<<<< HEAD
     city: str = _CITY
     query: str = Field("", max_length=2000)
     focus_cells: Optional[list[str]] = Field(None, max_length=2000)
+=======
+    city: str = "delhi"
+    query: str = ""
+    focus_cells: Optional[list[str]] = None
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
 
 
 @app.post("/agent/query", tags=["agent"])
@@ -882,6 +955,7 @@ def agent_query(body: AgentQueryBody, db=Depends(get_db)) -> dict:
             "latency_ms": result.get("latency_ms") or elapsed_ms,
         })
     except Exception as e:
+<<<<<<< HEAD
         return _server_error("agent_error", e, "Agent pipeline failed to complete")
 
 
@@ -895,10 +969,26 @@ class SimulateBody(BaseModel):
     target_cells: Optional[list[str]] = Field(None, max_length=2000)
     target_source_ids: Optional[list[int]] = Field(None, max_length=2000)
     horizon_h: int = Field(24, ge=1, le=72)
+=======
+        return err("agent_error", str(e))
+
+
+# ---------------------------------------------------------------------------
+# What-if simulator (E3 — Abhinav Stage 2; stub with demo fixture)
+# ---------------------------------------------------------------------------
+
+class SimulateBody(BaseModel):
+    city: str = "delhi"
+    intervention_type: str = "construction_halt"
+    target_cells: Optional[list[str]] = None
+    target_source_ids: Optional[list[int]] = None
+    horizon_h: int = 24
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
 
 
 @app.post("/simulate", tags=["stage2"])
 def simulate(body: SimulateBody, db=Depends(get_db)) -> dict:
+<<<<<<< HEAD
     """What-if intervention simulator: live E3 counterfactual over attribution
     shares × forecasts (ml.simulator), with E7 cited health ₹ + CO₂e layered on.
     DEMO_MODE serves the fixture, re-run through the E7 engine so the ₹/cases/CO₂e
@@ -1170,6 +1260,16 @@ def plume_layer(
         return ok(data)
     except Exception as e:  # noqa: BLE001
         return _server_error("plume_failed", e, "Could not compute the plume layer right now.")
+=======
+    """What-if intervention simulator (E3 — Stage 2 engine, stub in Stage 1)."""
+    # Stage 1: return demo fixture
+    return ok(fixture("simulate", default={
+        "delta_aqi_by_cell": {},
+        "people_protected": 0,
+        "pm25_tonnes_avoided": 0,
+        "confidence": 0,
+    }))
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
 
 
 # ---------------------------------------------------------------------------
@@ -1177,14 +1277,22 @@ def plume_layer(
 # ---------------------------------------------------------------------------
 
 class OptimizeBody(BaseModel):
+<<<<<<< HEAD
     city: str = _CITY
     budget_inspector_hours: int = Field(20, gt=0, le=1000)
     target_cells: Optional[list[str]] = Field(None, max_length=2000)
     horizon_h: int = Field(24, ge=1, le=72)
+=======
+    city: str = "delhi"
+    budget_inspector_hours: int = 20
+    target_cells: Optional[list[str]] = None
+    horizon_h: int = 24
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
 
 
 @app.post("/optimize", tags=["stage2"])
 def optimize(body: OptimizeBody, db=Depends(get_db)) -> dict:
+<<<<<<< HEAD
     """Prescriptive intervention optimiser (E5 — Stage 2 engine)."""
     if DEMO_MODE:
         return ok(fixture("optimize", default={"packages": []}))
@@ -1199,6 +1307,10 @@ def optimize(body: OptimizeBody, db=Depends(get_db)) -> dict:
         ))
     except Exception as e:
         return _server_error("optimize_error", e, "Optimiser failed")
+=======
+    """Prescriptive intervention optimiser (E5 — Stage 2 engine, stub in Stage 1)."""
+    return ok(fixture("optimize", default={"packages": []}))
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
 
 
 # ---------------------------------------------------------------------------
@@ -1215,6 +1327,7 @@ class CityBody(BaseModel):
 
 
 @app.post("/admin/cities", tags=["admin"])
+<<<<<<< HEAD
 def admin_onboard_city(
     body: CityBody,
     x_admin_key: Optional[str] = Header(None, alias="X-Admin-Key"),
@@ -1226,16 +1339,23 @@ def admin_onboard_city(
     live demo 500'd), so this runs with the service-role client, guarded by an
     X-Admin-Key header matched against the ADMIN_KEY env var.
     """
+=======
+def admin_onboard_city(body: CityBody, db=Depends(get_db)) -> dict:
+    """Onboard a new city (config-driven, zero code change)."""
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
     if not body.city_id:
         return err("bad_request", "city_id is required")
     if DEMO_MODE:
         return ok({"onboarded": body.city_id, "demo": True})
+<<<<<<< HEAD
     admin_key = os.getenv("ADMIN_KEY", "")
     if not admin_key:
         return err("not_configured", "ADMIN_KEY is not set on this server")
     if not hmac.compare_digest(x_admin_key or "", admin_key):
         return err("forbidden", "invalid or missing X-Admin-Key header")
     db = _db()  # service-role: bypasses RLS for this authenticated admin action
+=======
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
 
     # Upsert city row
     db.table("cities").upsert({
@@ -1307,8 +1427,12 @@ async def websocket_live(ws: WebSocket, city: str = "delhi"):
             await ws.close(code=1008, reason="Invalid token format")
             return
         role = payload.get("role", "")
+<<<<<<< HEAD
         # "anon" allowed: /live only pushes public read-only data (RLS still applies).
         if role not in ("anon", "authenticated", "service_role", "admin"):
+=======
+        if role not in ("authenticated", "service_role", "admin"):
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
             await ws.close(code=1008, reason="Insufficient role privileges")
             return
 
@@ -1347,7 +1471,11 @@ async def websocket_live(ws: WebSocket, city: str = "delhi"):
     except WebSocketDisconnect:
         pass
     except Exception as e:
+<<<<<<< HEAD
         logger.error("websocket stream error: %s", e, exc_info=True)
+=======
+        print(f"WebSocket error: {e}")
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
         try:
             await ws.close()
         except Exception:

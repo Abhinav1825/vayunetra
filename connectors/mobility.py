@@ -36,6 +36,7 @@ def midpoint(line: list[list[float]]) -> tuple[float, float]:
     return lat, lng
 
 
+<<<<<<< HEAD
 def live_scale(city_id: str) -> tuple[float, str]:
     """(multiplier, source label) — real TomTom congestion when a key is set.
 
@@ -53,14 +54,22 @@ def live_scale(city_id: str) -> tuple[float, str]:
     return 0.6 + 0.8 * float(live["congestion_ratio"]), "osm_gtfs×tomtom_live"
 
 
+=======
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
 def build_mobility_rows(city_id: str, hours: int = 24, start: datetime | None = None) -> list[dict]:
     layer = build_static_layers(city_id)
     start = start or datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
     rows: list[dict] = []
+<<<<<<< HEAD
     scale, src = live_scale(city_id)
     for step in range(hours):
         ts = start + timedelta(hours=step)
         tm = time_multiplier(ts) * scale
+=======
+    for step in range(hours):
+        ts = start + timedelta(hours=step)
+        tm = time_multiplier(ts)
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
         for road in layer["roads"]:
             lat, lng = midpoint(road["coordinates"])
             value = round(100.0 * road["traffic_weight"] * tm, 2)
@@ -72,7 +81,11 @@ def build_mobility_rows(city_id: str, hours: int = 24, start: datetime | None = 
                 "variable": "traffic",
                 "value": value,
                 "unit": "index",
+<<<<<<< HEAD
                 "source": src,
+=======
+                "source": "osm_gtfs",
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
                 "confidence": 0.72,
             })
     return rows

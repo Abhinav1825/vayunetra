@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+<<<<<<< HEAD
 import {
   Area,
   ComposedChart,
@@ -12,6 +13,9 @@ import { api } from "./api";
 import { aqiCategory, pm25ToAqi } from "./aqi";
 import { FORECAST_SKILL, SKILL_ASOF, pct } from "./metrics";
 import { EmptyState, Panel, SegBtn } from "./ui";
+=======
+import { api } from "./api";
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
 
 type FC = {
   h3_cell: string;
@@ -25,6 +29,7 @@ type FC = {
 const HORIZONS = [24, 48, 72];
 const SPIKE = 90; // µg/m³ PM2.5 — "very poor" threshold for a spike alert
 
+<<<<<<< HEAD
 /** Short human label for an H3 id — the shared prefix says nothing, the tail does. */
 export function cellLabel(h3: string): string {
   return `#${h3.replace(/f+$/, "").slice(-4)}`;
@@ -155,5 +160,70 @@ export default function ForecastPanel({ city }: { city: string }) {
         <EmptyState message="No forecast available for this city yet." />
       )}
     </Panel>
+=======
+// Forecast time-slider (Omkar's panel): horizon picker, model vs persistence, spike alerts.
+export default function ForecastPanel({ city }: { city: string }) {
+  const [horizon, setHorizon] = useState(24);
+  const [rows, setRows] = useState<FC[]>([]);
+
+  useEffect(() => {
+    api<FC[]>(`/forecast?city=${city}&horizon=${horizon}`).then(setRows).catch(() => setRows([]));
+  }, [city, horizon]);
+
+  const avg = rows.length ? Math.round(rows.reduce((s, r) => s + r.value, 0) / rows.length) : null;
+  const avgPers = rows.length
+    ? Math.round(rows.reduce((s, r) => s + r.persistence_value, 0) / rows.length)
+    : null;
+  const spikes = rows.filter((r) => r.value >= SPIKE);
+
+  return (
+    <div className="rounded-lg bg-white/95 p-3 shadow text-sm">
+      <div className="font-semibold">Forecast — PM2.5</div>
+      <div className="mt-2 flex gap-1">
+        {HORIZONS.map((h) => (
+          <button
+            key={h}
+            onClick={() => setHorizon(h)}
+            className={`rounded px-2 py-1 text-xs ${
+              horizon === h ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-700"
+            }`}
+          >
+            +{h}h
+          </button>
+        ))}
+      </div>
+
+      {avg !== null ? (
+        <div className="mt-2 text-xs text-gray-700">
+          <div>
+            city avg <b>{avg}</b> µg/m³ <span className="text-gray-400">(persistence {avgPers})</span>
+          </div>
+          {spikes.length > 0 && (
+            <div className="mt-1 rounded bg-red-50 px-2 py-1 text-red-700">
+              ⚠ spike alert: {spikes.length} cell{spikes.length > 1 ? "s" : ""} forecast ≥ {SPIKE} µg/m³
+            </div>
+          )}
+          <div className="mt-1 max-h-40 space-y-0.5 overflow-auto">
+            {rows.map((r) => (
+              <div
+                key={r.h3_cell}
+                className={`flex justify-between font-mono ${r.value >= SPIKE ? "text-red-600" : ""}`}
+              >
+                <span>
+                  {r.value >= SPIKE ? "⚠ " : ""}
+                  {r.h3_cell.slice(0, 8)}
+                </span>
+                <span>
+                  {Math.round(r.value)} [{Math.round(r.pi_low)}–{Math.round(r.pi_high)}]
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="mt-2 text-xs text-gray-500">no forecast data</div>
+      )}
+    </div>
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
   );
 }

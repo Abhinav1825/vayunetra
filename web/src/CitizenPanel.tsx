@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "./api";
+<<<<<<< HEAD
 import { aqiCategory } from "./aqi";
 import { Panel, SegBtn } from "./ui";
+=======
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
 
 type Advisory = {
   ward_id: string;
@@ -15,6 +18,7 @@ type Advisory = {
 const ALL_LANGS = ["en", "hi", "kn", "mr"];
 const LABELS: Record<string, string> = { en: "English", hi: "Hindi", kn: "Kannada", mr: "Marathi" };
 
+<<<<<<< HEAD
 type BroadcastResult = {
   telegram?: { status: string; detail?: string; message_id?: number };
   ivr?: { status: string; detail?: string; sid?: string };
@@ -43,12 +47,20 @@ export default function CitizenPanel({ city, languages }: { city: string; langua
     setCleanZones(null);
     api<CleanZones>(`/clean-zones?city=${city}&top=4`).then(setCleanZones).catch(() => setCleanZones({ zones: [] }));
   }, [city]);
+=======
+export default function CitizenPanel({ city, languages }: { city: string; languages?: string[] }) {
+  const choices = useMemo(() => Array.from(new Set([...(languages ?? []), ...ALL_LANGS])), [languages]);
+  const [lang, setLang] = useState(choices[0] ?? "en");
+  const [rows, setRows] = useState<Advisory[]>([]);
+  const [channel, setChannel] = useState("pwa");
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
 
   useEffect(() => {
     if (!choices.includes(lang)) setLang(choices[0] ?? "en");
   }, [choices, lang]);
 
   useEffect(() => {
+<<<<<<< HEAD
     setRows(null);
     api<Advisory[]>(`/advisory?city=${city}&lang=${lang}`).then(setRows).catch(() => setRows([]));
   }, [city, lang]);
@@ -98,12 +110,26 @@ export default function CitizenPanel({ city, languages }: { city: string; langua
           value={lang}
           onChange={(e) => setLang(e.target.value)}
         >
+=======
+    api<Advisory[]>(`/advisory?city=${city}&lang=${lang}`).then(setRows).catch(() => setRows([]));
+  }, [city, lang]);
+
+  const visible = rows.filter((r) => r.channel === channel);
+  const channels = Array.from(new Set(rows.map((r) => r.channel)));
+
+  return (
+    <div className="rounded-lg bg-white/95 p-3 text-sm shadow">
+      <div className="flex items-center justify-between gap-2">
+        <div className="font-semibold">Citizen Advisory</div>
+        <select className="rounded border px-2 py-1 text-xs" value={lang} onChange={(e) => setLang(e.target.value)}>
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
           {choices.map((l) => (
             <option key={l} value={l}>
               {LABELS[l] ?? l}
             </option>
           ))}
         </select>
+<<<<<<< HEAD
       }
     >
       <div className="flex flex-wrap gap-1">
@@ -271,5 +297,34 @@ export default function CitizenPanel({ city, languages }: { city: string; langua
         )}
       </div>
     </Panel>
+=======
+      </div>
+
+      <div className="mt-2 flex flex-wrap gap-1">
+        {(channels.length ? channels : ["pwa", "telegram", "ivr", "display"]).map((c) => (
+          <button
+            key={c}
+            onClick={() => setChannel(c)}
+            className={`rounded px-2 py-1 text-xs ${channel === c ? "bg-emerald-600 text-white" : "bg-gray-200 text-gray-700"}`}
+          >
+            {c}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-3 space-y-2">
+        {visible.map((a, idx) => (
+          <div key={`${a.ward_id}-${a.channel}-${idx}`} className="rounded-md border border-gray-200 p-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-medium">{a.ward_id}</span>
+              <span className="rounded bg-amber-100 px-1.5 py-0.5 text-amber-800">{a.risk_tier.replace("_", " ")}</span>
+            </div>
+            <div className="mt-1 text-xs leading-5 text-gray-700">{a.message}</div>
+          </div>
+        ))}
+        {visible.length === 0 && <div className="text-xs text-gray-500">No advisory in this language/channel yet</div>}
+      </div>
+    </div>
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
   );
 }

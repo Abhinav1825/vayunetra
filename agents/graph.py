@@ -239,6 +239,7 @@ def forecast_node(state: GraphState) -> dict:
 def enforcement_node(state: GraphState) -> dict:
     """Run enforcement scoring + RAG citation pipeline.
 
+<<<<<<< HEAD
     Loads the FULL city attribution inside run_enforcement (attribution_data=None):
     the graph state's attribution is filtered to spiking focus cells, which breaks
     per-source spatial matching (a source's nearest cell is usually not the spike
@@ -249,6 +250,16 @@ def enforcement_node(state: GraphState) -> dict:
     try:
         from agents.enforcement import run_enforcement
         recs = run_enforcement(city_id=city_id, attribution_data=None, write_to_db=not DEMO_MODE)
+=======
+    Uses agents.enforcement.run_enforcement() with attribution data from state.
+    """
+    city_id = state.get("city_id", "delhi")
+    attribution_data = (state.get("attribution") or {}).get("rows") or []
+
+    try:
+        from agents.enforcement import run_enforcement
+        recs = run_enforcement(city_id=city_id, attribution_data=attribution_data, write_to_db=not DEMO_MODE)
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
         rec_dicts = [r.to_dict() for r in recs]
 
         # Collect RAG citations for cross-cutting state

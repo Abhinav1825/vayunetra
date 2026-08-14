@@ -20,8 +20,11 @@ BREAKPOINTS_PM25 = [
     (10_000, "severe"),
 ]
 
+<<<<<<< HEAD
 # Native scripts (Devanagari / Kannada), deliberately short and formulaic so
 # the templates stay unambiguous. Still worth a native speaker's read-through.
+=======
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
 LANG_LABEL = {
     "en": {
         "very_poor": "very poor",
@@ -31,6 +34,7 @@ LANG_LABEL = {
         "action": "Keep outdoor activity short, use an N95 mask, and move heavy work outside the peak window.",
     },
     "hi": {
+<<<<<<< HEAD
         "very_poor": "बहुत ख़राब",
         "poor": "ख़राब",
         "moderate": "मध्यम",
@@ -50,6 +54,27 @@ LANG_LABEL = {
         "moderate": "मध्यम",
         "severe": "गंभीर",
         "action": "बाहेरील हालचाल कमी ठेवा, N95 मास्क वापरा, आणि जड काम पीक वेळेनंतर करा.",
+=======
+        "very_poor": "bahut kharab",
+        "poor": "kharab",
+        "moderate": "madhyam",
+        "severe": "gambhir",
+        "action": "Bahar ki gatividhi kam rakhein, N95 mask pehnein, aur bhari kaam peak samay ke baad karein.",
+    },
+    "kn": {
+        "very_poor": "tumba kalape",
+        "poor": "kalape",
+        "moderate": "madhyama",
+        "severe": "teevra",
+        "action": "Horagina chatuvatike kadime madi, N95 mask balasi, mattu bhari kelasa peak samayada horage madi.",
+    },
+    "mr": {
+        "very_poor": "khup kharab",
+        "poor": "kharab",
+        "moderate": "madhyam",
+        "severe": "gambhir",
+        "action": "Baherchi halchal kami theva, N95 mask vapra, ani jad kaam peak veles baher kara.",
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
     },
 }
 
@@ -87,11 +112,19 @@ def render_message(city_name: str, ward_id: str, tier: str, horizon_h: int, lang
     if lang == "en":
         return f"{city_name} {ward_id}: air is forecast {tier_label} in +{horizon_h}h. {action}"
     if lang == "hi":
+<<<<<<< HEAD
         return f"{city_name} {ward_id}: अगले {horizon_h} घंटों में हवा {tier_label} रहने का अनुमान है. {action}"
     if lang == "kn":
         return f"{city_name} {ward_id}: ಮುಂದಿನ {horizon_h} ಗಂಟೆಗಳಲ್ಲಿ ಗಾಳಿಯ ಗುಣಮಟ್ಟ {tier_label} ಇರಲಿದೆ ಎಂದು ಅಂದಾಜಿಸಲಾಗಿದೆ. {action}"
     if lang == "mr":
         return f"{city_name} {ward_id}: पुढील {horizon_h} तासांत हवा {tier_label} राहण्याचा अंदाज आहे. {action}"
+=======
+        return f"{city_name} {ward_id}: +{horizon_h}h me hawa {tier_label} rahegi. {action}"
+    if lang == "kn":
+        return f"{city_name} {ward_id}: +{horizon_h}h nalli gali {tier_label} agiruttade. {action}"
+    if lang == "mr":
+        return f"{city_name} {ward_id}: +{horizon_h}h madhe hava {tier_label} asel. {action}"
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
     return f"{city_name} {ward_id}: air is forecast {tier_label} in +{horizon_h}h. {action}"
 
 

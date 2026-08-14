@@ -1,4 +1,5 @@
 // Envelope-aware API client. Matches docs/API_CONTRACT.md.
+<<<<<<< HEAD
 //
 // Demo insurance: if the backend is unreachable (Render cold start, judging-day
 // outage), GET endpoints fall back to bundled demo fixtures instead of rendering
@@ -28,6 +29,9 @@ const TIMEOUT_MS = 25_000;
 
 export const API_BASE = BASE;
 export const API_TOKEN = TOKEN;
+=======
+const BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
 
 type Envelope<T> = {
   success: boolean;
@@ -35,6 +39,7 @@ type Envelope<T> = {
   error: { code: string; message: string } | null;
 };
 
+<<<<<<< HEAD
 type Row = Record<string, unknown>;
 
 function byCity(rows: Row[], city: string | null): Row[] {
@@ -141,4 +146,13 @@ export async function downloadFile(path: string, filename: string): Promise<void
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
+=======
+export async function api<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, init);
+  const env = (await res.json()) as Envelope<T>;
+  if (!env.success || env.data === null) {
+    throw new Error(env.error?.message ?? `API error (${res.status})`);
+  }
+  return env.data;
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
 }

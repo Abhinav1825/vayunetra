@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 """Agent 1 Attribution runner.  ARCHITECTURE.md §9.1; PLAN §2A/§3A.
 
 Builds each cell's source shares -> writes the `attribution` table (one row per
@@ -10,6 +11,15 @@ when a city's history is too thin to train on.
   python -m ml.attribution.attribute --city delhi                 # compute + print
   python -m ml.attribution.attribute --city delhi --write         # also write to Supabase
   python -m ml.attribution.attribute --city delhi --signature-only  # skip the GBM
+=======
+"""Agent 1 Attribution runner.  ARCHITECTURE.md §9.1.
+
+Builds each cell's latest pollutant signature -> source shares -> writes the `attribution`
+table (one row per cell × source_category, the long format the blame map reads).
+
+  python -m ml.attribution.attribute --city delhi            # compute + print
+  python -m ml.attribution.attribute --city delhi --write     # also write to Supabase
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
 """
 from __future__ import annotations
 
@@ -24,9 +34,12 @@ from .signatures import calibrate_references, signature_shares
 
 POLLUTANTS = ["pm25", "pm10", "no2", "so2", "co", "o3", "fire", "no2_sat"]
 METHOD = "signature-v1"
+<<<<<<< HEAD
 METHOD_HYBRID = "hybrid-gbm-shap-v2"
 METHOD_SHRUNK = "signature-citymean-v1"
 SHRINK_WEIGHT = 0.5   # marker-less cells: 50% city hybrid mean + 50% own signature
+=======
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
 
 
 def latest_pollutants(long_df: pd.DataFrame) -> tuple[dict[str, dict], pd.Timestamp]:
@@ -58,6 +71,7 @@ def build_rows(
     return rows
 
 
+<<<<<<< HEAD
 def _apply_hybrid(
     rows: list[dict], long_df: pd.DataFrame, per_cell: dict[str, dict], refs: dict
 ) -> tuple[list[dict], str]:
@@ -120,12 +134,16 @@ def _apply_hybrid(
 
 
 def run(city_id: str, write: bool = False, signature_only: bool = False) -> None:
+=======
+def run(city_id: str, write: bool = False) -> None:
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
     long_df = pd.DataFrame(load_measurements(city_id))
     # data-driven marker scales (p90) so blame tracks current conditions, not a fixed season
     pdf = long_df[long_df["variable"].isin(POLLUTANTS)]
     refs = calibrate_references({var: g["value"].tolist() for var, g in pdf.groupby("variable")})
     per_cell, window_end = latest_pollutants(long_df)
     rows = build_rows(city_id, per_cell, window_end, refs)
+<<<<<<< HEAD
     method = METHOD
 
     if not signature_only:
@@ -142,6 +160,13 @@ def run(city_id: str, write: bool = False, signature_only: bool = False) -> None
         top = max(cell_rows, key=lambda r: r["share"])
         print(f"  {cell}: dominant={top['source_category']} ({top['share']:.0%}) conf={top['confidence']}")
 
+=======
+    print(f"{city_id}: {len(per_cell)} cells -> {len(rows)} attribution rows (calibrated refs)")
+    for cell, vals in list(per_cell.items())[:3]:
+        shares, conf, _ = signature_shares(vals, refs)
+        dominant = max(shares, key=shares.get)
+        print(f"  {cell}: dominant={dominant} ({shares[dominant]:.0%}) conf={conf}")
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
     if write:
         client().table("attribution").delete().eq("city_id", city_id).execute()
         client().table("attribution").insert(rows).execute()
@@ -152,9 +177,14 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--city", default="delhi")
     ap.add_argument("--write", action="store_true", help="write to Supabase")
+<<<<<<< HEAD
     ap.add_argument("--signature-only", action="store_true", help="skip the GBM+SHAP upgrade")
     args = ap.parse_args()
     run(args.city, write=args.write, signature_only=args.signature_only)
+=======
+    args = ap.parse_args()
+    run(args.city, write=args.write)
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
 
 
 if __name__ == "__main__":

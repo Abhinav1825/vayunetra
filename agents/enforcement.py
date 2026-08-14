@@ -14,12 +14,22 @@ Owner: Abhinav.
 from __future__ import annotations
 
 import json
+<<<<<<< HEAD
 import os
 import re
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
+=======
+import math
+import os
+import time
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Optional
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
 
 import core.env  # noqa: F401
 
@@ -208,6 +218,7 @@ def _generate_rationale(
     source_category: str,
     citations: list[dict],
 ) -> str:
+<<<<<<< HEAD
     """Generate a human-readable enforcement rationale string.
 
     Careful claim: the attribution share belongs to the CATEGORY at that cell
@@ -229,6 +240,16 @@ def _generate_rationale(
         f"{cat_label} contributes approximately {pct}% of PM2.5 in this cell "
         f"(~{pop_exposed:,} residents exposed);",
         f"{source_name} is the registered {source_type.replace('_', ' ')} source at this location.",
+=======
+    """Generate a human-readable enforcement rationale string."""
+    pct = round(share * 100, 1)
+    source_name = source.get("name", "Unknown source")
+    source_type = source.get("type", source_category)
+
+    rationale_parts = [
+        f"{source_name} ({source_type}) contributes approximately {pct}% of PM2.5 in this cell,",
+        f"exposing an estimated {pop_exposed:,} residents.",
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
     ]
 
     if source_type == "construction":
@@ -251,13 +272,20 @@ def _generate_rationale(
             "Enforce PUC certificate checks; restrict pre-BS-IV vehicles during peak hours."
         )
 
+<<<<<<< HEAD
     rules = _pretty_rules([c.get("rule", "") for c in citations or []])
     if rules:
         rationale_parts.append(f"Regulatory basis: {'; '.join(rules)}.")
+=======
+    if citations:
+        cited_rules = "; ".join(c.get("rule", "") for c in citations[:2])
+        rationale_parts.append(f"Regulatory basis: {cited_rules}.")
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
 
     return " ".join(rationale_parts)
 
 
+<<<<<<< HEAD
 _RULE_ACRONYMS = ("GRAP", "CPCB", "CAQM", "SWM", "NCAP", "PUC", "CTO", "OCEMS", "AQI")
 
 
@@ -285,6 +313,8 @@ def _pretty_rules(raw: list[str], limit: int = 2) -> list[str]:
     return out
 
 
+=======
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
 # ---------------------------------------------------------------------------
 # Main enforcement agent function
 # ---------------------------------------------------------------------------
@@ -351,6 +381,7 @@ def run_enforcement(
         if existing is None or share > existing.get("share", 0):
             cell_dominant[h3] = {**row, "city_id": city_id}
 
+<<<<<<< HEAD
     # Per-category rows indexed by cell, for spatial (nearest-cell) matching
     rows_by_cat_cell: dict[str, dict[str, dict]] = {}
     for row in attribution_data:
@@ -393,14 +424,23 @@ def run_enforcement(
 
     # Match sources to cells
     recs: list[EnforcementRec] = []
+=======
+    # Match sources to cells
+    recs: list[EnforcementRec] = []
+    source_types_seen: set[str] = set()
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
 
     for source in emission_sources:
         source_type = source.get("type", "other")
         attrs = source.get("attributes") or {}
+<<<<<<< HEAD
         gpw = pop_by_cell.get(attrs.get("h3_cell") or "")
         pop_exposed = round(gpw) if gpw else (
             source.get("pop_exposed_estimate") or attrs.get("pop_exposed_estimate") or 5000
         )
+=======
+        pop_exposed = source.get("pop_exposed_estimate") or attrs.get("pop_exposed_estimate") or 5000
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
 
         # Map source type to attribution category
         cat_map = {
@@ -411,6 +451,7 @@ def run_enforcement(
         }
         source_category = cat_map.get(source_type, "other")
 
+<<<<<<< HEAD
         # Prefer the attribution at the source's own location (OSM rows carry h3_cell);
         # fall back to the city-wide dominant row for the category.
         best_attr = _nearest_attr(attrs.get("h3_cell"), source_category)
@@ -428,6 +469,20 @@ def run_enforcement(
         # an enforcement candidate — emitting "contributes 0%" destroys trust.
         if best_share < 0.02:
             continue
+=======
+        # Find the best matching attribution row for this source's category
+        best_attr = None
+        best_share = 0.0
+        for row in attribution_data:
+            if row.get("source_category") == source_category and row.get("share", 0) > best_share:
+                best_attr = row
+                best_share = row["share"]
+
+        if best_attr is None:
+            # Fall back to first attribution row
+            best_attr = attribution_data[0] if attribution_data else {}
+            best_share = best_attr.get("share", 0.1)
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
 
         h3_cell = best_attr.get("h3_cell", "")
         confidence = best_attr.get("confidence", 0.7)
@@ -465,10 +520,14 @@ def run_enforcement(
         from core.supa import client
         db = client()
         rows = [r.to_dict() for r in recs]
+<<<<<<< HEAD
         # idempotent: replace this city's worklist instead of appending duplicates
         db.table("enforcement_recs").delete().eq("city_id", city_id).execute()
         if rows:
             db.table("enforcement_recs").insert(rows).execute()
+=======
+        db.table("enforcement_recs").insert(rows).execute()
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
         print(f"[enforcement] Wrote {len(rows)} recommendations to Supabase.")
 
     return recs
@@ -481,7 +540,10 @@ def build_dossier(rec_id: int, city_id: str = "delhi") -> dict:
     In live mode, queries enforcement_recs + RAG for a full cited packet.
     """
     from rag.retrieve import retrieve_for_enforcement
+<<<<<<< HEAD
     from rag.multimodal import find_image_patch
+=======
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
 
     if DEMO_MODE:
         # Use fixture enforcement data to build a rich dossier
@@ -502,6 +564,7 @@ def build_dossier(rec_id: int, city_id: str = "delhi") -> dict:
         cat = "construction_dust"
         chunks = retrieve_for_enforcement(cat, city_id, top_k=5)
         full_citations = [c.as_citation() for c in chunks]
+<<<<<<< HEAD
         demo_source = {
             "id": rec.get("source_id") or rec_id,
             "city_id": rec.get("city_id", city_id),
@@ -516,6 +579,8 @@ def build_dossier(rec_id: int, city_id: str = "delhi") -> dict:
         fc_all = json.loads((FIXTURES / "forecast.json").read_text()) if (FIXTURES / "forecast.json").exists() else []
         fc_rows = [r for r in fc_all if r.get("h3_cell") == rec.get("h3_cell")] or fc_all[:3]
         projection = _impact_projection(rec, fc_rows)
+=======
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
 
         return {
             "rec_id": rec_id,
@@ -526,9 +591,14 @@ def build_dossier(rec_id: int, city_id: str = "delhi") -> dict:
             "rubric_score": rec.get("rubric_score", {}),
             "status": rec.get("status", "proposed"),
             "citations": full_citations,
+<<<<<<< HEAD
             "satellite_patch": satellite_patch,
             "impact_projection": projection,
             "suggested_notice_text": _build_notice_text(rec, full_citations, satellite_patch, demo_source, projection),
+=======
+            "satellite_patch": None,  # Sejal E6 fills this in Stage 2
+            "suggested_notice_text": _build_notice_text(rec, full_citations),
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
             "generated_at": datetime.now(timezone.utc).isoformat(),
         }
 
@@ -539,6 +609,7 @@ def build_dossier(rec_id: int, city_id: str = "delhi") -> dict:
     if not rows:
         return {"rec_id": rec_id, "error": "not_found"}
     rec = rows[0]
+<<<<<<< HEAD
     source = None
     if rec.get("source_id"):
         src_rows = (
@@ -565,6 +636,11 @@ def build_dossier(rec_id: int, city_id: str = "delhi") -> dict:
         .order("issued_at", desc=True).limit(30).execute().data
     ) or []
     projection = _impact_projection(rec, fc_rows)
+=======
+    source_category = "construction_dust"  # TODO: derive from source registry join
+    chunks = retrieve_for_enforcement(source_category, city_id, top_k=5)
+    full_citations = [c.as_citation() for c in chunks]
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
     return {
         "rec_id": rec_id,
         "city_id": rec["city_id"],
@@ -574,13 +650,19 @@ def build_dossier(rec_id: int, city_id: str = "delhi") -> dict:
         "rubric_score": rec.get("rubric_score", {}),
         "status": rec.get("status", "proposed"),
         "citations": full_citations,
+<<<<<<< HEAD
         "satellite_patch": satellite_patch,
         "impact_projection": projection,
         "suggested_notice_text": _build_notice_text(rec, full_citations, satellite_patch, source, projection),
+=======
+        "satellite_patch": None,
+        "suggested_notice_text": _build_notice_text(rec, full_citations),
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }
 
 
+<<<<<<< HEAD
 class _NoRows:
     def select(self, *_args, **_kwargs):
         return self
@@ -776,6 +858,28 @@ def _build_notice_text(
         "Signature: ______________________________  Date: ______________________________\n"
         "\n"
         "This is a system-generated draft for officer review before issuance."
+=======
+def _build_notice_text(rec: dict, citations: list[dict]) -> str:
+    """Generate a draft enforcement notice text (for the UI 'Generate Notice' button)."""
+    pct = round((rec.get("contribution", 0) * 100), 1)
+    pop = rec.get("pop_exposed", 0)
+    rationale = rec.get("rationale", "Pollution violation detected.")
+    cited_rules = "; ".join(c.get("rule", "") for c in citations[:3])
+    return (
+        f"ENFORCEMENT NOTICE\n"
+        f"Issued by: VayuNetra AI Enforcement System\n"
+        f"Date: {datetime.now(timezone.utc).strftime('%Y-%m-%d')}\n\n"
+        f"SUBJECT: Non-compliance with Air Pollution Control Norms\n\n"
+        f"Based on analysis of CAAQMS ground sensor data, satellite imagery, and "
+        f"emission source registry, the following violation has been identified:\n\n"
+        f"{rationale}\n\n"
+        f"IMPACT: Estimated {pop:,} persons exposed; "
+        f"source contributes {pct}% of local PM2.5 concentration.\n\n"
+        f"APPLICABLE REGULATIONS:\n{cited_rules}\n\n"
+        f"REQUIRED ACTION: Immediate inspection and compliance within 24 hours. "
+        f"Non-compliance will result in penalties and/or site sealing as per applicable law.\n\n"
+        f"[Generated by VayuNetra AI — for officer review before issuance]"
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
     )
 
 

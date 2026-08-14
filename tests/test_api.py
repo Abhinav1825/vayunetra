@@ -5,6 +5,11 @@ Uses FastAPI TestClient in DEMO_MODE (no Supabase needed).
 from __future__ import annotations
 
 import os
+<<<<<<< HEAD
+=======
+import json
+import pytest
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
 
 os.environ["DEMO_MODE"] = "true"
 
@@ -150,7 +155,14 @@ def test_enforcement_status_update():
 
 
 def test_enforcement_status_invalid():
+<<<<<<< HEAD
     # Invalid enum is now rejected by Pydantic validation (proper 422), not a
     # 200 envelope with success=false.
     resp = client.post("/enforcement/1/status", json={"status": "invalid_status"})
     assert resp.status_code == 422
+=======
+    resp = client.post("/enforcement/1/status", json={"status": "invalid_status"})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["success"] is False
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729

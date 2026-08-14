@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import React, { lazy, Suspense, useEffect, useState } from "react";
 import ReactDOM from "react-dom/client";
 import Landing from "./Landing";
@@ -43,5 +44,16 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <ErrorBoundary>
       <Root />
     </ErrorBoundary>
+=======
+import React from "react";
+import ReactDOM from "react-dom/client";
+import App from "./App";
+import "./index.css";
+import "maplibre-gl/dist/maplibre-gl.css";
+
+ReactDOM.createRoot(document.getElementById("root")!).render(
+  <React.StrictMode>
+    <App />
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
   </React.StrictMode>,
 );

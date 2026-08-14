@@ -73,6 +73,7 @@ def backtest(wide: pd.DataFrame, horizon_h: int, n_folds: int = 3) -> dict:
     }
 
 
+<<<<<<< HEAD
 NOMINAL_COVERAGE = 0.8   # we serve q0.1–q0.9 bands
 
 
@@ -154,6 +155,8 @@ def _finite(x) -> float | None:
     return f if (f == f and f not in (float("inf"), float("-inf"))) else None
 
 
+=======
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
 def write_forecasts(wide: pd.DataFrame, horizon_h: int) -> int:
     """Train on all samples, predict the latest row per cell, write to `forecasts`."""
     X, y, _, feature_cols = make_supervised(wide, horizon_h)
@@ -162,6 +165,7 @@ def write_forecasts(wide: pd.DataFrame, horizon_h: int) -> int:
     clim = y.groupby(X["hour"]).mean()   # climatology by hour-of-day (for side-by-side storage)
     latest = wide.sort_values("ts").groupby("h3_cell").tail(1)
     X_pred = latest[feature_cols]
+<<<<<<< HEAD
     # median from the full fit; bands via CQR so real coverage ≈ the nominal 80%
     preds = {"value": _fit_predict(X, y, X_pred, QUANTILES["value"])[1]}
     lo_model, hi_model, q = _cqr_models_and_q(X, y)
@@ -179,16 +183,33 @@ def write_forecasts(wide: pd.DataFrame, horizon_h: int) -> int:
         lo, hi = bounds[0], bounds[-1]
         hour = r.get("hour")
         clim_val = _finite(clim.get(int(hour), y_mean)) if pd.notna(hour) else y_mean
+=======
+    preds = {name: _fit_predict(X, y, X_pred, a)[1] for name, a in QUANTILES.items()}
+    issued_at = datetime.now(timezone.utc).isoformat()
+    rows = []
+    for i, (_, r) in enumerate(latest.iterrows()):
+        # enforce pi_low <= value <= pi_high (independent quantile models can cross on small data)
+        lo, mid, hi = sorted(
+            (float(preds["pi_low"][i]), float(preds["value"][i]), float(preds["pi_high"][i]))
+        )
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
         rows.append({
             "city_id": r["city_id"], "h3_cell": r["h3_cell"], "issued_at": issued_at,
             "horizon_h": horizon_h, "target_var": "pm25",
             "value": mid, "pi_low": lo, "pi_high": hi,
+<<<<<<< HEAD
             "persistence_value": _finite(r["pm25"]),
             "climatology_value": clim_val if clim_val is not None else y_mean,
             "model_version": MODEL_VERSION,
         })
     if not rows:
         return 0
+=======
+            "persistence_value": float(r["pm25"]),
+            "climatology_value": float(clim.get(int(r["hour"]), y.mean())),
+            "model_version": MODEL_VERSION,
+        })
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
     # idempotent: replace this city+horizon's forecasts instead of accumulating
     city_id = str(latest["city_id"].iloc[0])
     c = client()
@@ -202,7 +223,11 @@ def write_forecasts(wide: pd.DataFrame, horizon_h: int) -> int:
     return len(rows)
 
 
+<<<<<<< HEAD
 def run(city_id: str, horizons=(24, 48, 72), write: bool = False, coverage: bool = False) -> None:
+=======
+def run(city_id: str, horizons=(24, 48, 72), write: bool = False) -> None:
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
     long_df = pd.DataFrame(load_measurements(city_id))
     print(f"loaded {len(long_df)} measurements for {city_id}")
     wide = build_feature_table(long_df)
@@ -212,10 +237,13 @@ def run(city_id: str, horizons=(24, 48, 72), write: bool = False, coverage: bool
             f"  h={h:>2}h  n={r.get('n')} folds={r.get('folds')}  "
             f"skill vs persistence={r.get('skill_vs_persistence')}  vs climatology={r.get('skill_vs_climatology')}"
         )
+<<<<<<< HEAD
         if coverage:
             c = pi_coverage_backtest(wide, h)
             print(f"        PI coverage: raw={c.get('coverage_raw')} -> CQR={c.get('coverage_cqr')} "
                   f"(nominal {c.get('nominal')}) mean width={c.get('mean_width_ugm3')} µg/m³")
+=======
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
         if write:
             print(f"        wrote {write_forecasts(wide, h)} forecasts")
 
@@ -224,9 +252,14 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--city", default="delhi")
     ap.add_argument("--write", action="store_true", help="write forecasts to Supabase")
+<<<<<<< HEAD
     ap.add_argument("--coverage", action="store_true", help="also report PI empirical coverage")
     args = ap.parse_args()
     run(args.city, write=args.write, coverage=args.coverage)
+=======
+    args = ap.parse_args()
+    run(args.city, write=args.write)
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
 
 
 if __name__ == "__main__":

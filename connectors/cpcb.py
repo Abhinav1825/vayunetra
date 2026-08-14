@@ -90,6 +90,7 @@ def rows_from_records(city_id: str, records: list[dict], h3_res: int = 8) -> lis
     return rows
 
 
+<<<<<<< HEAD
 # data.gov.in city labels differ from our city_ids (and sometimes use old names).
 CITY_ALIASES = {
     "delhi": ["Delhi"],
@@ -101,18 +102,26 @@ CITY_ALIASES = {
 def _get(params: dict, retries: int = 6, timeout: int = 30) -> dict:
     """One data.gov.in request. The endpoint is flaky (fast one call, hangs the next),
     so we use a short timeout and retry rather than one long 60s block."""
+=======
+def _get(params: dict, retries: int = 4) -> dict:
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
     key = os.environ.get("DATA_GOV_IN_API_KEY")
     if not key:
         raise RuntimeError("DATA_GOV_IN_API_KEY missing in .env — register at https://data.gov.in")
     last = ""
     for attempt in range(retries):
         try:
+<<<<<<< HEAD
             resp = requests.get(BASE, params={"api-key": key, "format": "json", **params}, timeout=timeout)
+=======
+            resp = requests.get(BASE, params={"api-key": key, "format": "json", **params}, timeout=60)
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
             if resp.status_code == 200:
                 return resp.json()
             last = f"HTTP {resp.status_code}"
         except requests.RequestException as e:
             last = type(e).__name__
+<<<<<<< HEAD
         time.sleep(min(10, 2 * (attempt + 1)))   # short backoff; the source recovers quickly
     raise RuntimeError(f"data.gov.in unreachable after {retries} tries ({last}) — it is flaky, just re-run")
 
@@ -130,6 +139,23 @@ def fetch_city(city_id: str, limit: int = 500) -> list[dict]:
         if recs:
             records = recs
             break
+=======
+        time.sleep(3 * (attempt + 1))   # data.gov.in is flaky — back off and retry
+    raise RuntimeError(f"data.gov.in failed after {retries} tries ({last}) — try again later")
+
+
+def fetch_city(city_id: str, limit: int = 1000) -> list[dict]:
+    cfg = load_city(city_id)
+    records: list[dict] = []
+    offset = 0
+    while True:
+        data = _get({"filters[city]": cfg["name"], "limit": limit, "offset": offset})
+        recs = data.get("records", [])
+        records.extend(recs)
+        if len(recs) < limit:
+            break
+        offset += limit
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
     return rows_from_records(city_id, records, cfg.get("h3_res", 8))
 
 

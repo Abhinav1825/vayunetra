@@ -12,6 +12,7 @@
 -r requirements.txt
 
 torch                        # install CPU build first (see note above)
+<<<<<<< HEAD
 torchvision                  # image models and transforms (E1)
 sentence-transformers        # local bge-small embeddings (RAG) + CLIP (E6)
 transformers
@@ -21,3 +22,8 @@ rasterio                     # geospatial raster processing (E1)
 geopandas                    # geospatial vector processing (E1)
 scikit-learn                 # anomaly detection (E4)
 statsmodels                  # seasonal decomposition (E4)
+=======
+sentence-transformers        # local bge-small embeddings (RAG) + CLIP (E6)
+transformers
+xgboost                      # optional alternative to LightGBM (note: pulls GPU libs)
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729

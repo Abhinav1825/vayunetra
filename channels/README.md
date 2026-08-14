@@ -3,6 +3,7 @@
 Owner: **Sejal**. Spec: ARCHITECTURE.md §13, PRD §14.2.
 
 - **Primary (free):** Telegram bot + PWA push.
+<<<<<<< HEAD
 - **IVR — outbound:** Twilio call reads the advisory (Polly.Raveena, repeated once) to
   numbers in `TWILIO_TO_NUMBERS` — trial accounts can only call **verified** numbers.
 - **IVR — inbound (judges can call us):** point the Twilio number's **Voice webhook**
@@ -11,6 +12,9 @@ Owner: **Sejal**. Spec: ARCHITECTURE.md §13, PRD §14.2.
   2 Bengaluru, 3 Mumbai — then that city's latest live advisory. No input → Delhi.
   Trial-account note: inbound callers first hear Twilio's short trial preamble; that's
   expected and free.
+=======
+- **IVR demo:** Twilio trial number (Kannada/Marathi TTS) — pre-verify the judge's number.
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
 - **Public display mode:** big-screen ward board.
 - **Localization:** short templated messages + LLM (Gemini) translation, native-speaker reviewed
   for **hi / en / kn / mr**.

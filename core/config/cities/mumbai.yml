@@ -1,4 +1,9 @@
+<<<<<<< HEAD
 # City onboarding config — Mumbai: coastal dispersion + Marathi advisory.
+=======
+# City onboarding config — Mumbai.  Owner: Sejal (multi-city configs).
+# Coastal dispersion story + Marathi advisory.
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
 city_id: mumbai
 name: Mumbai
 state: MH
@@ -6,7 +11,12 @@ bbox: [72.77, 18.89, 72.99, 19.27]
 center: [72.87, 19.07]
 languages: [mr, en, hi]
 h3_res: 8
+<<<<<<< HEAD
 # optional pin-list — ingestion discovers stations by bbox (see delhi.yml)
 caaqms_station_ids: []
+=======
+caaqms_station_ids:
+  - "MH001"   # placeholder — replace with real station ids
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
 ward_geojson_ref: "data/wards/mumbai.geojson"
 active: true

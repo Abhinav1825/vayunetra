@@ -21,6 +21,7 @@ import core.env  # noqa: F401
 from core.supa import client
 
 
+<<<<<<< HEAD
 # Per-city registries — real local sites, so the worklist/City-Intel read
 # correctly for every city (previously the Delhi list was copied to all cities).
 CITY_SOURCES: dict[str, list[dict]] = {
@@ -94,16 +95,46 @@ CITY_SOURCES: dict[str, list[dict]] = {
         },
     ],
 }
+=======
+DEFAULT_SOURCES = [
+    {
+        "name": "Sarai Kale Khan Construction Site",
+        "type": "construction",
+        "source_origin": "registry",
+        "detection_confidence": 1.0,
+        "attributes": {"permit": "DMRC-2025-4421", "area_sqm": 45000, "pop_exposed_estimate": 18400},
+    },
+    {
+        "name": "Mayapuri Industrial Cluster",
+        "type": "industry",
+        "source_origin": "registry",
+        "detection_confidence": 1.0,
+        "attributes": {"consent_id": "DPCC-2024-IND-1102", "sector": "metal_recycling", "pop_exposed_estimate": 9200},
+    },
+    {
+        "name": "Timarpur Waste Burning Site",
+        "type": "waste_burn",
+        "source_origin": "registry",
+        "detection_confidence": 0.85,
+        "attributes": {"ward": "Timarpur Ward 12", "pop_exposed_estimate": 6500},
+    },
+]
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
 
 
 def seed_city(city_id: str) -> int:
     db = client()
+<<<<<<< HEAD
     sources = CITY_SOURCES.get(city_id)
     if not sources:
         print(f"{city_id}: no registry in CITY_SOURCES — skipping")
         return 0
     rows = []
     for source in sources:
+=======
+    rows = []
+    for source in DEFAULT_SOURCES:
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
         rows.append({
             "city_id": city_id,
             "name": source["name"],

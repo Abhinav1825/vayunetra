@@ -35,9 +35,14 @@
 | GET | `/comparison` | Agent 5 multi-city trends + playbook recommendations | all | Sejal |
 | GET | `/latency?city` | latest signal-to-action widget payload | all | Sejal |
 | POST | `/agent/query` | conversational orchestrator (NL → action) | officer+ | Abhinav |
+<<<<<<< HEAD
 | POST | `/simulate` | what-if intervention → ΔAQI + people/₹/CO₂e (E3+E7, live) | officer+ | Omkar(E3)+Sejal(E7,UI) |
 | GET | `/roi?city` | City ROI: annual health burden + NCAP savings (E7) | all | Sejal |
 | POST | `/optimize` | best intervention bundle under budget → top-3 (E5, **deferred stub**) | officer+ | Abhinav(engine)+Sejal(UI) |
+=======
+| POST | `/simulate` | what-if intervention → ΔAQI + people/₹/CO₂e (E3,E7) | officer+ | Abhinav(engine)+Sejal(UI) |
+| POST | `/optimize` | best intervention bundle under budget → top-3 (E5) | officer+ | Abhinav(engine)+Sejal(UI) |
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
 | POST | `/admin/cities` | onboard a city via config (scalability demo) | admin | Abhinav |
 | WS | `/live` | push attribution/forecast/alert updates | all | Abhinav |
 
@@ -64,6 +69,7 @@
   "persistence_value": 295, "model_version": "lgbm-v1" }
 ```
 
+<<<<<<< HEAD
 **POST /simulate** (body `{ city, intervention_type, target_cells?, horizon_h }`) → `data`
 ```jsonc
 { "delta_aqi_by_cell": { "883da1...": -45 },
@@ -87,6 +93,13 @@
   "narrative": "At 92 µg/m³ annual PM2.5, ~73,395 premature deaths/yr ...",
   "citations": [ { "figure": "attributable deaths", "value": 1.08, "unit": "HR per 10 µg/m³",
                    "source": "Chen & Hoek (2020), Environ. Int." } ] }
+=======
+**POST /simulate** (body `{ city, interventions:[{source_id, action, magnitude}] }`) → `data`
+```jsonc
+{ "delta_aqi_by_cell": { "883da1...": -42 },
+  "people_protected": 18000, "pm25_tonnes_avoided": 2.3,
+  "health_cost_avoided_inr": 6000000, "co2e_tonnes": 9 }
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
 ```
 
 > **Conventions:** snake_case keys · ISO-8601 UTC timestamps · GeoJSON `[lng, lat]` order ·

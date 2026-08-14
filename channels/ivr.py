@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 """IVR / public-display scripts for Agent 4 advisories.
 
 Two directions, one voice:
@@ -11,10 +12,17 @@ from __future__ import annotations
 
 import argparse
 import html
+=======
+"""IVR/public-display scripts for Agent 4 advisories."""
+from __future__ import annotations
+
+import argparse
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
 import os
 
 import core.env  # noqa: F401  (loads .env)
 
+<<<<<<< HEAD
 # Amazon Polly neural voice via Twilio — clear Indian English, far better than 'alice'.
 IVR_VOICE = "Polly.Raveena"
 IVR_LANG = "en-IN"
@@ -124,6 +132,18 @@ def broadcast_ivr_calls(advisory: dict) -> list[dict]:
 
 def make_ivr_call(advisory: dict, to_number: str | None = None) -> dict:
     """Place a real Twilio voice call for one advisory.
+=======
+
+def render_ivr_script(advisory: dict) -> str:
+    return (
+        f"VayuNetra air quality advisory. {advisory['message']} "
+        "Press 1 to repeat. Press 2 for nearest clean-air shelter information."
+    )
+
+
+def make_ivr_call(advisory: dict, to_number: str | None = None) -> dict:
+    """Place a real Twilio trial/prod voice call for one advisory.
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
 
     Requires TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER, and either
     TWILIO_TO_NUMBER or --to. Trial accounts can call only verified recipient numbers.
@@ -146,13 +166,22 @@ def make_ivr_call(advisory: dict, to_number: str | None = None) -> dict:
     from twilio.rest import Client
 
     client = Client(sid, token)
+<<<<<<< HEAD
     call = client.calls.create(to=to_number, from_=from_number, twiml=render_twiml(advisory))
+=======
+    call = client.calls.create(
+        to=to_number,
+        from_=from_number,
+        twiml=f"<Response><Say voice='alice'>{render_ivr_script(advisory)}</Say></Response>",
+    )
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
     return {"sid": call.sid, "status": call.status}
 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--to", help="Recipient phone number; defaults to TWILIO_TO_NUMBER")
+<<<<<<< HEAD
     ap.add_argument(
         "--message",
         default="Air quality is expected to be poor over the next 24 hours. Please limit outdoor activity.",
@@ -160,6 +189,13 @@ def main() -> None:
     args = ap.parse_args()
 
     result = make_ivr_call({"message": args.message}, args.to)
+=======
+    ap.add_argument("--message", default="Air quality is expected to be poor in the next 24 hours.")
+    args = ap.parse_args()
+
+    advisory = {"message": args.message}
+    result = make_ivr_call(advisory, args.to)
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
     print(f"started IVR call sid={result['sid']} status={result['status']}")
 
 

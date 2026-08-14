@@ -8,6 +8,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
+<<<<<<< HEAD
     "lint": "eslint .",
     "test:e2e": "playwright test"
   },
@@ -36,5 +37,29 @@
     "typescript": "^5.6.0",
     "vite": "^5.4.0",
     "vite-plugin-pwa": "^1.3.0"
+=======
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "maplibre-gl": "^4.7.1",
+    "@deck.gl/core": "^9.0.0",
+    "@deck.gl/layers": "^9.0.0",
+    "@deck.gl/geo-layers": "^9.0.0",
+    "@deck.gl/mapbox": "^9.0.0",
+    "@tanstack/react-query": "^5.59.0",
+    "zustand": "^5.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.0",
+    "typescript": "^5.6.0",
+    "vite": "^5.4.0",
+    "tailwindcss": "^3.4.0",
+    "autoprefixer": "^10.4.0",
+    "postcss": "^8.4.0"
+>>>>>>> 434ad3829631b833a9fa2a960fb5ce96ce106729
   }
 }
